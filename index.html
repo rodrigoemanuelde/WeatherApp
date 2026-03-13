@@ -229,6 +229,11 @@
     .gap-date { background: rgba(232,184,109,0.15); border: 1px solid rgba(232,184,109,0.25); color: var(--accent); border-radius: 20px; padding: 2px 9px; font-size: 0.74rem; font-weight: 600; }
     .btn-add-city-gap { flex-shrink: 0; background: var(--accent); color: #111; border: none; border-radius: 20px; padding: 6px 13px; font-family: 'DM Sans', sans-serif; font-weight: 700; font-size: 0.78rem; cursor: pointer; }
 
+    /* ── CONFIRM MODALS ── */
+    .confirm-icon { font-size: 2.4rem; text-align: center; margin-bottom: 12px; }
+    .btn-danger-full { width: 100%; background: var(--danger); color: #fff; border: none; border-radius: 12px; padding: 14px; font-family: 'DM Sans', sans-serif; font-weight: 700; font-size: 0.97rem; cursor: pointer; transition: opacity .2s; margin-top: 4px; }
+    .btn-danger-full:active { opacity: 0.82; }
+
     /* ── BACKUP ── */
     .backup-card { background: var(--bg3); border: 1px solid var(--border); border-radius: 12px; padding: 13px 14px; display: flex; align-items: center; gap: 12px; }
     .backup-icon { font-size: 1.5rem; flex-shrink: 0; }
@@ -450,6 +455,44 @@
   </div>
 </div>
 
+<!-- ══ MODAL: CONFIRMAR ELIMINAR VIAJE ══ -->
+<div class="modal-overlay" id="modal-confirm-delete-trip">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <div class="confirm-icon">🗑️</div>
+    <h2 id="confirm-delete-trip-title" style="text-align:center;margin-bottom:10px">¿Eliminar viaje?</h2>
+    <p id="confirm-delete-trip-body" style="color:var(--text2);font-size:0.88rem;line-height:1.55;margin-bottom:24px;text-align:center"></p>
+    <button class="btn-danger-full" onclick="confirmDeleteTrip()">Sí, eliminar</button>
+    <button class="btn-secondary" onclick="closeModal('modal-confirm-delete-trip')">Cancelar</button>
+  </div>
+</div>
+
+<!-- ══ MODAL: CONFIRMAR ELIMINAR CIUDAD ══ -->
+<div class="modal-overlay" id="modal-confirm-delete-city">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <div class="confirm-icon">🗑️</div>
+    <h2 id="confirm-delete-city-title" style="text-align:center;margin-bottom:10px">¿Eliminar ciudad?</h2>
+    <p id="confirm-delete-city-body" style="color:var(--text2);font-size:0.88rem;line-height:1.55;margin-bottom:24px;text-align:center"></p>
+    <button class="btn-danger-full" onclick="confirmDeleteCity()">Sí, eliminar</button>
+    <button class="btn-secondary" onclick="closeModal('modal-confirm-delete-city')">Cancelar</button>
+  </div>
+</div>
+
+<!-- ══ MODAL: CONFIRMAR IMPORTAR (reemplazar) ══ -->
+<div class="modal-overlay" id="modal-confirm-import">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <div class="confirm-icon">⚠️</div>
+    <h2 style="text-align:center;margin-bottom:10px">¿Reemplazar todos los viajes?</h2>
+    <p style="color:var(--text2);font-size:0.88rem;line-height:1.55;margin-bottom:24px;text-align:center">
+      Esto eliminará tus viajes actuales y los reemplazará con los <strong id="confirm-import-count" style="color:var(--text)">0</strong> viaje(s) del archivo. Esta acción no se puede deshacer.
+    </p>
+    <button class="btn-danger-full" onclick="confirmImportReplace()">Sí, reemplazar todo</button>
+    <button class="btn-secondary" onclick="closeModal('modal-confirm-import')">Cancelar</button>
+  </div>
+</div>
+
 <!-- ══ MODAL: RESPALDO ══ -->
 <div class="modal-overlay" id="modal-backup">
   <div class="modal">
@@ -520,7 +563,7 @@ let selectedType = 'attraction';
 let selectedTransport = 'walking';
 let cityEntries = []; // array of temp IDs for city form entries
 
-function save() { localStorage.setItem('wandr_trips', JSON.stringify(trips)); }
+// save() defined in HELPERS section below
 function uid() { return Date.now().toString(36) + Math.random().toString(36).slice(2,6); }
 
 // ══════════════════════════════════════
@@ -556,11 +599,11 @@ function renderTrips() {
     const days = cities.reduce((a, ci) => a + (ci.days || []).length, 0);
     const stops = cities.reduce((a, ci) => a + (ci.days || []).reduce((b, d) => b + (d.stops || []).length, 0), 0);
     const pills = cities.length
-      ? cities.map(ci => `<span class="city-pill">📍 ${ci.name}</span>`).join('')
+      ? cities.map(ci => `<span class="city-pill">📍 ${esc(ci.name)}</span>`).join('')
       : `<span class="city-pill" style="opacity:0.5">Sin ciudades</span>`;
     return `<div class="trip-card" onclick="openTrip('${t.id}')">
       <div class="trip-card-accent"></div>
-      <h3>${t.name}</h3>
+      <h3>${esc(t.name)}</h3>
       <div class="trip-card-meta">
         <span>📅 ${formatDate(t.startDate)} → ${formatDate(t.endDate)}</span>
         <span>🌤️ ${days} días · ${stops} paradas</span>
@@ -573,10 +616,28 @@ function renderTrips() {
   }).join('') + '</div>';
 }
 
+let _pendingDeleteTripId = null;
+
 function deleteTrip(id) {
-  if (!confirm('¿Eliminar este viaje y todos sus datos?')) return;
-  trips = trips.filter(t => t.id !== id);
-  save(); renderTrips(); showToast('Viaje eliminado');
+  const trip = trips.find(t => t.id === id);
+  if (!trip) return;
+  _pendingDeleteTripId = id;
+  const totalStops = (trip.cities||[]).reduce((a,ci) => a + (ci.days||[]).reduce((b,d) => b + (d.stops||[]).length, 0), 0);
+  document.getElementById('confirm-delete-trip-title').textContent = `¿Eliminar "${trip.name}"?`;
+  document.getElementById('confirm-delete-trip-body').textContent = totalStops > 0
+    ? `Se eliminarán ${trip.cities.length} ciudad${trip.cities.length!==1?'es':''} y ${totalStops} parada${totalStops!==1?'s':''}. Esta acción no se puede deshacer.`
+    : 'Este viaje no tiene paradas cargadas. Esta acción no se puede deshacer.';
+  openModal('modal-confirm-delete-trip');
+}
+
+function confirmDeleteTrip() {
+  if (!_pendingDeleteTripId) return;
+  trips = trips.filter(t => t.id !== _pendingDeleteTripId);
+  _pendingDeleteTripId = null;
+  save();
+  closeModal('modal-confirm-delete-trip');
+  renderTrips();
+  showToast('🗑️ Viaje eliminado');
 }
 
 // ══════════════════════════════════════
@@ -826,7 +887,7 @@ function renderDetail() {
 
     const cityTabs = trip.cities.map((ci, i) =>
       `<div class="city-tab ${i === currentCityIdx ? 'active' : ''}" onclick="switchCity(${i})">
-        <span class="city-tab-name">${ci.name}</span>
+        <span class="city-tab-name">${esc(ci.name)}</span>
         ${trip.cities.length > 1 ? `<button class="city-tab-del" onclick="event.stopPropagation();deleteCity('${ci.id}')" title="Eliminar ciudad">
           <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
         </button>` : ''}
@@ -848,7 +909,7 @@ function renderDetail() {
           ${stops.length ? '<div class="stop-line"></div>' : ''}
         </div>
         <div class="stop-body">
-          <div class="stop-name">${city.hotelName}</div>
+          <div class="stop-name">${esc(city.hotelName)}</div>
           <div class="stop-meta"><span style="color:var(--accent2)">Punto de partida</span></div>
           ${city.hotelAddr ? `<div class="stop-actions"><a class="btn-maps" href="${mapsUrl(city.hotelAddr)}" target="_blank">🗺️ Ver en Maps</a></div>` : ''}
         </div>
@@ -873,10 +934,10 @@ function renderDetail() {
         </div>
         <div class="stop-body">
           <span class="transport-badge ${transportClass(stop.transport)}">${transportIcon(stop.transport)} ${transportLabel(stop.transport)}</span>
-          <div class="stop-name" style="margin-top:6px">${stop.name}</div>
+          <div class="stop-name" style="margin-top:6px">${esc(stop.name)}</div>
           <div class="stop-meta">
-            ${stop.address ? `<span>📍 ${stop.address}</span>` : ''}
-            ${stop.note ? `<span>🕐 ${stop.note}</span>` : ''}
+            ${stop.address ? `<span>📍 ${esc(stop.address)}</span>` : ''}
+            ${stop.note ? `<span>🕐 ${esc(stop.note)}</span>` : ''}
           </div>
           <div class="stop-actions">
             <a class="btn-maps" href="${routeUrl}" target="_blank">🗺️ Cómo llegar</a>
@@ -910,7 +971,7 @@ function renderDetail() {
 
     document.getElementById('detail-content').innerHTML = `
       <div class="trip-header">
-        <div class="trip-title">${trip.name}</div>
+        <div class="trip-title">${esc(trip.name)}</div>
         <div class="trip-subtitle">
           <span>📅 ${formatDate(trip.startDate)} → ${formatDate(trip.endDate)}</span>
           <span>🏙️ ${trip.cities.length} ciudad${trip.cities.length !== 1 ? 'es' : ''}</span>
@@ -925,8 +986,8 @@ function renderDetail() {
       ${city.hotelName ? `<div class="hotel-banner">
         <div class="hotel-banner-icon">🏨</div>
         <div class="hotel-banner-info">
-          <strong>${city.hotelName}</strong>
-          <small>${city.hotelAddr ? city.hotelAddr + ' · ' : ''}${formatDate(city.startDate)} → ${formatDate(city.endDate)}</small>
+          <strong>${esc(city.hotelName)}</strong>
+          <small>${city.hotelAddr ? esc(city.hotelAddr) + ' · ' : ''}${formatDate(city.startDate)} → ${formatDate(city.endDate)}</small>
         </div>
         <button class="btn-edit-hotel" onclick="openEditHotelModal()" title="Editar hotel">
           <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
@@ -973,22 +1034,36 @@ function switchDay(idx) {
   window.scrollTo(0, 0);
 }
 
+let _pendingDeleteCityId = null;
+
 function deleteCity(cityId) {
   const trip = trips.find(t => t.id === currentTripId);
   if (!trip || trip.cities.length <= 1) { showToast('⚠️ El viaje debe tener al menos una ciudad'); return; }
   const city = trip.cities.find(c => c.id === cityId);
   if (!city) return;
+  _pendingDeleteCityId = cityId;
   const totalStops = city.days.reduce((a, d) => a + d.stops.length, 0);
-  const msg = totalStops > 0
-    ? `¿Eliminar ${city.name}? Se perderán ${totalStops} parada${totalStops!==1?'s':''}.`
-    : `¿Eliminar ${city.name}?`;
-  if (!confirm(msg)) return;
-  const idx = trip.cities.findIndex(c => c.id === cityId);
+  document.getElementById('confirm-delete-city-title').textContent = `¿Eliminar ${esc(city.name)}?`;
+  document.getElementById('confirm-delete-city-body').textContent = totalStops > 0
+    ? `Se eliminarán también los ${totalStops} punto${totalStops!==1?'s':''} del itinerario de esta ciudad. Esta acción no se puede deshacer.`
+    : 'Esta ciudad no tiene paradas cargadas. Esta acción no se puede deshacer.';
+  openModal('modal-confirm-delete-city');
+}
+
+function confirmDeleteCity() {
+  const trip = trips.find(t => t.id === currentTripId);
+  if (!trip || !_pendingDeleteCityId) return;
+  const city = trip.cities.find(c => c.id === _pendingDeleteCityId);
+  const name = city?.name || 'Ciudad';
+  const idx = trip.cities.findIndex(c => c.id === _pendingDeleteCityId);
+  if (idx === -1) return;
   trip.cities.splice(idx, 1);
   if (currentCityIdx >= trip.cities.length) currentCityIdx = trip.cities.length - 1;
+  _pendingDeleteCityId = null;
   save();
+  closeModal('modal-confirm-delete-city');
   renderDetail();
-  showToast(`🗑️ ${city.name} eliminada`);
+  showToast(`🗑️ ${name} eliminada`);
 }
 
 // ══════════════════════════════════════
@@ -1365,6 +1440,23 @@ function buildGapBanner(trip) {
 // ══════════════════════════════════════
 // HELPERS
 // ══════════════════════════════════════
+function esc(s) {
+  if (!s) return '';
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+}
+
+function save() {
+  try {
+    localStorage.setItem('wandr_trips', JSON.stringify(trips));
+  } catch(e) {
+    if (e.name === 'QuotaExceededError' || e.name === 'NS_ERROR_DOM_QUOTA_REACHED') {
+      showToast('⚠️ Almacenamiento lleno. No se pudo guardar.');
+    } else {
+      showToast('⚠️ Error al guardar datos.');
+      console.error('save() error:', e);
+    }
+  }
+}
 function mapsUrl(q) { return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(q)}`; }
 function googleMapsMode(t) { return ({walking:'walking',transit:'transit',taxi:'driving',driving:'driving'})[t]||'transit'; }
 function typeIcon(t) { return ({attraction:'🏛️',restaurant:'🍽️',museum:'🖼️',park:'🌿',hotel:'🏨'})[t]||'📍'; }
@@ -1425,21 +1517,34 @@ function onFileSelected(e) {
 function confirmImport(mode) {
   if (!pendingImportData) return;
   if (mode === 'replace') {
-    if (!confirm(`¿Reemplazar TODOS los viajes actuales con los ${pendingImportData.length} viaje(s) del archivo? Esta acción no se puede deshacer.`)) return;
-    trips = pendingImportData;
-  } else {
-    // Merge: avoid duplicates by id
-    const existingIds = new Set(trips.map(t => t.id));
-    const newTrips = pendingImportData.filter(t => !existingIds.has(t.id));
-    trips = [...trips, ...newTrips];
-    showToast(`✅ ${newTrips.length} viaje(s) agregado(s)`);
+    // Show modal instead of native confirm
+    document.getElementById('confirm-import-count').textContent = pendingImportData.length;
+    openModal('modal-confirm-import');
+    return;
   }
+  // Merge mode: no destructive action, proceed directly
+  const existingIds = new Set(trips.map(t => t.id));
+  const newTrips = pendingImportData.filter(t => !existingIds.has(t.id));
+  trips = [...trips, ...sanitizeTrips(newTrips)];
   save();
   pendingImportData = null;
   document.getElementById('import-warning').style.display = 'none';
   closeModal('modal-backup');
   renderTrips();
-  if (mode === 'replace') showToast(`✅ ${trips.length} viaje(s) importado(s)`);
+  showToast(`✅ ${newTrips.length} viaje${newTrips.length!==1?'s':''} agregado${newTrips.length!==1?'s':''}`);
+  updateBackupCount();
+}
+
+function confirmImportReplace() {
+  if (!pendingImportData) return;
+  trips = sanitizeTrips(pendingImportData);
+  save();
+  pendingImportData = null;
+  document.getElementById('import-warning').style.display = 'none';
+  closeModal('modal-confirm-import');
+  closeModal('modal-backup');
+  renderTrips();
+  showToast(`✅ ${trips.length} viaje${trips.length!==1?'s':''} importado${trips.length!==1?'s':''}`);
   updateBackupCount();
 }
 
