@@ -1043,7 +1043,7 @@ function deleteCity(cityId) {
   if (!city) return;
   _pendingDeleteCityId = cityId;
   const totalStops = city.days.reduce((a, d) => a + d.stops.length, 0);
-  document.getElementById('confirm-delete-city-title').textContent = `¿Eliminar ${esc(city.name)}?`;
+  document.getElementById('confirm-delete-city-title').textContent = `¿Eliminar ${city.name}?`;
   document.getElementById('confirm-delete-city-body').textContent = totalStops > 0
     ? `Se eliminarán también los ${totalStops} punto${totalStops!==1?'s':''} del itinerario de esta ciudad. Esta acción no se puede deshacer.`
     : 'Esta ciudad no tiene paradas cargadas. Esta acción no se puede deshacer.';
