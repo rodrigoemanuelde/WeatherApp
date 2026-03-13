@@ -9,6 +9,8 @@
   <meta name="apple-mobile-web-app-title" content="Wandr" />
   <title>Wandr — Planificador de Viajes</title>
   <link rel="manifest" href="manifest.json" />
+  <link rel="apple-touch-icon" href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAALQAAAC0CAYAAAA9zQYyAAAFYUlEQVR4nO3dMW7bShSF4VGQRTxoFUZ691lHeq8mvdfh3r3hVQjehV/xQoDPoSQOOcO559z/KwNEHg1/XY7kIDp9vDx9lh3++fn7tPXvns8Pu342Yrpc3jc3sdf3o34Q8eaxdK2Pirxr0ESMybyFnnF3CZqQccvUR4+wmwZNyKjRI+wmQRMy9mgZ9rdWiwH2atHS7qCBlvZGTdAI53x++NwaNkEjrC1REzRCq42aoBFeTdQEDQlroyZoyFgTNUHDCkFDyr0pTdCQcytqgoaka1ETNKwQNGQtTWmChhWChrSvU5qgYYWgIW8+pQkaVggaVggaFqZjB0HDCkHDCkHDCkHDCkHDxvn88EnQsELQsELQsELQsELQsELQsELQsELQsELQsELQsELQsELQsGIX9Nvz4+gl2Iu8x4d913cvkTfX2dd9//HrddBK/u/08fK062u0jnwiNfFG2WA30a+B3ZEDuUkFzdTVMepaSQUN3GMbNG8W21PYU9ugkZNc0Jyj4xt5jeSCBm6xDlrhzKdCZS8lg+bYEdfoayMZNHCNfdAqt8rIlPbQPmjkIhv06LMa/hbhmsgGDSxJEbTSGTAatb1LETTykA46wpkN/4lyLaSDrqF264xAcc/SBI0c5IOOcqvLLNI1kA8amEsVtOKZcBTVvUoVNPxZBB3pDJdNtL23CBqYpAta9Wx4JOU9sgk62q0vg4h7bhM0UErSoJVvqb2p703KoOHLKuiIZzpXUffaKmggbdDqZ8UeHPYkbdDwZBd01LOdk8h7bBd0DYdbbCsue5E6aPixDDryLVFd9L21DBp5pQ/a5ey4h9MepA8aXmyDjnzWuzcRo07MyHs6sQ06qinWt+fHv8Kd/1nUqKOT//L6Ft6eH4dNn9Hhjv75rVlP6Gi3yNp4IsUWbS+vsQ4a+RD0H72n4dbH77muSHeAVggaVuyDjnD22zsJR0/SCHu4ln3QyIWgZ3pMwlaP2Xpto6d+LwTdkWs0kaUIWukMeMuIF4ja3qUIukbUI0JLkde2F0EP9uPXa9UUdI6xhTRBH3nrXBtd9Nt59PUtSRN0dEzpNgh6wZ5gjprOEX+VHgFBB6J4i48mVdC9gzn67Nxz2qq+uFIF3VOruFRDioKgr+g1/dYE2+sNovv5uZSEQfeYgG6hKN8l0gU9Uk0ofIy3DUHfsCYUlV+iZImeoANjStdLGfTRH5uNns41lNa6JGXQSpjSdQj6jmuRKE3nTKET9AZHB8KUXi9t0EdMzgjTuYbaepekDbrGfOqNmoBbp3S2iU3QnYyedtlCnqQOuja60W8Ee75IRr8AW0kdtLuMU5qgVxo9nY96fHUELYior0sfdMs4VENTXfeS9EGrcoqwJYJuhMBiIOiiG2OLdas+92sIugG3KJQR9E6jYx7986MhaFgh6D+2TLoo03HrOqKsvyWChhWC3ijadIu2nlEIGlYIembtlIs6DXv9RzZKvo9eQERfL7byP8NcClf5+dxz+nh5+tzzAK6v9CVvz48Sz1dlnT0QNKxwhoYVgoYVgoYVgoYVgoYVgoYVgoYVgoYVgoYVgoYVgoaNy+X9RNCwQtCwQtCwQtCwQtCwcLm8n0ohaJghaFghaMibjhulEDTMEDSkzadzKQQNMwQNWV+ncykEDTMEDUlL07kUgoagazGXQtAQcyvmUggaZggaMu5N51IIGiLWxFwKQUPA2phLIWgEVxNzKQSNwGpjLoXvWEFAW0KeMKERyp6YS2kQ9N4FAJMWLTU5ckwLOZ8fdn0BEXJqORSbnqEJGzV63N27vCkkbNzS85ja9VOO+cKJO7ej3msd9rHd0hMick8jPyj4FyIDtiGMjvElAAAAAElFTkSuQmCC" />
+  <link rel="icon" type="image/png" href="data:image/png;base64,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" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700;900&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet" />
   <style>
@@ -115,12 +117,16 @@
     .city-selector { display: flex; flex-wrap: wrap; gap: 7px; margin-bottom: 14px; }
     .city-tab {
       background: var(--card); border: 1px solid var(--border); border-radius: 20px;
-      padding: 7px 14px; cursor: pointer; font-size: 0.82rem; font-weight: 500;
-      transition: all .2s; white-space: nowrap;
+      padding: 6px 10px 6px 14px; cursor: pointer; font-size: 0.82rem; font-weight: 500;
+      transition: all .2s; display: inline-flex; align-items: center; gap: 6px;
       max-width: min(200px, calc(50% - 4px));
-      overflow: hidden; text-overflow: ellipsis;
     }
     .city-tab.active { background: var(--accent); border-color: var(--accent); color: #111; font-weight: 700; }
+    .city-tab-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .city-tab-del { flex-shrink: 0; background: rgba(0,0,0,0.15); border: none; border-radius: 50%; width: 16px; height: 16px; display: flex; align-items: center; justify-content: center; cursor: pointer; color: inherit; opacity: 0.7; padding: 0; transition: opacity .15s, background .15s; }
+    .city-tab-del:hover { opacity: 1; background: rgba(0,0,0,0.3); }
+    .city-tab:not(.active) .city-tab-del { color: var(--text2); background: rgba(255,255,255,0.06); }
+    .city-tab:not(.active) .city-tab-del:hover { background: rgba(232,125,125,0.2); color: var(--danger); }
 
     /* ── DAY TABS — scroll horizontal con indicador visible ── */
     .days-scroll {
@@ -249,6 +255,24 @@
 
 
   </style>
+  <script>
+    // Inline manifest with embedded icons for standalone PWA install
+    const _manifestData = {
+      name: "Wandr — Planificador de Viajes",
+      short_name: "Wandr",
+      start_url: ".",
+      display: "standalone",
+      background_color: "#0e0e1a",
+      theme_color: "#0e0e1a",
+      icons: [
+        { src: "data:image/png;base64,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", sizes: "192x192", type: "image/png", purpose: "any maskable" },
+        { src: "data:image/png;base64,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", sizes: "512x512", type: "image/png", purpose: "any maskable" }
+      ]
+    };
+    const _blob = new Blob([JSON.stringify(_manifestData)], {type:'application/json'});
+    const _manifestUrl = URL.createObjectURL(_blob);
+    document.querySelector('link[rel="manifest"]').href = _manifestUrl;
+  </script>
 </head>
 <body>
 
@@ -801,7 +825,12 @@ function renderDetail() {
     const stops = day.stops || [];
 
     const cityTabs = trip.cities.map((ci, i) =>
-      `<div class="city-tab ${i === currentCityIdx ? 'active' : ''}" onclick="switchCity(${i})">${ci.name}</div>`
+      `<div class="city-tab ${i === currentCityIdx ? 'active' : ''}" onclick="switchCity(${i})">
+        <span class="city-tab-name">${ci.name}</span>
+        ${trip.cities.length > 1 ? `<button class="city-tab-del" onclick="event.stopPropagation();deleteCity('${ci.id}')" title="Eliminar ciudad">
+          <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        </button>` : ''}
+      </div>`
     ).join('');
 
     const dayTabs = city.days.map((d, i) =>
@@ -942,6 +971,24 @@ function switchDay(idx) {
   currentDayIdx = idx;
   renderDetail();
   window.scrollTo(0, 0);
+}
+
+function deleteCity(cityId) {
+  const trip = trips.find(t => t.id === currentTripId);
+  if (!trip || trip.cities.length <= 1) { showToast('⚠️ El viaje debe tener al menos una ciudad'); return; }
+  const city = trip.cities.find(c => c.id === cityId);
+  if (!city) return;
+  const totalStops = city.days.reduce((a, d) => a + d.stops.length, 0);
+  const msg = totalStops > 0
+    ? `¿Eliminar ${city.name}? Se perderán ${totalStops} parada${totalStops!==1?'s':''}.`
+    : `¿Eliminar ${city.name}?`;
+  if (!confirm(msg)) return;
+  const idx = trip.cities.findIndex(c => c.id === cityId);
+  trip.cities.splice(idx, 1);
+  if (currentCityIdx >= trip.cities.length) currentCityIdx = trip.cities.length - 1;
+  save();
+  renderDetail();
+  showToast(`🗑️ ${city.name} eliminada`);
 }
 
 // ══════════════════════════════════════
