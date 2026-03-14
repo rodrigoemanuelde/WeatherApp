@@ -1500,6 +1500,10 @@ function renderDetail() {
       const terminalName = todayArrival.arrTerminal || todayArrival.toTerminal || null;
       const terminalLabel = terminalName || ticketTypeLabel(todayArrival.type) + ' llegada';
       const arrTimeStr = todayArrival.arrTime ? ` · ${todayArrival.arrTime}` : '';
+      const dest = city.hotelAddr || city.hotelName;
+      const routeTerminalToHotel = terminalName && dest
+        ? `https://www.google.com/maps/dir/?api=1&origin=${encodeURIComponent(terminalName)}&destination=${encodeURIComponent(dest)}&travelmode=transit`
+        : null;
       stopsHtml += `<div class="stop-item">
         <div class="stop-connector">
           <div class="stop-dot" style="background:rgba(127,207,184,0.2);border:2px solid var(--accent3);font-size:0.82rem">${ticketTypeIcon(todayArrival.type)}</div>
@@ -1512,7 +1516,10 @@ function renderDetail() {
             <span style="color:var(--accent3)">Punto de llegada${arrTimeStr}</span>
             ${todayArrival.company ? `<span>${esc(todayArrival.company)}</span>` : ''}
           </div>
-          ${terminalName ? `<div class="stop-actions"><a class="btn-maps" href="${mapsUrl(terminalName)}" target="_blank">📌 Ver en Maps</a></div>` : ''}
+          <div class="stop-actions">
+            ${terminalName ? `<a class="btn-maps" href="${mapsUrl(terminalName)}" target="_blank">📌 Ver en Maps</a>` : ''}
+            ${routeTerminalToHotel ? `<a class="btn-maps btn-return-chip" href="${routeTerminalToHotel}" target="_blank">🏨 Cómo llegar al hotel</a>` : ''}
+          </div>
         </div>
       </div>`;
     } else if (city.hotelName) {
@@ -1525,7 +1532,7 @@ function renderDetail() {
         <div class="stop-body">
           <div class="stop-name">${esc(city.hotelName)}</div>
           <div class="stop-meta"><span style="color:var(--accent2)">Punto de partida</span></div>
-          ${city.hotelAddr ? `<div class="stop-actions"><a class="btn-maps" href="${mapsUrl(city.hotelAddr)}" target="_blank">🗺️ Ver en Maps</a></div>` : ''}
+          ${city.hotelAddr ? `<div class="stop-actions"><a class="btn-maps" href="${mapsUrl(city.hotelAddr)}" target="_blank">📌 Ver en Maps</a></div>` : ''}
         </div>
       </div>`;
     }
@@ -1624,15 +1631,13 @@ function renderDetail() {
           <div class="stop-dot hotel">🏨</div>
         </div>
         <div class="stop-body" style="padding-top:4px">
-          <span class="transport-badge ${ticketTransportClass(todayArrival.type)}">${ticketTypeIcon(todayArrival.type)} ${ticketTypeLabel(todayArrival.type)}</span>
-          <div class="stop-name" style="margin-top:6px">${esc(city.hotelName)}</div>
+          <div class="stop-name">${esc(city.hotelName)}</div>
           <div class="stop-meta">
             ${city.hotelAddr ? `<span>📍 ${esc(city.hotelAddr)}</span>` : ''}
             <span style="color:var(--accent3);font-size:0.7rem">Check-in</span>
           </div>
           <div class="stop-actions">
-            ${routeToHotel ? `<a class="btn-maps" href="${routeToHotel}" target="_blank">🗺️ Cómo llegar al hotel</a>` : ''}
-            ${dest ? `<a class="btn-maps" href="${mapsUrl(dest)}" target="_blank">📌 Ver hotel</a>` : ''}
+            ${city.hotelAddr ? `<a class="btn-maps" href="${mapsUrl(city.hotelAddr)}" target="_blank">📌 Ver en Maps</a>` : city.hotelName ? `<a class="btn-maps" href="${mapsUrl(city.hotelName)}" target="_blank">📌 Ver en Maps</a>` : ''}
           </div>
         </div>
       </div>`;
