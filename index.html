@@ -110,8 +110,9 @@
 
     /* ── TRIP DETAIL HEADER ── */
     .trip-header { margin-bottom: 16px; }
-    .trip-title { font-family: 'Playfair Display', serif; font-size: clamp(1.3rem, 6vw, 1.8rem); line-height: 1.2; margin-bottom: 5px; word-break: break-word; }
-    .trip-subtitle { color: var(--text2); font-size: 0.82rem; display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+    .trip-header-top { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; }
+    .btn-edit-trip-dates { flex-shrink: 0; background: rgba(255,255,255,0.05); border: 1px solid var(--border); color: var(--text2); border-radius: 8px; padding: 7px; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: background .2s; margin-top: 2px; }
+    .btn-edit-trip-dates:active { background: rgba(255,255,255,0.1); }
 
     /* ── CITY TABS — wrappean en múltiples líneas ── */
     .city-selector { display: flex; flex-wrap: wrap; gap: 7px; margin-bottom: 14px; }
@@ -160,6 +161,12 @@
     .hotel-missing-banner:active { background: rgba(255,255,255,0.06); }
     .hotel-missing-banner > span:first-child { color: var(--text2); font-size: 0.84rem; }
     .hotel-missing-add { color: var(--accent); font-weight: 600; font-size: 0.8rem; white-space: nowrap; flex-shrink: 0; }
+    .hotel-time-tags { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 5px; }
+    .hotel-time-tag { font-size: 0.72rem; font-weight: 600; border-radius: 20px; padding: 2px 8px; cursor: default; }
+    .hotel-time-tag.checkin { background: rgba(127,207,184,0.15); color: var(--accent3); }
+    .hotel-time-tag.checkout { background: rgba(232,125,125,0.12); color: var(--danger); }
+    .hotel-time-tag.checkin-empty { background: rgba(127,207,184,0.07); color: var(--text2); border: 1px dashed rgba(127,207,184,0.3); cursor: pointer; }
+    .hotel-time-tag.checkout-empty { background: rgba(232,125,125,0.06); color: var(--text2); border: 1px dashed rgba(232,125,125,0.25); cursor: pointer; }
 
     /* ── DAY INFO BAR ── */
     .day-info-bar { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 11px 14px; margin-bottom: 12px; display: flex; align-items: center; justify-content: space-between; }
@@ -252,6 +259,7 @@
     .ticket-time { font-size: 1.3rem; font-weight: 700; font-family: 'Playfair Display', serif; }
     .ticket-date-label { font-size: 0.7rem; color: var(--text2); margin-top: 1px; }
     .ticket-terminal { font-size: 0.72rem; color: var(--text2); margin-top: 2px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .ticket-city-label { font-size: 0.72rem; color: var(--accent); font-weight: 600; margin-top: 3px; display: flex; align-items: center; gap: 3px; }
     .ticket-arrow { display: flex; flex-direction: column; align-items: center; gap: 2px; }
     .ticket-arrow-line { width: 36px; height: 1px; background: var(--border); position: relative; }
     .ticket-arrow-line::after { content:''; position: absolute; right: -4px; top: -3px; border: 4px solid transparent; border-left: 6px solid var(--border); }
@@ -259,6 +267,35 @@
     .btn-ticket-edit { flex: 1; background: rgba(109,158,235,0.1); border: 1px solid rgba(109,158,235,0.25); color: var(--accent2); border-radius: 8px; padding: 8px; font-family: 'DM Sans', sans-serif; font-size: 0.78rem; font-weight: 600; cursor: pointer; }
     .btn-ticket-delete { background: rgba(232,125,125,0.1); border: 1px solid rgba(232,125,125,0.2); color: var(--danger); border-radius: 8px; padding: 8px 12px; font-family: 'DM Sans', sans-serif; font-size: 0.78rem; cursor: pointer; }
     .btn-add-ticket { width: 100%; background: rgba(232,184,109,0.1); border: 1px dashed rgba(232,184,109,0.4); color: var(--accent); border-radius: 12px; padding: 14px; font-family: 'DM Sans', sans-serif; font-weight: 600; font-size: 0.9rem; cursor: pointer; margin-top: 4px; }
+
+    /* ── TICKET STATUS ── */
+    .ticket-stub { border-color: rgba(232,184,109,0.25); }
+    .ticket-status-badge { flex-shrink: 0; border-radius: 20px; padding: 3px 10px; font-size: 0.7rem; font-weight: 700; }
+    .ticket-status-badge.pending { background: rgba(232,184,109,0.15); color: var(--accent); }
+    .ticket-status-badge.done { background: rgba(127,207,184,0.15); color: var(--accent3); }
+    .tickets-pending-badge { background: rgba(232,184,109,0.15); color: var(--accent); border-radius: 20px; padding: 2px 8px; font-size: 0.72rem; font-weight: 600; }
+    .tickets-complete-badge { background: rgba(127,207,184,0.15); color: var(--accent3); border-radius: 20px; padding: 2px 8px; font-size: 0.72rem; font-weight: 600; }
+    .btn-ticket-edit-highlight { background: var(--accent) !important; color: #111 !important; border-color: var(--accent) !important; font-weight: 700 !important; }
+
+    .btn-add-city-inline { display: inline-flex; align-items: center; gap: 5px; background: rgba(232,184,109,0.12); border: 1px solid rgba(232,184,109,0.3); color: var(--accent); border-radius: 20px; padding: 5px 12px; font-family: 'DM Sans', sans-serif; font-size: 0.76rem; font-weight: 600; cursor: pointer; transition: background .2s; }
+    .btn-add-city-inline:active { background: rgba(232,184,109,0.25); }
+
+    .ticket-section-label { font-size: 0.72rem; text-transform: uppercase; letter-spacing: 1.5px; color: var(--accent2); font-weight: 700; margin: 16px 0 10px; padding-bottom: 6px; border-bottom: 1px solid var(--border); }
+    .label-optional { font-size: 0.68rem; color: var(--text2); text-transform: none; letter-spacing: 0; font-weight: 400; margin-left: 4px; }
+
+    .btn-return-chip { background: rgba(127,207,184,0.12) !important; border-color: rgba(127,207,184,0.35) !important; color: var(--accent3) !important; }
+    .arrival-hotel-stop { opacity: 1; }
+
+    /* ── CHAINED TICKETS ── */
+    .ticket-chain-group { border: 1px solid rgba(109,158,235,0.3); border-radius: 14px; overflow: hidden; margin-bottom: 12px; }
+    .ticket-chain-header { background: rgba(109,158,235,0.08); padding: 10px 14px; display: flex; align-items: center; gap: 8px; border-bottom: 1px solid rgba(109,158,235,0.2); }
+    .ticket-chain-header span { font-size: 0.78rem; font-weight: 600; color: var(--accent2); }
+    .ticket-chain-header small { font-size: 0.72rem; color: var(--text2); }
+    .ticket-chain-connector { display: flex; align-items: center; gap: 8px; padding: 6px 14px; background: rgba(109,158,235,0.04); border-top: 1px dashed rgba(109,158,235,0.2); border-bottom: 1px dashed rgba(109,158,235,0.2); }
+    .ticket-chain-connector-line { flex: 1; height: 1px; background: rgba(109,158,235,0.3); }
+    .ticket-chain-wait { font-size: 0.72rem; color: var(--accent2); white-space: nowrap; }
+    .ticket-chain-group .ticket-card { border: none; border-radius: 0; margin-bottom: 0; }
+    .ticket-chain-group .ticket-card + .ticket-card { border-top: 1px solid var(--border); }
 
     /* ── TRANSIT DAY in itinerary ── */
     .day-tab.transit { border-color: rgba(127,207,184,0.4); }
@@ -481,6 +518,65 @@
   </div>
 </div>
 
+<!-- ══ MODAL: EDITAR FECHAS DEL VIAJE ══ -->
+<div class="modal-overlay" id="modal-edit-trip-dates">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <h2>📅 Fechas del viaje</h2>
+    <div class="form-group">
+      <label>Nombre</label>
+      <input type="text" id="edit-trip-name" />
+    </div>
+    <div class="form-group">
+      <label>Fechas globales</label>
+      <div class="date-row">
+        <div>
+          <input type="date" id="edit-trip-start" oninput="onEditTripStartChange()" />
+          <div style="font-size:0.7rem;color:var(--text2);margin-top:4px">Inicio</div>
+        </div>
+        <div>
+          <input type="date" id="edit-trip-end" oninput="onEditTripEndChange()" />
+          <div style="font-size:0.7rem;color:var(--text2);margin-top:4px">Fin</div>
+          <div class="error-msg" id="edit-trip-end-err">⚠️ Debe ser posterior al inicio</div>
+        </div>
+      </div>
+    </div>
+    <p style="color:var(--text2);font-size:0.8rem;line-height:1.5;margin-bottom:16px">
+      Ampliar las fechas agrega días nuevos vacíos al inicio o fin de cada ciudad que esté en el límite. Reducir las fechas no elimina días ya existentes.
+    </p>
+    <button class="btn-primary" onclick="saveEditTripDates()">Guardar cambios</button>
+    <button class="btn-secondary" onclick="closeModal('modal-edit-trip-dates')">Cancelar</button>
+  </div>
+</div>
+
+<!-- ══ MODAL: EDITAR FECHAS DE CIUDAD ══ -->
+<div class="modal-overlay" id="modal-edit-city-dates">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <h2>📅 Fechas en <span id="edit-city-dates-name"></span></h2>
+    <div class="form-group">
+      <label>Fechas en esta ciudad</label>
+      <div class="date-row">
+        <div>
+          <input type="date" id="edit-city-start" oninput="onEditCityStartChange()" />
+          <div style="font-size:0.7rem;color:var(--text2);margin-top:4px">Llegada</div>
+          <div class="error-msg" id="edit-city-start-err"></div>
+        </div>
+        <div>
+          <input type="date" id="edit-city-end" oninput="onEditCityEndChange()" />
+          <div style="font-size:0.7rem;color:var(--text2);margin-top:4px">Salida</div>
+          <div class="error-msg" id="edit-city-end-err"></div>
+        </div>
+      </div>
+    </div>
+    <p style="color:var(--text2);font-size:0.8rem;line-height:1.5;margin-bottom:16px">
+      Los días nuevos se agregan vacíos al inicio o fin. Los días que se eliminen perderán sus paradas cargadas.
+    </p>
+    <button class="btn-primary" onclick="saveEditCityDates()">Guardar cambios</button>
+    <button class="btn-secondary" onclick="closeModal('modal-edit-city-dates')">Cancelar</button>
+  </div>
+</div>
+
 <!-- ══ MODAL: EDITAR HOTEL ══ -->
 <div class="modal-overlay" id="modal-edit-hotel">
   <div class="modal">
@@ -493,6 +589,19 @@
     <div class="form-group">
       <label>Dirección</label>
       <input type="text" id="edit-hotel-addr" placeholder="Ej: Grand Place 1, Bruselas" />
+    </div>
+    <div class="form-group">
+      <label>Horarios <span class="label-optional">opcional</span></label>
+      <div class="date-row">
+        <div>
+          <input type="time" id="edit-hotel-checkin" />
+          <div style="font-size:0.7rem;color:var(--text2);margin-top:4px">✅ Check-in</div>
+        </div>
+        <div>
+          <input type="time" id="edit-hotel-checkout" />
+          <div style="font-size:0.7rem;color:var(--text2);margin-top:4px">🚪 Check-out</div>
+        </div>
+      </div>
     </div>
     <button class="btn-primary" onclick="saveEditHotel()">Guardar cambios</button>
     <button class="btn-secondary" onclick="closeModal('modal-edit-hotel')">Cancelar</button>
@@ -546,50 +655,80 @@
     <div class="form-group">
       <label>Tipo de transporte</label>
       <div class="transport-grid" id="ticket-type-grid">
-        <div class="transport-option selected" data-ttype="flight" onclick="selectTicketType(this,'flight')">✈️<small>Vuelo</small></div>
-        <div class="transport-option" data-ttype="bus" onclick="selectTicketType(this,'bus')">🚌<small>Bus</small></div>
-        <div class="transport-option" data-ttype="train" onclick="selectTicketType(this,'train')">🚆<small>Tren</small></div>
-        <div class="transport-option" data-ttype="boat" onclick="selectTicketType(this,'boat')">⛴️<small>Barco</small></div>
+        <div class="transport-option" data-ttype="flight" onclick="selectTicketType(this,'flight')">✈️<small>Vuelo</small></div>
+        <div class="transport-option" data-ttype="bus"    onclick="selectTicketType(this,'bus')">🚌<small>Bus</small></div>
+        <div class="transport-option" data-ttype="train"  onclick="selectTicketType(this,'train')">🚆<small>Tren</small></div>
+        <div class="transport-option" data-ttype="boat"   onclick="selectTicketType(this,'boat')">⛴️<small>Barco</small></div>
       </div>
     </div>
 
     <div class="form-group">
-      <label>Compañía</label>
-      <input type="text" id="ticket-company" placeholder="Ej: Ryanair, FlixBus, Renfe" />
+      <label>Compañía <span class="label-optional">opcional</span></label>
+      <input type="text" id="ticket-company" placeholder="Ej: Ryanair, FlixBus, Renfe, MSC" />
     </div>
 
     <div class="form-group">
-      <label>Ciudad origen → Ciudad destino</label>
+      <label>Origen → Destino</label>
       <div class="date-row">
         <input type="text" id="ticket-from-city" placeholder="Ciudad de salida" />
         <input type="text" id="ticket-to-city" placeholder="Ciudad de llegada" />
       </div>
     </div>
 
-    <div class="form-group">
-      <label>Terminal / Estación / Aeropuerto de salida</label>
-      <input type="text" id="ticket-from-terminal" placeholder="Ej: Aeropuerto BCN T2" />
-    </div>
+    <!-- Campos dinámicos según tipo — se muestran/ocultan con JS -->
 
-    <div class="form-group">
-      <label>Terminal / Estación / Aeropuerto de llegada</label>
-      <input type="text" id="ticket-to-terminal" placeholder="Ej: Gare du Nord, Paris" />
-    </div>
+    <!-- SALIDA -->
+    <div id="ticket-dep-fields" style="display:none">
+      <div class="ticket-section-label" id="ticket-dep-section-label">Salida</div>
 
-    <div class="form-group">
-      <label>Fecha y hora de salida</label>
-      <div class="date-row">
-        <input type="date" id="ticket-dep-date" />
-        <input type="time" id="ticket-dep-time" />
+      <div class="form-group" id="ticket-dep-terminal-group">
+        <label id="ticket-dep-terminal-label">Terminal</label>
+        <input type="text" id="ticket-dep-terminal" />
+      </div>
+
+      <div class="form-group" id="ticket-dep-gate-group">
+        <label id="ticket-dep-gate-label">Puerta de embarque <span class="label-optional">opcional</span></label>
+        <input type="text" id="ticket-dep-gate" placeholder="Ej: B22" />
+      </div>
+
+      <div class="form-group">
+        <label>Fecha y hora de salida</label>
+        <div class="date-row">
+          <input type="date" id="ticket-dep-date" />
+          <input type="time" id="ticket-dep-time" />
+        </div>
       </div>
     </div>
 
-    <div class="form-group">
-      <label>Fecha y hora de llegada</label>
-      <div class="date-row">
-        <input type="date" id="ticket-arr-date" />
-        <input type="time" id="ticket-arr-time" />
+    <!-- LLEGADA -->
+    <div id="ticket-arr-fields" style="display:none">
+      <div class="ticket-section-label" id="ticket-arr-section-label">Llegada</div>
+
+      <div class="form-group" id="ticket-arr-terminal-group">
+        <label id="ticket-arr-terminal-label">Terminal</label>
+        <input type="text" id="ticket-arr-terminal" />
       </div>
+
+      <div class="form-group" id="ticket-arr-gate-group">
+        <label id="ticket-arr-gate-label">Puerta de desembarque <span class="label-optional">opcional</span></label>
+        <input type="text" id="ticket-arr-gate" placeholder="Ej: C14" />
+      </div>
+
+      <div class="form-group">
+        <label>Fecha y hora de llegada</label>
+        <div class="date-row">
+          <input type="date" id="ticket-arr-date" />
+          <input type="time" id="ticket-arr-time" />
+        </div>
+      </div>
+    </div>
+
+    <div class="form-group" id="ticket-chain-group">
+      <label>Encadenar con otro tramo <span class="label-optional">opcional</span></label>
+      <div style="font-size:0.78rem;color:var(--text2);margin-bottom:8px">Si este tramo es parte de un viaje con escala o cambio de medio, vinculalo con los otros tramos del mismo recorrido.</div>
+      <select id="ticket-chain-select">
+        <option value="">Sin encadenar (tramo independiente)</option>
+      </select>
     </div>
 
     <button class="btn-primary" onclick="saveTicket()">Guardar pasaje</button>
@@ -656,11 +795,52 @@
   <div class="modal">
     <div class="modal-handle"></div>
     <h2>📖 Cómo usar Wandr</h2>
-    <p style="color:var(--text2);font-size:0.9rem;line-height:1.6;margin-bottom:14px"><strong style="color:var(--text)">1. Crear un viaje</strong><br>Tocá "Nuevo viaje". Ingresá el nombre, las fechas globales y luego agregá todas las ciudades con sus fechas de llegada/salida y el hotel en cada una.</p>
-    <p style="color:var(--text2);font-size:0.9rem;line-height:1.6;margin-bottom:14px"><strong style="color:var(--text)">2. Navegar por ciudades</strong><br>Usá los chips de ciudad para cambiar entre destinos. Luego seleccioná el día específico con las pestañas de días.</p>
-    <p style="color:var(--text2);font-size:0.9rem;line-height:1.6;margin-bottom:14px"><strong style="color:var(--text)">3. Agregar paradas</strong><br>Tocá el botón <strong style="color:var(--accent)">+</strong> para agregar atracciones, restaurantes, museos. Elegí el transporte desde la parada anterior.</p>
-    <p style="color:var(--text2);font-size:0.9rem;line-height:1.6;margin-bottom:14px"><strong style="color:var(--text)">4. Google Maps</strong><br>Cada parada abre Maps con la ruta exacta. También podés ver la ruta completa del día o cómo volver al hotel.</p>
-    <p style="color:var(--text2);font-size:0.9rem;line-height:1.6;margin-bottom:20px"><strong style="color:var(--text)">5. Instalar como app</strong><br>En Chrome: menú (⋮) → "Añadir a pantalla de inicio".</p>
+
+    <p style="color:var(--text2);font-size:0.9rem;line-height:1.6;margin-bottom:14px">
+      <strong style="color:var(--text)">1. Crear un viaje</strong><br>
+      Tocá "Nuevo viaje". Ingresá el nombre y las fechas globales. Podés arrancar con una sola ciudad y agregar las demás después — no hace falta tener todo definido desde el principio.
+    </p>
+
+    <p style="color:var(--text2);font-size:0.9rem;line-height:1.6;margin-bottom:14px">
+      <strong style="color:var(--text)">2. Ciudades y fechas</strong><br>
+      Usá los chips de ciudad para cambiar entre destinos. El botón <strong style="color:var(--accent)">+ Ciudad</strong> (al lado de "Destino") agrega una ciudad nueva en cualquier momento. Si quedan días sin ciudad asignada, aparece un aviso en dorado con un botón para cubrirlos. Podés editar las fechas de cada ciudad tocando el ícono 📅 junto al hotel.
+    </p>
+
+    <p style="color:var(--text2);font-size:0.9rem;line-height:1.6;margin-bottom:14px">
+      <strong style="color:var(--text)">3. Hotel</strong><br>
+      Tocá el ícono ✏️ en el banner del hotel para editar nombre y dirección. Si una ciudad no tiene hotel asignado, aparece un banner punteado con "＋ Agregar hotel".
+    </p>
+
+    <p style="color:var(--text2);font-size:0.9rem;line-height:1.6;margin-bottom:14px">
+      <strong style="color:var(--text)">4. Agregar paradas</strong><br>
+      Tocá el botón <strong style="color:var(--accent)">+</strong> para agregar atracciones, restaurantes, museos o parques. Elegí el medio de transporte desde la parada anterior. Podés reordenar las paradas arrastrando el ícono ⠿ de la izquierda.
+    </p>
+
+    <p style="color:var(--text2);font-size:0.9rem;line-height:1.6;margin-bottom:14px">
+      <strong style="color:var(--text)">5. Google Maps</strong><br>
+      Cada parada tiene "Cómo llegar" (ruta desde la parada anterior) y "Ver lugar". Al final del día podés ver la ruta completa o cómo volver al hotel.
+    </p>
+
+    <p style="color:var(--text2);font-size:0.9rem;line-height:1.6;margin-bottom:14px">
+      <strong style="color:var(--text)">6. Pasajes entre ciudades</strong><br>
+      En la pestaña <strong style="color:var(--accent)">🎫 Pasajes</strong> encontrás los tramos entre ciudades generados automáticamente. Tocá "＋ Completar datos" para cargar vuelo, bus, tren o barco con compañía, horarios, terminal y puerta de embarque. Una vez cargado, el día de salida y el de llegada muestran automáticamente la terminal y el botón "Cómo llegar al hotel".
+    </p>
+
+    <p style="color:var(--text2);font-size:0.9rem;line-height:1.6;margin-bottom:14px">
+      <strong style="color:var(--text)">7. Días de tránsito</strong><br>
+      Si un día es compartido entre dos ciudades (salís a las 10hs de ciudad A y llegás a las 17hs a ciudad B), ese día aparece en ambas ciudades con un marcador ✈ en el tab. En ciudad A ves la terminal de salida al final del itinerario; en ciudad B ves la terminal de llegada al principio y el hotel al final.
+    </p>
+
+    <p style="color:var(--text2);font-size:0.9rem;line-height:1.6;margin-bottom:14px">
+      <strong style="color:var(--text)">8. Respaldo</strong><br>
+      En la pestaña "Respaldo" podés exportar todos tus viajes a un archivo .json para hacer copia de seguridad o pasarlos a otro dispositivo. También podés importar y elegir si reemplazar todo o agregar a los existentes.
+    </p>
+
+    <p style="color:var(--text2);font-size:0.9rem;line-height:1.6;margin-bottom:20px">
+      <strong style="color:var(--text)">9. Instalar como app</strong><br>
+      En Chrome Android: menú (⋮) → "Añadir a pantalla de inicio". Los datos se guardan en el dispositivo — no hace falta conexión a internet para usar la app.
+    </p>
+
     <button class="btn-primary" onclick="closeModal('modal-info')">Entendido</button>
   </div>
 </div>
@@ -679,7 +859,7 @@ let selectedType = 'attraction';
 let selectedTransport = 'walking';
 let cityEntries = [];
 let currentDetailTab = 'itinerary';
-let selectedTicketType = 'flight';
+let selectedTicketType = null;
 let editingTicketId = null;
 let _pendingDeleteTicketId = null;
 
@@ -1007,10 +1187,19 @@ function renderDetail() {
     const city = trip.cities[currentCityIdx] || trip.cities[0];
     if (!city) { document.getElementById('detail-content').innerHTML = '<p style="color:var(--danger);padding:20px">Error: no hay ciudades en este viaje.</p>'; return; }
 
-    // Guard: if days array is empty or missing, rebuild it
-    if (!city.days || city.days.length === 0) {
-      city.days = buildDays(city.startDate, city.endDate);
+    // Always rebuild the days list from city.startDate/endDate as source of truth,
+    // preserving any stops that fall within those dates
+    const stopsMap = {};
+    (city.days || []).forEach(d => { if (d.stops?.length) stopsMap[d.date] = d.stops; });
+    const correctDays = buildDays(city.startDate, city.endDate).map(d => ({
+      ...d, stops: stopsMap[d.date] || []
+    }));
+    // Only save if something actually changed
+    if (JSON.stringify(city.days?.map(d => d.date)) !== JSON.stringify(correctDays.map(d => d.date))) {
+      city.days = correctDays;
       save();
+    } else {
+      city.days = correctDays;
     }
 
     if (currentDayIdx >= city.days.length) currentDayIdx = 0;
@@ -1056,10 +1245,11 @@ function renderDetail() {
         const icon = ticketTypeIcon(tk.type);
         const isDep = tk.depDate === day.date;
         const timeStr = isDep ? tk.depTime : tk.arrTime;
-        const termStr = isDep ? tk.fromTerminal : tk.toTerminal;
+        const termStr = isDep ? (tk.depTerminal || tk.fromTerminal) : (tk.arrTerminal || tk.toTerminal);
+        const gateStr = isDep ? tk.depGate : tk.arrGate;
         const label = isDep
-          ? `Salida hacia ${esc(tk.toCity)} · ${timeStr || ''}${termStr ? ' · ' + esc(termStr) : ''}`
-          : `Llegada desde ${esc(tk.fromCity)} · ${timeStr || ''}${termStr ? ' · ' + esc(termStr) : ''}`;
+          ? `Salida hacia ${esc(tk.toCity)}${timeStr ? ' · ' + timeStr : ''}${termStr ? ' · ' + esc(termStr) : ''}${gateStr ? ' · Puerta ' + esc(gateStr) : ''}`
+          : `Llegada desde ${esc(tk.fromCity)}${timeStr ? ' · ' + timeStr : ''}${termStr ? ' · ' + esc(termStr) : ''}${gateStr ? ' · Puerta ' + esc(gateStr) : ''}`;
         const detail = `${esc(tk.company || '')}${tk.company && tk.fromCity ? ' · ' : ''}${isDep ? esc(tk.fromCity) : esc(tk.toCity)}`;
         return `<div class="transit-segment">
           <div class="transit-seg-icon">${icon}</div>
@@ -1077,7 +1267,43 @@ function renderDetail() {
 
     // Stops rendering
     let stopsHtml = '';
-    if (city.hotelName) {
+
+    // Declare today's arrival AND departure tickets here so they're available everywhere
+    const todayArrivalTickets = trip_tickets.filter(tk =>
+      tk.arrDate === day.date && tk.toCity === city.name
+    );
+    const todayArrival = todayArrivalTickets[0] || null;
+
+    const todayDepartureTickets = trip_tickets.filter(tk =>
+      tk.depDate === day.date && tk.fromCity === city.name
+    );
+    const todayDeparture = todayDepartureTickets[0] || null;
+
+    // Check if this day has an arrival ticket → last stop needs connector line
+    const dayHasArrival = !!(todayArrival && city.hotelName);
+
+    if (todayArrival) {
+      // Arrival day: show terminal as departure point, not hotel
+      const terminalName = todayArrival.arrTerminal || todayArrival.toTerminal || null;
+      const terminalLabel = terminalName || ticketTypeLabel(todayArrival.type) + ' llegada';
+      const arrTimeStr = todayArrival.arrTime ? ` · ${todayArrival.arrTime}` : '';
+      stopsHtml += `<div class="stop-item">
+        <div class="stop-connector">
+          <div class="stop-dot" style="background:rgba(127,207,184,0.2);border:2px solid var(--accent3);font-size:0.82rem">${ticketTypeIcon(todayArrival.type)}</div>
+          ${(stops.length || dayHasArrival) ? '<div class="stop-line"></div>' : ''}
+        </div>
+        <div class="stop-body">
+          <span class="transport-badge ${ticketTransportClass(todayArrival.type)}">${ticketTypeIcon(todayArrival.type)} ${ticketTypeLabel(todayArrival.type)}</span>
+          <div class="stop-name" style="margin-top:6px">${esc(terminalLabel)}</div>
+          <div class="stop-meta">
+            <span style="color:var(--accent3)">Punto de llegada${arrTimeStr}</span>
+            ${todayArrival.company ? `<span>${esc(todayArrival.company)}</span>` : ''}
+          </div>
+          ${terminalName ? `<div class="stop-actions"><a class="btn-maps" href="${mapsUrl(terminalName)}" target="_blank">📌 Ver en Maps</a></div>` : ''}
+        </div>
+      </div>`;
+    } else if (city.hotelName) {
+      // Normal day: show hotel as departure point
       stopsHtml += `<div class="stop-item">
         <div class="stop-connector">
           <div class="stop-dot hotel">🏨</div>
@@ -1093,19 +1319,24 @@ function renderDetail() {
 
     stops.forEach((stop, idx) => {
       const isLast = idx === stops.length - 1;
-      const prevAddr = idx === 0 ? (city.hotelAddr || city.hotelName || city.name) : (stops[idx-1].address || stops[idx-1].name);
+      const isVisuallyLast = isLast && !dayHasArrival && !todayDeparture;
+      // On arrival day, first stop comes from the terminal, not the hotel
+      const defaultOrigin = todayArrival
+        ? (todayArrival.arrTerminal || todayArrival.toTerminal || todayArrival.toCity)
+        : (city.hotelAddr || city.hotelName || city.name);
+      const prevAddr = idx === 0 ? defaultOrigin : (stops[idx-1].address || stops[idx-1].name);
       const gmMode = googleMapsMode(stop.transport);
       const routeUrl = prevAddr && stop.address
         ? `https://www.google.com/maps/dir/?api=1&origin=${encodeURIComponent(prevAddr)}&destination=${encodeURIComponent(stop.address)}&travelmode=${gmMode}`
         : mapsUrl(stop.address || stop.name);
 
-      stopsHtml += `<div class="stop-item ${isLast ? 'stop-last' : ''}" data-stopid="${stop.id}">
+      stopsHtml += `<div class="stop-item ${isVisuallyLast ? 'stop-last' : ''}" data-stopid="${stop.id}">
         <div class="drag-handle" title="Arrastrar para reordenar">
           <svg width="14" height="20" viewBox="0 0 14 20" fill="currentColor"><circle cx="4" cy="4" r="1.8"/><circle cx="10" cy="4" r="1.8"/><circle cx="4" cy="10" r="1.8"/><circle cx="10" cy="10" r="1.8"/><circle cx="4" cy="16" r="1.8"/><circle cx="10" cy="16" r="1.8"/></svg>
         </div>
         <div class="stop-connector">
           <div class="stop-dot ${typeDotClass(stop.type)}">${typeIcon(stop.type)}</div>
-          ${!isLast ? '<div class="stop-line"></div>' : ''}
+          ${!isVisuallyLast ? '<div class="stop-line"></div>' : ''}
         </div>
         <div class="stop-body">
           <span class="transport-badge ${transportClass(stop.transport)}">${transportIcon(stop.transport)} ${transportLabel(stop.transport)}</span>
@@ -1117,6 +1348,7 @@ function renderDetail() {
           <div class="stop-actions">
             <a class="btn-maps" href="${routeUrl}" target="_blank">🗺️ Cómo llegar</a>
             <a class="btn-maps" href="${mapsUrl(stop.address || stop.name)}" target="_blank">📌 Ver lugar</a>
+            ${city.hotelAddr ? `<a class="btn-maps btn-return-chip" href="https://www.google.com/maps/dir/?api=1&origin=${encodeURIComponent(stop.address || stop.name)}&destination=${encodeURIComponent(city.hotelAddr)}&travelmode=transit" target="_blank">🏨 Volver al hotel</a>` : ''}
             <button class="btn-delete-stop" onclick="deleteStop('${stop.id}')">
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
             </button>
@@ -1125,8 +1357,77 @@ function renderDetail() {
       </div>`;
     });
 
-    if (!stops.length && !city.hotelName) {
+    // ── Parada automática: terminal de salida si hay pasaje que sale hoy ──
+    let departureTerminalHtml = '';
+    if (todayDeparture) {
+      const terminalName = todayDeparture.depTerminal || todayDeparture.fromTerminal || null;
+      const terminalLabel = terminalName || ticketTypeLabel(todayDeparture.type) + ' salida';
+      const depTimeStr = todayDeparture.depTime ? ` · ${todayDeparture.depTime}` : '';
+      const gateStr = todayDeparture.depGate ? ` · Puerta ${todayDeparture.depGate}` : '';
+      // Origin: last user stop if any, otherwise the hotel
+      const lastStopAddr = stops.length > 0
+        ? (stops[stops.length-1].address || stops[stops.length-1].name)
+        : (city.hotelAddr || city.hotelName || null);
+      const dest = terminalName || null;
+      const routeToTerminal = lastStopAddr && dest
+        ? `https://www.google.com/maps/dir/?api=1&origin=${encodeURIComponent(lastStopAddr)}&destination=${encodeURIComponent(dest)}&travelmode=transit`
+        : dest ? mapsUrl(dest) : '';
+
+      departureTerminalHtml = `<div class="stop-item stop-last arrival-hotel-stop">
+        <div class="stop-connector">
+          <div class="stop-line" style="min-height:14px"></div>
+          <div class="stop-dot" style="background:rgba(232,184,109,0.2);border:2px solid var(--accent);font-size:0.82rem">${ticketTypeIcon(todayDeparture.type)}</div>
+        </div>
+        <div class="stop-body" style="padding-top:4px">
+          <span class="transport-badge ${ticketTransportClass(todayDeparture.type)}">${ticketTypeIcon(todayDeparture.type)} ${ticketTypeLabel(todayDeparture.type)}</span>
+          <div class="stop-name" style="margin-top:6px">${esc(terminalLabel)}</div>
+          <div class="stop-meta">
+            ${terminalName ? `<span>📍 ${esc(terminalName)}</span>` : ''}
+            <span style="color:var(--accent)">${todayDeparture.company ? esc(todayDeparture.company) + ' · ' : ''}Salida${depTimeStr}${gateStr}</span>
+          </div>
+          <div class="stop-actions">
+            ${routeToTerminal ? `<a class="btn-maps" href="${routeToTerminal}" target="_blank">🗺️ Cómo llegar a la terminal</a>` : ''}
+            ${terminalName ? `<a class="btn-maps" href="${mapsUrl(terminalName)}" target="_blank">📌 Ver terminal</a>` : ''}
+          </div>
+        </div>
+      </div>`;
+    }
+
+    // ── Parada automática: hotel de llegada si hay pasaje que llega hoy ──
+    let arrivalHotelHtml = '';
+    if (todayArrival && city.hotelName) {
+      // Origin: last user stop if any, otherwise the arrival terminal
+      const lastStopAddr = stops.length > 0 ? (stops[stops.length-1].address || stops[stops.length-1].name) : null;
+      const origin = lastStopAddr || todayArrival.arrTerminal || todayArrival.toTerminal || todayArrival.toCity;
+      const dest = city.hotelAddr || city.hotelName;
+      const routeToHotel = origin && dest
+        ? `https://www.google.com/maps/dir/?api=1&origin=${encodeURIComponent(origin)}&destination=${encodeURIComponent(dest)}&travelmode=transit`
+        : dest ? mapsUrl(dest) : '';
+
+      arrivalHotelHtml = `<div class="stop-item stop-last arrival-hotel-stop">
+        <div class="stop-connector">
+          <div class="stop-line" style="min-height:14px"></div>
+          <div class="stop-dot hotel">🏨</div>
+        </div>
+        <div class="stop-body" style="padding-top:4px">
+          <span class="transport-badge ${ticketTransportClass(todayArrival.type)}">${ticketTypeIcon(todayArrival.type)} ${ticketTypeLabel(todayArrival.type)}</span>
+          <div class="stop-name" style="margin-top:6px">${esc(city.hotelName)}</div>
+          <div class="stop-meta">
+            ${city.hotelAddr ? `<span>📍 ${esc(city.hotelAddr)}</span>` : ''}
+            <span style="color:var(--accent3);font-size:0.7rem">Check-in</span>
+          </div>
+          <div class="stop-actions">
+            ${routeToHotel ? `<a class="btn-maps" href="${routeToHotel}" target="_blank">🗺️ Cómo llegar al hotel</a>` : ''}
+            ${dest ? `<a class="btn-maps" href="${mapsUrl(dest)}" target="_blank">📌 Ver hotel</a>` : ''}
+          </div>
+        </div>
+      </div>`;
+    }
+
+    if (!stops.length && !city.hotelName && !arrivalHotelHtml && !departureTerminalHtml) {
       stopsHtml = `<div class="empty-state" style="padding:30px 0"><p>Sin paradas aún</p><small>Tocá + para agregar</small></div>`;
+    } else if (!stops.length && !city.hotelName && (arrivalHotelHtml || departureTerminalHtml)) {
+      stopsHtml = '';
     }
 
     let routeActionsHtml = '';
@@ -1137,7 +1438,7 @@ function renderDetail() {
       const retUrl = `https://www.google.com/maps/dir/?api=1&origin=${encodeURIComponent(stops[stops.length-1].address || stops[stops.length-1].name)}&destination=${encodeURIComponent(city.hotelAddr)}&travelmode=transit`;
       routeActionsHtml = `<div class="route-actions">
         <a class="btn-full-route" href="${fullUrl}" target="_blank">🗺️ Ruta completa del día en Maps</a>
-        <a class="btn-return-hotel" href="${retUrl}" target="_blank">🏨 Volver al hotel en transporte público</a>
+        <a class="btn-return-hotel" href="${retUrl}" target="_blank">🏨 Volver al hotel</a>
       </div>`;
     }
 
@@ -1146,16 +1447,29 @@ function renderDetail() {
 
     document.getElementById('detail-content').innerHTML = `
       <div class="trip-header">
-        <div class="trip-title">${esc(trip.name)}</div>
-        <div class="trip-subtitle">
-          <span>📅 ${formatDate(trip.startDate)} → ${formatDate(trip.endDate)}</span>
-          <span>🏙️ ${trip.cities.length} ciudad${trip.cities.length !== 1 ? 'es' : ''}</span>
+        <div class="trip-header-top">
+          <div>
+            <div class="trip-title">${esc(trip.name)}</div>
+            <div class="trip-subtitle">
+              <span>📅 ${formatDate(trip.startDate)} → ${formatDate(trip.endDate)}</span>
+              <span>🏙️ ${trip.cities.length} ciudad${trip.cities.length !== 1 ? 'es' : ''}</span>
+            </div>
+          </div>
+          <button class="btn-edit-trip-dates" onclick="openEditTripDatesModal()" title="Editar fechas del viaje">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+          </button>
         </div>
       </div>
 
       ${gapBanner}
 
-      <div class="section-label" style="margin-bottom:10px">Destino</div>
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+        <div class="section-label">Destino</div>
+        <button class="btn-add-city-inline" onclick="openAddCityModal()" title="Agregar ciudad">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+          Ciudad
+        </button>
+      </div>
       <div class="city-selector">${cityTabs}</div>
 
       ${city.hotelName ? `<div class="hotel-banner">
@@ -1163,13 +1477,33 @@ function renderDetail() {
         <div class="hotel-banner-info">
           <strong>${esc(city.hotelName)}</strong>
           <small>${city.hotelAddr ? esc(city.hotelAddr) + ' · ' : ''}${formatDate(city.startDate)} → ${formatDate(city.endDate)}</small>
+          ${(() => {
+            const isFirstDay = day.date === city.startDate;
+            const isLastDay  = day.date === city.endDate;
+            const tags = [];
+            if (isFirstDay && city.checkInTime)  tags.push(`<span class="hotel-time-tag checkin">✅ Check-in ${city.checkInTime}</span>`);
+            if (isFirstDay && !city.checkInTime) tags.push(`<span class="hotel-time-tag checkin-empty" onclick="openEditHotelModal()">✅ Agregar check-in</span>`);
+            if (isLastDay  && city.checkOutTime) tags.push(`<span class="hotel-time-tag checkout">🚪 Check-out ${city.checkOutTime}</span>`);
+            if (isLastDay  && !city.checkOutTime) tags.push(`<span class="hotel-time-tag checkout-empty" onclick="openEditHotelModal()">🚪 Agregar check-out</span>`);
+            return tags.length ? `<div class="hotel-time-tags">${tags.join('')}</div>` : '';
+          })()}
         </div>
-        <button class="btn-edit-hotel" onclick="openEditHotelModal()" title="Editar hotel">
-          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+        <div style="display:flex;gap:6px;flex-shrink:0">
+          <button class="btn-edit-hotel" onclick="openEditCityDatesModal()" title="Editar fechas de ${esc(city.name)}">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+          </button>
+          <button class="btn-edit-hotel" onclick="openEditHotelModal()" title="Editar hotel">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+          </button>
+        </div>
+      </div>` : `<div class="hotel-missing-banner">
+        <div style="display:flex;align-items:center;gap:8px;flex:1" onclick="openEditHotelModal()">
+          <span>🏨 Sin hotel · ${formatDate(city.startDate)} → ${formatDate(city.endDate)}</span>
+          <span class="hotel-missing-add">+ Agregar hotel</span>
+        </div>
+        <button class="btn-edit-hotel" onclick="openEditCityDatesModal()" title="Editar fechas de ${esc(city.name)}">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
         </button>
-      </div>` : `<div class="hotel-missing-banner" onclick="openEditHotelModal()">
-        <span>🏨 Sin hotel asignado</span>
-        <span class="hotel-missing-add">+ Agregar hotel</span>
       </div>`}
 
       <div class="section-label" style="margin-bottom:8px">Día</div>
@@ -1183,7 +1517,7 @@ function renderDetail() {
         <div class="stops-count">${stops.length} parada${stops.length !== 1 ? 's' : ''}</div>
       </div>
 
-      <div class="stops-list" id="stops-list-el">${stopsHtml}</div>
+      <div class="stops-list" id="stops-list-el">${stopsHtml}${departureTerminalHtml}${arrivalHotelHtml}</div>
       ${transitBannerHtml}
       ${routeActionsHtml}
     `;
@@ -1214,80 +1548,238 @@ function switchDay(idx) {
 // TICKETS
 // ══════════════════════════════════════
 function ticketTypeIcon(t) { return ({flight:'✈️',bus:'🚌',train:'🚆',boat:'⛴️'})[t]||'🎫'; }
-function ticketTypeLabel(t) { return ({flight:'Vuelo',bus:'Bus',train:'Tren',boat:'Barco'})[t]||t; }
+function ticketTypeLabel(t) { return ({flight:'Vuelo',bus:'Bus',train:'Tren',boat:'Barco'})[t]||'Sin definir'; }
+function ticketTransportClass(t) {
+  return ({flight:'transport-taxi', bus:'transport-transit', train:'transport-car', boat:'transport-walking'})[t] || 'transport-transit';
+}
+function terminalLabel(t) { return ({flight:'Aeropuerto',bus:'Terminal de bus',train:'Estación de tren',boat:'Puerto'})[t]||'Punto de salida / llegada'; }
+
+function getTransitions(trip) {
+  // Returns all city-to-city transitions sorted by departure date
+  const cities = [...(trip.cities || [])].sort((a, b) => a.startDate.localeCompare(b.startDate));
+  const transitions = [];
+  for (let i = 0; i < cities.length - 1; i++) {
+    transitions.push({ fromCity: cities[i], toCity: cities[i + 1] });
+  }
+  return transitions;
+}
+
+function ensureTransitionTickets(trip) {
+  if (!trip.tickets) trip.tickets = [];
+  const transitions = getTransitions(trip);
+  let changed = false;
+
+  // Remove stubs whose transition no longer exists (city was deleted or renamed)
+  const validTransitionKeys = new Set(transitions.map(({ fromCity, toCity }) => fromCity.name + '→' + toCity.name));
+  const before = trip.tickets.length;
+  trip.tickets = trip.tickets.filter(tk => !tk.stub || validTransitionKeys.has(tk.fromCity + '→' + tk.toCity));
+  if (trip.tickets.length !== before) changed = true;
+
+  transitions.forEach(({ fromCity, toCity }) => {
+    const existing = trip.tickets.find(tk =>
+      tk.fromCity === fromCity.name && tk.toCity === toCity.name
+    );
+    if (!existing) {
+      trip.tickets.push({
+        id: uid(),
+        type: null,
+        company: '',
+        fromCity: fromCity.name,
+        toCity: toCity.name,
+        fromTerminal: '',
+        toTerminal: '',
+        depDate: fromCity.endDate,
+        depTime: '',
+        arrDate: toCity.startDate,
+        arrTime: '',
+        stub: true
+      });
+      changed = true;
+    } else if (existing.stub) {
+      // Always sync dates on pending stubs to current city dates
+      if (existing.depDate !== fromCity.endDate || existing.arrDate !== toCity.startDate) {
+        existing.depDate = fromCity.endDate;
+        existing.arrDate = toCity.startDate;
+        changed = true;
+      }
+    }
+  });
+
+  if (changed) {
+    trip.tickets.sort((a, b) => (a.depDate + (a.depTime||'')).localeCompare(b.depDate + (b.depTime||'')));
+    save();
+  }
+}
+
+function ticketIsComplete(tk) {
+  return !!(tk.depTime && tk.arrTime && (tk.depTerminal || tk.fromTerminal || tk.arrTerminal || tk.toTerminal || tk.company));
+}
 
 function renderTickets() {
   const trip = trips.find(t => t.id === currentTripId);
   if (!trip) return;
-  const tickets = trip.tickets || [];
   const el = document.getElementById('tickets-content');
   if (!el) return;
 
+  ensureTransitionTickets(trip);
+
+  const tickets = trip.tickets || [];
+  const pending = tickets.filter(tk => tk.stub || !ticketIsComplete(tk)).length;
+
   let html = `<div class="trip-header">
     <div class="trip-title">${esc(trip.name)}</div>
-    <div class="trip-subtitle"><span>🎫 ${tickets.length} pasaje${tickets.length !== 1 ? 's' : ''}</span></div>
+    <div class="trip-subtitle">
+      <span>🎫 ${tickets.length} tramo${tickets.length !== 1 ? 's' : ''}</span>
+      ${pending > 0 ? `<span class="tickets-pending-badge">${pending} sin completar</span>` : `<span class="tickets-complete-badge">✓ Todo completo</span>`}
+    </div>
   </div>`;
 
   if (!tickets.length) {
     html += `<div class="empty-state" style="padding:40px 0">
-      <p>Sin pasajes cargados</p>
-      <small>Agregá vuelos, trenes o buses entre ciudades</small>
+      <p>Sin tramos detectados</p>
+      <small>Agregá al menos dos ciudades al viaje</small>
     </div>`;
   } else {
-    html += `<div class="tickets-list">` + tickets.map(tk => {
-      const icon = ticketTypeIcon(tk.type);
-      return `<div class="ticket-card">
-        <div class="ticket-card-header">
-          <div class="ticket-type-icon">${icon}</div>
-          <div class="ticket-header-info">
-            <div class="ticket-route">${esc(tk.fromCity)} → ${esc(tk.toCity)}</div>
-            <div class="ticket-company">${ticketTypeLabel(tk.type)}${tk.company ? ' · ' + esc(tk.company) : ''}</div>
-          </div>
-        </div>
-        <div class="ticket-card-body">
-          <div class="ticket-times">
-            <div>
-              <div class="ticket-time">${tk.depTime || '–'}</div>
-              <div class="ticket-date-label">${tk.depDate ? formatDate(tk.depDate) : ''}</div>
-              ${tk.fromTerminal ? `<div class="ticket-terminal">📍 ${esc(tk.fromTerminal)}</div>` : ''}
-            </div>
-            <div class="ticket-arrow"><div class="ticket-arrow-line"></div><span style="font-size:0.65rem;color:var(--text2);margin-top:3px">${icon}</span></div>
-            <div style="text-align:right">
-              <div class="ticket-time">${tk.arrTime || '–'}</div>
-              <div class="ticket-date-label">${tk.arrDate ? formatDate(tk.arrDate) : ''}</div>
-              ${tk.toTerminal ? `<div class="ticket-terminal">📍 ${esc(tk.toTerminal)}</div>` : ''}
-            </div>
-          </div>
-          <div class="ticket-actions">
-            <button class="btn-ticket-edit" onclick="openEditTicketModal('${tk.id}')">✏️ Editar</button>
-            <button class="btn-ticket-delete" onclick="deleteTicket('${tk.id}')">🗑️</button>
-          </div>
-        </div>
-      </div>`;
-    }).join('') + `</div>`;
+    // Group tickets: chained ones together, standalone ones alone
+    const rendered = new Set();
+    // Build chain map
+    const chainMap = {};
+    tickets.forEach(tk => {
+      if (tk.chainId) {
+        if (!chainMap[tk.chainId]) chainMap[tk.chainId] = [];
+        chainMap[tk.chainId].push(tk);
+      }
+    });
+    // Sort each chain by depDate+depTime
+    Object.values(chainMap).forEach(arr =>
+      arr.sort((a, b) => (a.depDate + (a.depTime||'')).localeCompare(b.depDate + (b.depTime||'')))
+    );
+
+    html += `<div class="tickets-list">`;
+
+    tickets.forEach(tk => {
+      if (rendered.has(tk.id)) return;
+
+      if (tk.chainId && chainMap[tk.chainId]) {
+        // Render as chained group
+        const chain = chainMap[tk.chainId];
+        chain.forEach(t => rendered.add(t.id));
+        const firstTk = chain[0];
+        const lastTk = chain[chain.length - 1];
+        const allComplete = chain.every(t => ticketIsComplete(t));
+        const anyStub = chain.some(t => t.stub && !ticketIsComplete(t));
+
+        html += `<div class="ticket-chain-group">
+          <div class="ticket-chain-header">
+            <span>📎 Viaje encadenado · ${chain.length} tramos</span>
+            <small>${esc(firstTk.fromCity)} → ${esc(lastTk.toCity)}</small>
+            ${anyStub ? `<span class="ticket-status-badge pending" style="margin-left:auto">Pendiente</span>` : `<span class="ticket-status-badge done" style="margin-left:auto">✓</span>`}
+          </div>`;
+
+        chain.forEach((t, ci) => {
+          if (ci > 0) {
+            // Show connection time between segments
+            const prev = chain[ci - 1];
+            const waitStr = calcWaitTime(prev.arrDate, prev.arrTime, t.depDate, t.depTime);
+            html += `<div class="ticket-chain-connector">
+              <div class="ticket-chain-connector-line"></div>
+              <span class="ticket-chain-wait">⏱ ${waitStr || 'Conexión'}</span>
+              <div class="ticket-chain-connector-line"></div>
+            </div>`;
+          }
+          html += renderTicketCard(t);
+        });
+
+        html += `</div>`;
+      } else {
+        // Standalone ticket
+        rendered.add(tk.id);
+        html += renderTicketCard(tk);
+      }
+    });
+
+    html += `</div>`;
   }
 
-  html += `<button class="btn-add-ticket" onclick="openAddTicketModal()">+ Agregar pasaje</button>`;
+  html += `<button class="btn-add-ticket" onclick="openAddTicketModal()">+ Agregar pasaje extra</button>`;
   el.innerHTML = html;
+}
+
+function calcWaitTime(date1, time1, date2, time2) {
+  if (!date1 || !date2) return null;
+  const t1 = new Date((date1 + 'T' + (time1 || '00:00')).replace('T', 'T'));
+  const t2 = new Date((date2 + 'T' + (time2 || '00:00')).replace('T', 'T'));
+  const diff = t2 - t1;
+  if (isNaN(diff) || diff < 0) return null;
+  const hrs = Math.floor(diff / 3600000);
+  const mins = Math.floor((diff % 3600000) / 60000);
+  if (hrs === 0) return `${mins}min de espera`;
+  if (mins === 0) return `${hrs}h de espera`;
+  return `${hrs}h ${mins}min de espera`;
+}
+
+function renderTicketCard(tk) {
+  const icon = ticketTypeIcon(tk.type);
+  const complete = ticketIsComplete(tk);
+  const isStub = tk.stub && !complete;
+  return `<div class="ticket-card ${isStub ? 'ticket-stub' : ''}">
+    <div class="ticket-card-header">
+      <div class="ticket-type-icon">${icon}</div>
+      <div class="ticket-header-info">
+        <div class="ticket-route">${esc(tk.fromCity)} → ${esc(tk.toCity)}</div>
+        <div class="ticket-company">${ticketTypeLabel(tk.type)}${tk.company ? ' · ' + esc(tk.company) : ''}</div>
+      </div>
+      ${isStub
+        ? `<span class="ticket-status-badge pending">Pendiente</span>`
+        : `<span class="ticket-status-badge done">✓</span>`}
+    </div>
+    <div class="ticket-card-body">
+      <div class="ticket-times">
+        <div>
+          <div class="ticket-time" style="${!tk.depTime ? 'opacity:.35' : ''}">${tk.depTime || '–'}</div>
+          <div class="ticket-date-label">${tk.depDate ? formatDate(tk.depDate) : ''}</div>
+          <div class="ticket-city-label">📍 ${esc(tk.fromCity)}</div>
+          ${(tk.depTerminal||tk.fromTerminal) ? `<div class="ticket-terminal">🏛️ ${esc(tk.depTerminal||tk.fromTerminal)}</div>` : ''}
+          ${tk.depGate ? `<div class="ticket-terminal">🚪 ${esc(tk.depGate)}</div>` : ''}
+        </div>
+        <div class="ticket-arrow"><div class="ticket-arrow-line"></div><span style="font-size:0.65rem;color:var(--text2);margin-top:3px">${icon}</span></div>
+        <div style="text-align:right">
+          <div class="ticket-time" style="${!tk.arrTime ? 'opacity:.35' : ''}">${tk.arrTime || '–'}</div>
+          <div class="ticket-date-label">${tk.arrDate ? formatDate(tk.arrDate) : ''}</div>
+          <div class="ticket-city-label" style="justify-content:flex-end">📍 ${esc(tk.toCity)}</div>
+          ${(tk.arrTerminal||tk.toTerminal) ? `<div class="ticket-terminal" style="text-align:right">🏛️ ${esc(tk.arrTerminal||tk.toTerminal)}</div>` : ''}
+          ${tk.arrGate ? `<div class="ticket-terminal" style="text-align:right">🚪 ${esc(tk.arrGate)}</div>` : ''}
+        </div>
+      </div>
+      <div class="ticket-actions">
+        <button class="btn-ticket-edit ${isStub ? 'btn-ticket-edit-highlight' : ''}" onclick="openEditTicketModal('${tk.id}')">
+          ${isStub ? '+ Completar datos' : '✏️ Editar'}
+        </button>
+        <button class="btn-ticket-delete" onclick="deleteTicket('${tk.id}')">🗑️</button>
+      </div>
+    </div>
+  </div>`;
 }
 
 function openAddTicketModal() {
   const trip = trips.find(t => t.id === currentTripId);
   editingTicketId = null;
+  selectedTicketType = null;
   document.getElementById('ticket-modal-title').textContent = '🎫 Agregar pasaje';
   document.getElementById('ticket-company').value = '';
   document.getElementById('ticket-from-city').value = '';
   document.getElementById('ticket-to-city').value = '';
-  document.getElementById('ticket-from-terminal').value = '';
-  document.getElementById('ticket-to-terminal').value = '';
+  document.getElementById('ticket-dep-terminal').value = '';
+  document.getElementById('ticket-dep-gate').value = '';
+  document.getElementById('ticket-arr-terminal').value = '';
+  document.getElementById('ticket-arr-gate').value = '';
   document.getElementById('ticket-dep-date').value = trip?.startDate || '';
   document.getElementById('ticket-arr-date').value = trip?.startDate || '';
   document.getElementById('ticket-dep-time').value = '';
   document.getElementById('ticket-arr-time').value = '';
-  selectedTicketType = 'flight';
-  document.querySelectorAll('#ticket-type-grid .transport-option').forEach(el =>
-    el.classList.toggle('selected', el.dataset.ttype === 'flight')
-  );
+  document.querySelectorAll('#ticket-type-grid .transport-option').forEach(el => el.classList.remove('selected'));
+  populateChainSelector(trip, null);
+  updateTicketFields(null);
   openModal('modal-ticket');
 }
 
@@ -1298,31 +1790,146 @@ function openEditTicketModal(ticketId) {
   if (!tk) return;
   editingTicketId = ticketId;
   document.getElementById('ticket-modal-title').textContent = '🎫 Editar pasaje';
-  selectedTicketType = tk.type || 'flight';
+  selectedTicketType = tk.type || null;
   document.querySelectorAll('#ticket-type-grid .transport-option').forEach(el =>
     el.classList.toggle('selected', el.dataset.ttype === selectedTicketType)
   );
   document.getElementById('ticket-company').value = tk.company || '';
   document.getElementById('ticket-from-city').value = tk.fromCity || '';
   document.getElementById('ticket-to-city').value = tk.toCity || '';
-  document.getElementById('ticket-from-terminal').value = tk.fromTerminal || '';
-  document.getElementById('ticket-to-terminal').value = tk.toTerminal || '';
+  // Support both old field names and new ones
+  document.getElementById('ticket-dep-terminal').value = tk.depTerminal || tk.fromTerminal || '';
+  document.getElementById('ticket-dep-gate').value = tk.depGate || '';
+  document.getElementById('ticket-arr-terminal').value = tk.arrTerminal || tk.toTerminal || '';
+  document.getElementById('ticket-arr-gate').value = tk.arrGate || '';
   document.getElementById('ticket-dep-date').value = tk.depDate || '';
   document.getElementById('ticket-arr-date').value = tk.arrDate || '';
   document.getElementById('ticket-dep-time').value = tk.depTime || '';
   document.getElementById('ticket-arr-time').value = tk.arrTime || '';
+  populateChainSelector(trip, tk.chainId || null, tk.id);
+  updateTicketFields(selectedTicketType);
   openModal('modal-ticket');
+}
+
+function populateChainSelector(trip, currentChainId, excludeTicketId) {
+  const sel = document.getElementById('ticket-chain-select');
+  sel.innerHTML = '<option value="">Sin encadenar (tramo independiente)</option>';
+  if (!trip) return;
+
+  // Collect existing chains
+  const chains = {};
+  (trip.tickets || []).forEach(tk => {
+    if (tk.id === excludeTicketId) return;
+    if (tk.chainId) {
+      if (!chains[tk.chainId]) chains[tk.chainId] = [];
+      chains[tk.chainId].push(tk);
+    }
+  });
+
+  // Option to create new chain
+  sel.innerHTML += `<option value="__new__">➕ Crear nuevo viaje encadenado</option>`;
+
+  // Options for existing chains
+  Object.entries(chains).forEach(([chainId, tks]) => {
+    const sorted = tks.sort((a, b) => (a.depDate + (a.depTime||'')).localeCompare(b.depDate + (b.depTime||'')));
+    const label = sorted.map(t => `${t.fromCity}→${t.toCity}`).join(' · ');
+    sel.innerHTML += `<option value="${chainId}">📎 ${label}</option>`;
+  });
+
+  sel.value = currentChainId || '';
 }
 
 function selectTicketType(el, type) {
   selectedTicketType = type;
   document.querySelectorAll('#ticket-type-grid .transport-option').forEach(o => o.classList.remove('selected'));
   el.classList.add('selected');
+  updateTicketFields(type);
 }
+
+const TICKET_CONFIG = {
+  flight: {
+    depSection: 'Salida',
+    arrSection: 'Llegada',
+    terminalLabel: 'Aeropuerto',
+    depTerminalPh: 'Ej: Aeropuerto El Prat (BCN)',
+    arrTerminalPh: 'Ej: Charles de Gaulle (CDG)',
+    showGate: true,
+    depGateLabel: 'Puerta de embarque',
+    arrGateLabel: 'Puerta de desembarque',
+    depGatePh: 'Ej: B22',
+    arrGatePh: 'Ej: C14',
+  },
+  bus: {
+    depSection: 'Salida',
+    arrSection: 'Llegada',
+    terminalLabel: 'Terminal de bus',
+    depTerminalPh: 'Ej: Terminal Retiro, Buenos Aires',
+    arrTerminalPh: 'Ej: Estación Eurolines, París',
+    showGate: false,
+  },
+  train: {
+    depSection: 'Salida',
+    arrSection: 'Llegada',
+    terminalLabel: 'Estación',
+    depTerminalPh: 'Ej: Estación Constitución',
+    arrTerminalPh: 'Ej: Gare du Nord, París',
+    showGate: true,
+    depGateLabel: 'Andén / Vagón',
+    arrGateLabel: 'Andén / Vagón',
+    depGatePh: 'Ej: Andén 3, Vagón 5',
+    arrGatePh: 'Ej: Andén 7',
+  },
+  boat: {
+    depSection: 'Embarque',
+    arrSection: 'Desembarque',
+    terminalLabel: 'Puerto / Terminal',
+    depTerminalPh: 'Ej: Puerto de Barcelona, Terminal A',
+    arrTerminalPh: 'Ej: Puerto de Civitavecchia',
+    showGate: true,
+    depGateLabel: 'Muelle / Puerta de embarque',
+    arrGateLabel: 'Muelle / Puerta de desembarque',
+    depGatePh: 'Ej: Muelle Sur',
+    arrGatePh: 'Ej: Terminal 2',
+  },
+};
+
+function updateTicketFields(type) {
+  const show = !!type;
+  document.getElementById('ticket-dep-fields').style.display = show ? '' : 'none';
+  document.getElementById('ticket-arr-fields').style.display = show ? '' : 'none';
+  if (!type) return;
+
+  const cfg = TICKET_CONFIG[type] || TICKET_CONFIG.flight;
+
+  document.getElementById('ticket-dep-section-label').textContent = cfg.depSection;
+  document.getElementById('ticket-arr-section-label').textContent = cfg.arrSection;
+
+  document.getElementById('ticket-dep-terminal-label').textContent = cfg.terminalLabel + ' de salida';
+  document.getElementById('ticket-dep-terminal').placeholder = cfg.depTerminalPh;
+  document.getElementById('ticket-arr-terminal-label').textContent = cfg.terminalLabel + ' de llegada';
+  document.getElementById('ticket-arr-terminal').placeholder = cfg.arrTerminalPh;
+
+  const gateGroups = [
+    document.getElementById('ticket-dep-gate-group'),
+    document.getElementById('ticket-arr-gate-group'),
+  ];
+  gateGroups.forEach(g => g.style.display = cfg.showGate ? '' : 'none');
+
+  if (cfg.showGate) {
+    document.getElementById('ticket-dep-gate-label').innerHTML = cfg.depGateLabel + ' <span class="label-optional">opcional</span>';
+    document.getElementById('ticket-dep-gate').placeholder = cfg.depGatePh;
+    document.getElementById('ticket-arr-gate-label').innerHTML = cfg.arrGateLabel + ' <span class="label-optional">opcional</span>';
+    document.getElementById('ticket-arr-gate').placeholder = cfg.arrGatePh;
+  }
+}
+
+// Keep old name as alias for any remaining calls
+function updateTerminalLabels(type) { updateTicketFields(type); }
 
 function saveTicket() {
   const trip = trips.find(t => t.id === currentTripId);
   if (!trip) return;
+  if (!selectedTicketType) { showToast('⚠️ Elegí el tipo de transporte'); return; }
   const fromCity = document.getElementById('ticket-from-city').value.trim();
   const toCity   = document.getElementById('ticket-to-city').value.trim();
   const depDate  = document.getElementById('ticket-dep-date').value;
@@ -1330,22 +1937,28 @@ function saveTicket() {
   if (!fromCity || !toCity) { showToast('⚠️ Ingresá las ciudades de origen y destino'); return; }
   if (!depDate || !arrDate) { showToast('⚠️ Ingresá las fechas de salida y llegada');    return; }
 
+  const chainVal = document.getElementById('ticket-chain-select').value;
+  const chainId = chainVal === '__new__' ? uid() : (chainVal || null);
+
   const data = {
     type: selectedTicketType,
     company:      document.getElementById('ticket-company').value.trim(),
     fromCity, toCity,
-    fromTerminal: document.getElementById('ticket-from-terminal').value.trim(),
-    toTerminal:   document.getElementById('ticket-to-terminal').value.trim(),
+    depTerminal:  document.getElementById('ticket-dep-terminal').value.trim(),
+    depGate:      document.getElementById('ticket-dep-gate').value.trim(),
+    arrTerminal:  document.getElementById('ticket-arr-terminal').value.trim(),
+    arrGate:      document.getElementById('ticket-arr-gate').value.trim(),
     depDate, depTime: document.getElementById('ticket-dep-time').value,
     arrDate, arrTime: document.getElementById('ticket-arr-time').value,
+    chainId,
   };
 
   if (!trip.tickets) trip.tickets = [];
   if (editingTicketId) {
     const idx = trip.tickets.findIndex(t => t.id === editingTicketId);
-    if (idx !== -1) trip.tickets[idx] = { ...trip.tickets[idx], ...data };
+    if (idx !== -1) trip.tickets[idx] = { ...trip.tickets[idx], ...data, stub: false };
   } else {
-    trip.tickets.push({ id: uid(), ...data });
+    trip.tickets.push({ id: uid(), ...data, stub: false });
   }
   trip.tickets.sort((a, b) => (a.depDate + (a.depTime||'')).localeCompare(b.depDate + (b.depTime||'')));
   save();
@@ -1411,6 +2024,161 @@ function confirmDeleteCity() {
 }
 
 // ══════════════════════════════════════
+// EDIT TRIP DATES
+// ══════════════════════════════════════
+function openEditTripDatesModal() {
+  const trip = trips.find(t => t.id === currentTripId);
+  if (!trip) return;
+  document.getElementById('edit-trip-name').value = trip.name;
+  document.getElementById('edit-trip-start').value = trip.startDate;
+  document.getElementById('edit-trip-end').value = trip.endDate;
+  document.getElementById('edit-trip-end').min = trip.startDate;
+  document.getElementById('edit-trip-end-err').classList.remove('visible');
+  openModal('modal-edit-trip-dates');
+}
+
+function onEditTripStartChange() {
+  const s = document.getElementById('edit-trip-start').value;
+  const eEl = document.getElementById('edit-trip-end');
+  eEl.min = s;
+  if (eEl.value && eEl.value < s) { eEl.value = s; }
+  document.getElementById('edit-trip-end-err').classList.remove('visible');
+}
+
+function onEditTripEndChange() {
+  const s = document.getElementById('edit-trip-start').value;
+  const e = document.getElementById('edit-trip-end').value;
+  const err = document.getElementById('edit-trip-end-err');
+  err.classList.toggle('visible', !!(e && e < s));
+}
+
+function saveEditTripDates() {
+  const trip = trips.find(t => t.id === currentTripId);
+  if (!trip) return;
+  const name = document.getElementById('edit-trip-name').value.trim();
+  const newStart = document.getElementById('edit-trip-start').value;
+  const newEnd = document.getElementById('edit-trip-end').value;
+  if (!name) { showToast('⚠️ El nombre no puede estar vacío'); return; }
+  if (!newStart || !newEnd) { showToast('⚠️ Completá las fechas'); return; }
+  if (newEnd < newStart) { showToast('⚠️ La fecha fin debe ser posterior al inicio'); return; }
+
+  trip.name = name;
+  const oldStart = trip.startDate;
+  const oldEnd = trip.endDate;
+  trip.startDate = newStart;
+  trip.endDate = newEnd;
+
+  // Extend cities that were at the boundary
+  trip.cities.forEach(ci => {
+    // If city started on old trip start and new start is earlier → extend city start
+    if (ci.startDate === oldStart && newStart < oldStart) {
+      const extraDays = buildDays(newStart, addDays(ci.startDate, -1));
+      ci.days = [...extraDays, ...ci.days];
+      ci.startDate = newStart;
+    }
+    // If city ended on old trip end and new end is later → extend city end
+    if (ci.endDate === oldEnd && newEnd > oldEnd) {
+      const extraDays = buildDays(addDays(ci.endDate, 1), newEnd);
+      ci.days = [...ci.days, ...extraDays];
+      ci.endDate = newEnd;
+    }
+  });
+
+  save();
+  closeModal('modal-edit-trip-dates');
+  renderDetail();
+  showToast('✅ Fechas del viaje actualizadas');
+}
+
+// ══════════════════════════════════════
+// EDIT CITY DATES
+// ══════════════════════════════════════
+function openEditCityDatesModal() {
+  const trip = trips.find(t => t.id === currentTripId);
+  if (!trip) return;
+  const city = trip.cities[currentCityIdx];
+  document.getElementById('edit-city-dates-name').textContent = city.name;
+  document.getElementById('edit-city-start').value = city.startDate;
+  document.getElementById('edit-city-start').min = trip.startDate;
+  document.getElementById('edit-city-start').max = trip.endDate;
+  document.getElementById('edit-city-end').value = city.endDate;
+  document.getElementById('edit-city-end').min = city.startDate;
+  document.getElementById('edit-city-end').max = trip.endDate;
+  ['edit-city-start-err','edit-city-end-err'].forEach(id =>
+    document.getElementById(id).classList.remove('visible')
+  );
+  openModal('modal-edit-city-dates');
+}
+
+function onEditCityStartChange() {
+  const trip = trips.find(t => t.id === currentTripId);
+  const s = document.getElementById('edit-city-start').value;
+  const eEl = document.getElementById('edit-city-end');
+  const err = document.getElementById('edit-city-start-err');
+  eEl.min = s;
+  if (eEl.value && eEl.value < s) eEl.value = s;
+  const outOfRange = trip && (s < trip.startDate || s > trip.endDate);
+  err.textContent = '⚠️ Fuera del rango del viaje';
+  err.classList.toggle('visible', outOfRange);
+}
+
+function onEditCityEndChange() {
+  const trip = trips.find(t => t.id === currentTripId);
+  const s = document.getElementById('edit-city-start').value;
+  const e = document.getElementById('edit-city-end').value;
+  const err = document.getElementById('edit-city-end-err');
+  if (e < s) {
+    err.textContent = '⚠️ La salida debe ser posterior a la llegada';
+    err.classList.add('visible');
+  } else if (trip && e > trip.endDate) {
+    err.textContent = `⚠️ Supera el fin del viaje (${formatDate(trip.endDate)})`;
+    err.classList.add('visible');
+  } else {
+    err.classList.remove('visible');
+  }
+}
+
+function saveEditCityDates() {
+  const trip = trips.find(t => t.id === currentTripId);
+  if (!trip) return;
+  const city = trip.cities[currentCityIdx];
+  const newStart = document.getElementById('edit-city-start').value;
+  const newEnd = document.getElementById('edit-city-end').value;
+
+  if (!newStart || !newEnd) { showToast('⚠️ Completá las fechas'); return; }
+  if (newEnd < newStart) { showToast('⚠️ La salida debe ser posterior a la llegada'); return; }
+  if (newStart < trip.startDate || newEnd > trip.endDate) {
+    showToast(`⚠️ Las fechas deben estar dentro del viaje (${formatDate(trip.startDate)} – ${formatDate(trip.endDate)})`);
+    return;
+  }
+
+  // Rebuild days: keep existing stops for dates that survive, add empty days for new dates
+  const existingByDate = {};
+  city.days.forEach(d => { existingByDate[d.date] = d; });
+  city.days = buildDays(newStart, newEnd).map(d =>
+    existingByDate[d.date] ? existingByDate[d.date] : d
+  );
+  city.startDate = newStart;
+  city.endDate = newEnd;
+
+  // Also extend trip global dates if city goes beyond them
+  if (newStart < trip.startDate) trip.startDate = newStart;
+  if (newEnd > trip.endDate) trip.endDate = newEnd;
+
+  if (currentDayIdx >= city.days.length) currentDayIdx = 0;
+  save();
+  closeModal('modal-edit-city-dates');
+  renderDetail();
+  showToast(`✅ Fechas de ${city.name} actualizadas`);
+}
+
+function addDays(dateStr, n) {
+  const d = new Date(dateStr + 'T00:00:00');
+  d.setDate(d.getDate() + n);
+  return d.toISOString().slice(0, 10);
+}
+
+// ══════════════════════════════════════
 // EDIT HOTEL
 // ══════════════════════════════════════
 function openEditHotelModal() {
@@ -1420,6 +2188,8 @@ function openEditHotelModal() {
   document.getElementById('edit-hotel-city-name').textContent = city.name;
   document.getElementById('edit-hotel-name').value = city.hotelName || '';
   document.getElementById('edit-hotel-addr').value = city.hotelAddr || '';
+  document.getElementById('edit-hotel-checkin').value = city.checkInTime || '';
+  document.getElementById('edit-hotel-checkout').value = city.checkOutTime || '';
   openModal('modal-edit-hotel');
 }
 
@@ -1429,6 +2199,8 @@ function saveEditHotel() {
   const city = trip.cities[currentCityIdx];
   city.hotelName = document.getElementById('edit-hotel-name').value.trim();
   city.hotelAddr = document.getElementById('edit-hotel-addr').value.trim();
+  city.checkInTime = document.getElementById('edit-hotel-checkin').value;
+  city.checkOutTime = document.getElementById('edit-hotel-checkout').value;
   save();
   closeModal('modal-edit-hotel');
   renderDetail();
@@ -1551,6 +2323,7 @@ function saveNewCity() {
   trip.cities.push(newCity);
   // Sort cities by start date
   trip.cities.sort((a, b) => a.startDate.localeCompare(b.startDate));
+  ensureTransitionTickets(trip);
   save();
   closeModal('modal-add-city');
   // Switch to the new city
@@ -1940,12 +2713,13 @@ function sanitizeTrips(raw) {
       };
       return { id: t.id, name: t.name, startDate: t.startDate, endDate: t.endDate, cities: [city] };
     }
-    // Ensure each city has valid days and stops
+    // Ensure each city has valid days matching its own date range, preserving stops
     t.cities = (t.cities || []).map(ci => {
-      if (!Array.isArray(ci.days) || ci.days.length === 0) {
-        ci.days = buildDays(ci.startDate, ci.endDate);
-      }
-      ci.days = ci.days.map(d => ({ ...d, stops: Array.isArray(d.stops) ? d.stops : [] }));
+      const stopsMap = {};
+      (ci.days || []).forEach(d => { if (Array.isArray(d.stops) && d.stops.length) stopsMap[d.date] = d.stops; });
+      ci.days = buildDays(ci.startDate, ci.endDate).map(d => ({
+        date: d.date, stops: stopsMap[d.date] || []
+      }));
       return ci;
     });
     if (!Array.isArray(t.tickets)) t.tickets = [];
