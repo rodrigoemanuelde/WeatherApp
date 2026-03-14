@@ -234,6 +234,45 @@
     .btn-danger-full { width: 100%; background: var(--danger); color: #fff; border: none; border-radius: 12px; padding: 14px; font-family: 'DM Sans', sans-serif; font-weight: 700; font-size: 0.97rem; cursor: pointer; transition: opacity .2s; margin-top: 4px; }
     .btn-danger-full:active { opacity: 0.82; }
 
+    /* ── DETAIL TABS (Itinerario / Pasajes) ── */
+    .detail-tabs { display: flex; gap: 6px; margin-bottom: 16px; }
+    .detail-tab { flex: 1; background: var(--card); border: 1px solid var(--border); border-radius: 10px; padding: 10px; font-family: 'DM Sans', sans-serif; font-size: 0.84rem; font-weight: 600; color: var(--text2); cursor: pointer; transition: all .2s; }
+    .detail-tab.active { background: var(--accent); border-color: var(--accent); color: #111; }
+
+    /* ── TICKET CARDS ── */
+    .tickets-list { display: flex; flex-direction: column; gap: 12px; padding-bottom: 16px; }
+    .ticket-card { background: var(--card); border: 1px solid var(--border); border-radius: 14px; overflow: hidden; }
+    .ticket-card-header { display: flex; align-items: center; gap: 10px; padding: 12px 14px 10px; border-bottom: 1px solid var(--border); }
+    .ticket-type-icon { font-size: 1.4rem; flex-shrink: 0; }
+    .ticket-header-info { flex: 1; min-width: 0; }
+    .ticket-route { font-weight: 700; font-size: 0.95rem; }
+    .ticket-company { font-size: 0.76rem; color: var(--text2); margin-top: 1px; }
+    .ticket-card-body { padding: 10px 14px 12px; }
+    .ticket-times { display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; gap: 8px; margin-bottom: 10px; }
+    .ticket-time { font-size: 1.3rem; font-weight: 700; font-family: 'Playfair Display', serif; }
+    .ticket-date-label { font-size: 0.7rem; color: var(--text2); margin-top: 1px; }
+    .ticket-terminal { font-size: 0.72rem; color: var(--text2); margin-top: 2px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .ticket-arrow { display: flex; flex-direction: column; align-items: center; gap: 2px; }
+    .ticket-arrow-line { width: 36px; height: 1px; background: var(--border); position: relative; }
+    .ticket-arrow-line::after { content:''; position: absolute; right: -4px; top: -3px; border: 4px solid transparent; border-left: 6px solid var(--border); }
+    .ticket-actions { display: flex; gap: 6px; }
+    .btn-ticket-edit { flex: 1; background: rgba(109,158,235,0.1); border: 1px solid rgba(109,158,235,0.25); color: var(--accent2); border-radius: 8px; padding: 8px; font-family: 'DM Sans', sans-serif; font-size: 0.78rem; font-weight: 600; cursor: pointer; }
+    .btn-ticket-delete { background: rgba(232,125,125,0.1); border: 1px solid rgba(232,125,125,0.2); color: var(--danger); border-radius: 8px; padding: 8px 12px; font-family: 'DM Sans', sans-serif; font-size: 0.78rem; cursor: pointer; }
+    .btn-add-ticket { width: 100%; background: rgba(232,184,109,0.1); border: 1px dashed rgba(232,184,109,0.4); color: var(--accent); border-radius: 12px; padding: 14px; font-family: 'DM Sans', sans-serif; font-weight: 600; font-size: 0.9rem; cursor: pointer; margin-top: 4px; }
+
+    /* ── TRANSIT DAY in itinerary ── */
+    .day-tab.transit { border-color: rgba(127,207,184,0.4); }
+    .day-tab.transit small { color: var(--accent3); }
+    .transit-banner { background: rgba(127,207,184,0.08); border: 1px solid rgba(127,207,184,0.3); border-radius: 12px; padding: 12px 14px; margin-bottom: 12px; }
+    .transit-banner-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px; }
+    .transit-banner-header strong { font-size: 0.86rem; color: var(--accent3); }
+    .transit-segment { display: flex; align-items: flex-start; gap: 10px; padding: 8px 0; border-top: 1px solid rgba(127,207,184,0.15); }
+    .transit-segment:first-of-type { border-top: none; padding-top: 0; }
+    .transit-seg-icon { font-size: 1.1rem; flex-shrink: 0; width: 26px; text-align: center; margin-top: 2px; }
+    .transit-seg-info { flex: 1; min-width: 0; }
+    .transit-seg-route { font-size: 0.84rem; font-weight: 600; }
+    .transit-seg-detail { font-size: 0.73rem; color: var(--text2); margin-top: 2px; line-height: 1.4; }
+
     /* ── BACKUP ── */
     .backup-card { background: var(--bg3); border: 1px solid var(--border); border-radius: 12px; padding: 13px 14px; display: flex; align-items: center; gap: 12px; }
     .backup-icon { font-size: 1.5rem; flex-shrink: 0; }
@@ -298,7 +337,12 @@
     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="15 18 9 12 15 6"/></svg>
     Mis viajes
   </button>
+  <div class="detail-tabs">
+    <button class="detail-tab active" id="dtab-itinerary" onclick="switchDetailTab('itinerary')">Itinerario</button>
+    <button class="detail-tab" id="dtab-tickets" onclick="switchDetailTab('tickets')">🎫 Pasajes</button>
+  </div>
   <div id="detail-content"></div>
+  <div id="tickets-content" style="display:none"></div>
 </div>
 
 <div id="bottom-nav">
@@ -493,6 +537,78 @@
   </div>
 </div>
 
+<!-- ══ MODAL: PASAJE ══ -->
+<div class="modal-overlay" id="modal-ticket">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <h2 id="ticket-modal-title">🎫 Agregar pasaje</h2>
+
+    <div class="form-group">
+      <label>Tipo de transporte</label>
+      <div class="transport-grid" id="ticket-type-grid">
+        <div class="transport-option selected" data-ttype="flight" onclick="selectTicketType(this,'flight')">✈️<small>Vuelo</small></div>
+        <div class="transport-option" data-ttype="bus" onclick="selectTicketType(this,'bus')">🚌<small>Bus</small></div>
+        <div class="transport-option" data-ttype="train" onclick="selectTicketType(this,'train')">🚆<small>Tren</small></div>
+        <div class="transport-option" data-ttype="boat" onclick="selectTicketType(this,'boat')">⛴️<small>Barco</small></div>
+      </div>
+    </div>
+
+    <div class="form-group">
+      <label>Compañía</label>
+      <input type="text" id="ticket-company" placeholder="Ej: Ryanair, FlixBus, Renfe" />
+    </div>
+
+    <div class="form-group">
+      <label>Ciudad origen → Ciudad destino</label>
+      <div class="date-row">
+        <input type="text" id="ticket-from-city" placeholder="Ciudad de salida" />
+        <input type="text" id="ticket-to-city" placeholder="Ciudad de llegada" />
+      </div>
+    </div>
+
+    <div class="form-group">
+      <label>Terminal / Estación / Aeropuerto de salida</label>
+      <input type="text" id="ticket-from-terminal" placeholder="Ej: Aeropuerto BCN T2" />
+    </div>
+
+    <div class="form-group">
+      <label>Terminal / Estación / Aeropuerto de llegada</label>
+      <input type="text" id="ticket-to-terminal" placeholder="Ej: Gare du Nord, Paris" />
+    </div>
+
+    <div class="form-group">
+      <label>Fecha y hora de salida</label>
+      <div class="date-row">
+        <input type="date" id="ticket-dep-date" />
+        <input type="time" id="ticket-dep-time" />
+      </div>
+    </div>
+
+    <div class="form-group">
+      <label>Fecha y hora de llegada</label>
+      <div class="date-row">
+        <input type="date" id="ticket-arr-date" />
+        <input type="time" id="ticket-arr-time" />
+      </div>
+    </div>
+
+    <button class="btn-primary" onclick="saveTicket()">Guardar pasaje</button>
+    <button class="btn-secondary" onclick="closeModal('modal-ticket')">Cancelar</button>
+  </div>
+</div>
+
+<!-- ══ MODAL: CONFIRMAR ELIMINAR PASAJE ══ -->
+<div class="modal-overlay" id="modal-confirm-delete-ticket">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <div class="confirm-icon">🗑️</div>
+    <h2 style="text-align:center;margin-bottom:10px">¿Eliminar pasaje?</h2>
+    <p id="confirm-delete-ticket-body" style="color:var(--text2);font-size:0.88rem;line-height:1.55;margin-bottom:24px;text-align:center"></p>
+    <button class="btn-danger-full" onclick="confirmDeleteTicket()">Sí, eliminar</button>
+    <button class="btn-secondary" onclick="closeModal('modal-confirm-delete-ticket')">Cancelar</button>
+  </div>
+</div>
+
 <!-- ══ MODAL: RESPALDO ══ -->
 <div class="modal-overlay" id="modal-backup">
   <div class="modal">
@@ -561,7 +677,11 @@ let currentCityIdx = 0;
 let currentDayIdx = 0;
 let selectedType = 'attraction';
 let selectedTransport = 'walking';
-let cityEntries = []; // array of temp IDs for city form entries
+let cityEntries = [];
+let currentDetailTab = 'itinerary';
+let selectedTicketType = 'flight';
+let editingTicketId = null;
+let _pendingDeleteTicketId = null;
 
 // save() defined in HELPERS section below
 function uid() { return Date.now().toString(36) + Math.random().toString(36).slice(2,6); }
@@ -577,7 +697,9 @@ function showScreen(name) {
     document.getElementById('btn-new-trip').style.display = '';
     renderTrips();
   } else {
-    document.getElementById('btn-add-stop').classList.add('visible');
+    // In detail screen, FAB only shows on itinerary tab
+    const showFab = currentDetailTab === 'itinerary';
+    document.getElementById('btn-add-stop').classList.toggle('visible', showFab);
     document.getElementById('btn-new-trip').style.display = 'none';
   }
 }
@@ -861,8 +983,20 @@ function openTrip(id) {
   currentTripId = id;
   currentCityIdx = 0;
   currentDayIdx = 0;
+  currentDetailTab = 'itinerary';
   showScreen('detail');
   renderDetail();
+  renderTickets();
+}
+
+function switchDetailTab(tab) {
+  currentDetailTab = tab;
+  document.getElementById('dtab-itinerary').classList.toggle('active', tab === 'itinerary');
+  document.getElementById('dtab-tickets').classList.toggle('active', tab === 'tickets');
+  document.getElementById('detail-content').style.display = tab === 'itinerary' ? '' : 'none';
+  document.getElementById('tickets-content').style.display = tab === 'tickets' ? '' : 'none';
+  document.getElementById('btn-add-stop').style.display = tab === 'itinerary' ? '' : 'none';
+  if (tab === 'tickets') renderTickets();
 }
 
 function renderDetail() {
@@ -885,6 +1019,19 @@ function renderDetail() {
 
     const stops = day.stops || [];
 
+    // Detect which days are transit days for this city
+    // A day is "transit" if tickets depart or arrive on that date involving this city
+    const trip_tickets = trip.tickets || [];
+    const transitDaysSet = new Set();
+    trip_tickets.forEach(tk => {
+      const depDate = tk.depDate;
+      const arrDate = tk.arrDate;
+      // If this city is the departure city and the dep date is in this city's range
+      if (depDate >= city.startDate && depDate <= city.endDate) transitDaysSet.add(depDate);
+      // If this city is the arrival city and arr date is in this city's range
+      if (arrDate >= city.startDate && arrDate <= city.endDate) transitDaysSet.add(arrDate);
+    });
+
     const cityTabs = trip.cities.map((ci, i) =>
       `<div class="city-tab ${i === currentCityIdx ? 'active' : ''}" onclick="switchCity(${i})">
         <span class="city-tab-name">${esc(ci.name)}</span>
@@ -894,11 +1041,39 @@ function renderDetail() {
       </div>`
     ).join('');
 
-    const dayTabs = city.days.map((d, i) =>
-      `<div class="day-tab ${i === currentDayIdx ? 'active' : ''}" onclick="switchDay(${i})">
-        <small>${getWeekday(d.date)}</small><strong>${d.date.slice(8)}</strong>
-      </div>`
-    ).join('');
+    const dayTabs = city.days.map((d, i) => {
+      const isTransit = transitDaysSet.has(d.date);
+      return `<div class="day-tab ${i === currentDayIdx ? 'active' : ''} ${isTransit ? 'transit' : ''}" onclick="switchDay(${i})">
+        <small>${isTransit ? '✈' : getWeekday(d.date)}</small><strong>${d.date.slice(8)}</strong>
+      </div>`;
+    }).join('');
+
+    // Build transit banner for current day if applicable
+    const dayTickets = trip_tickets.filter(tk => tk.depDate === day.date || tk.arrDate === day.date);
+    let transitBannerHtml = '';
+    if (dayTickets.length) {
+      const segs = dayTickets.map(tk => {
+        const icon = ticketTypeIcon(tk.type);
+        const isDep = tk.depDate === day.date;
+        const timeStr = isDep ? tk.depTime : tk.arrTime;
+        const termStr = isDep ? tk.fromTerminal : tk.toTerminal;
+        const label = isDep
+          ? `Salida hacia ${esc(tk.toCity)} · ${timeStr || ''}${termStr ? ' · ' + esc(termStr) : ''}`
+          : `Llegada desde ${esc(tk.fromCity)} · ${timeStr || ''}${termStr ? ' · ' + esc(termStr) : ''}`;
+        const detail = `${esc(tk.company || '')}${tk.company && tk.fromCity ? ' · ' : ''}${isDep ? esc(tk.fromCity) : esc(tk.toCity)}`;
+        return `<div class="transit-segment">
+          <div class="transit-seg-icon">${icon}</div>
+          <div class="transit-seg-info">
+            <div class="transit-seg-route">${label}</div>
+            ${detail ? `<div class="transit-seg-detail">${detail}</div>` : ''}
+          </div>
+        </div>`;
+      }).join('');
+      transitBannerHtml = `<div class="transit-banner">
+        <div class="transit-banner-header"><strong>🎫 Día con pasaje</strong></div>
+        ${segs}
+      </div>`;
+    }
 
     // Stops rendering
     let stopsHtml = '';
@@ -1009,6 +1184,7 @@ function renderDetail() {
       </div>
 
       <div class="stops-list" id="stops-list-el">${stopsHtml}</div>
+      ${transitBannerHtml}
       ${routeActionsHtml}
     `;
 
@@ -1032,6 +1208,174 @@ function switchDay(idx) {
   currentDayIdx = idx;
   renderDetail();
   window.scrollTo(0, 0);
+}
+
+// ══════════════════════════════════════
+// TICKETS
+// ══════════════════════════════════════
+function ticketTypeIcon(t) { return ({flight:'✈️',bus:'🚌',train:'🚆',boat:'⛴️'})[t]||'🎫'; }
+function ticketTypeLabel(t) { return ({flight:'Vuelo',bus:'Bus',train:'Tren',boat:'Barco'})[t]||t; }
+
+function renderTickets() {
+  const trip = trips.find(t => t.id === currentTripId);
+  if (!trip) return;
+  const tickets = trip.tickets || [];
+  const el = document.getElementById('tickets-content');
+  if (!el) return;
+
+  let html = `<div class="trip-header">
+    <div class="trip-title">${esc(trip.name)}</div>
+    <div class="trip-subtitle"><span>🎫 ${tickets.length} pasaje${tickets.length !== 1 ? 's' : ''}</span></div>
+  </div>`;
+
+  if (!tickets.length) {
+    html += `<div class="empty-state" style="padding:40px 0">
+      <p>Sin pasajes cargados</p>
+      <small>Agregá vuelos, trenes o buses entre ciudades</small>
+    </div>`;
+  } else {
+    html += `<div class="tickets-list">` + tickets.map(tk => {
+      const icon = ticketTypeIcon(tk.type);
+      return `<div class="ticket-card">
+        <div class="ticket-card-header">
+          <div class="ticket-type-icon">${icon}</div>
+          <div class="ticket-header-info">
+            <div class="ticket-route">${esc(tk.fromCity)} → ${esc(tk.toCity)}</div>
+            <div class="ticket-company">${ticketTypeLabel(tk.type)}${tk.company ? ' · ' + esc(tk.company) : ''}</div>
+          </div>
+        </div>
+        <div class="ticket-card-body">
+          <div class="ticket-times">
+            <div>
+              <div class="ticket-time">${tk.depTime || '–'}</div>
+              <div class="ticket-date-label">${tk.depDate ? formatDate(tk.depDate) : ''}</div>
+              ${tk.fromTerminal ? `<div class="ticket-terminal">📍 ${esc(tk.fromTerminal)}</div>` : ''}
+            </div>
+            <div class="ticket-arrow"><div class="ticket-arrow-line"></div><span style="font-size:0.65rem;color:var(--text2);margin-top:3px">${icon}</span></div>
+            <div style="text-align:right">
+              <div class="ticket-time">${tk.arrTime || '–'}</div>
+              <div class="ticket-date-label">${tk.arrDate ? formatDate(tk.arrDate) : ''}</div>
+              ${tk.toTerminal ? `<div class="ticket-terminal">📍 ${esc(tk.toTerminal)}</div>` : ''}
+            </div>
+          </div>
+          <div class="ticket-actions">
+            <button class="btn-ticket-edit" onclick="openEditTicketModal('${tk.id}')">✏️ Editar</button>
+            <button class="btn-ticket-delete" onclick="deleteTicket('${tk.id}')">🗑️</button>
+          </div>
+        </div>
+      </div>`;
+    }).join('') + `</div>`;
+  }
+
+  html += `<button class="btn-add-ticket" onclick="openAddTicketModal()">+ Agregar pasaje</button>`;
+  el.innerHTML = html;
+}
+
+function openAddTicketModal() {
+  const trip = trips.find(t => t.id === currentTripId);
+  editingTicketId = null;
+  document.getElementById('ticket-modal-title').textContent = '🎫 Agregar pasaje';
+  document.getElementById('ticket-company').value = '';
+  document.getElementById('ticket-from-city').value = '';
+  document.getElementById('ticket-to-city').value = '';
+  document.getElementById('ticket-from-terminal').value = '';
+  document.getElementById('ticket-to-terminal').value = '';
+  document.getElementById('ticket-dep-date').value = trip?.startDate || '';
+  document.getElementById('ticket-arr-date').value = trip?.startDate || '';
+  document.getElementById('ticket-dep-time').value = '';
+  document.getElementById('ticket-arr-time').value = '';
+  selectedTicketType = 'flight';
+  document.querySelectorAll('#ticket-type-grid .transport-option').forEach(el =>
+    el.classList.toggle('selected', el.dataset.ttype === 'flight')
+  );
+  openModal('modal-ticket');
+}
+
+function openEditTicketModal(ticketId) {
+  const trip = trips.find(t => t.id === currentTripId);
+  if (!trip) return;
+  const tk = (trip.tickets || []).find(t => t.id === ticketId);
+  if (!tk) return;
+  editingTicketId = ticketId;
+  document.getElementById('ticket-modal-title').textContent = '🎫 Editar pasaje';
+  selectedTicketType = tk.type || 'flight';
+  document.querySelectorAll('#ticket-type-grid .transport-option').forEach(el =>
+    el.classList.toggle('selected', el.dataset.ttype === selectedTicketType)
+  );
+  document.getElementById('ticket-company').value = tk.company || '';
+  document.getElementById('ticket-from-city').value = tk.fromCity || '';
+  document.getElementById('ticket-to-city').value = tk.toCity || '';
+  document.getElementById('ticket-from-terminal').value = tk.fromTerminal || '';
+  document.getElementById('ticket-to-terminal').value = tk.toTerminal || '';
+  document.getElementById('ticket-dep-date').value = tk.depDate || '';
+  document.getElementById('ticket-arr-date').value = tk.arrDate || '';
+  document.getElementById('ticket-dep-time').value = tk.depTime || '';
+  document.getElementById('ticket-arr-time').value = tk.arrTime || '';
+  openModal('modal-ticket');
+}
+
+function selectTicketType(el, type) {
+  selectedTicketType = type;
+  document.querySelectorAll('#ticket-type-grid .transport-option').forEach(o => o.classList.remove('selected'));
+  el.classList.add('selected');
+}
+
+function saveTicket() {
+  const trip = trips.find(t => t.id === currentTripId);
+  if (!trip) return;
+  const fromCity = document.getElementById('ticket-from-city').value.trim();
+  const toCity   = document.getElementById('ticket-to-city').value.trim();
+  const depDate  = document.getElementById('ticket-dep-date').value;
+  const arrDate  = document.getElementById('ticket-arr-date').value;
+  if (!fromCity || !toCity) { showToast('⚠️ Ingresá las ciudades de origen y destino'); return; }
+  if (!depDate || !arrDate) { showToast('⚠️ Ingresá las fechas de salida y llegada');    return; }
+
+  const data = {
+    type: selectedTicketType,
+    company:      document.getElementById('ticket-company').value.trim(),
+    fromCity, toCity,
+    fromTerminal: document.getElementById('ticket-from-terminal').value.trim(),
+    toTerminal:   document.getElementById('ticket-to-terminal').value.trim(),
+    depDate, depTime: document.getElementById('ticket-dep-time').value,
+    arrDate, arrTime: document.getElementById('ticket-arr-time').value,
+  };
+
+  if (!trip.tickets) trip.tickets = [];
+  if (editingTicketId) {
+    const idx = trip.tickets.findIndex(t => t.id === editingTicketId);
+    if (idx !== -1) trip.tickets[idx] = { ...trip.tickets[idx], ...data };
+  } else {
+    trip.tickets.push({ id: uid(), ...data });
+  }
+  trip.tickets.sort((a, b) => (a.depDate + (a.depTime||'')).localeCompare(b.depDate + (b.depTime||'')));
+  save();
+  closeModal('modal-ticket');
+  renderTickets();
+  renderDetail();
+  showToast(editingTicketId ? '✅ Pasaje actualizado' : '✅ Pasaje agregado');
+}
+
+function deleteTicket(ticketId) {
+  const trip = trips.find(t => t.id === currentTripId);
+  if (!trip) return;
+  const tk = (trip.tickets || []).find(t => t.id === ticketId);
+  if (!tk) return;
+  _pendingDeleteTicketId = ticketId;
+  document.getElementById('confirm-delete-ticket-body').textContent =
+    `${ticketTypeLabel(tk.type)} ${esc(tk.fromCity)} → ${esc(tk.toCity)}${tk.depDate ? ', ' + formatDate(tk.depDate) : ''}. Esta acción no se puede deshacer.`;
+  openModal('modal-confirm-delete-ticket');
+}
+
+function confirmDeleteTicket() {
+  const trip = trips.find(t => t.id === currentTripId);
+  if (!trip || !_pendingDeleteTicketId) return;
+  trip.tickets = (trip.tickets || []).filter(t => t.id !== _pendingDeleteTicketId);
+  _pendingDeleteTicketId = null;
+  save();
+  closeModal('modal-confirm-delete-ticket');
+  renderTickets();
+  renderDetail();
+  showToast('🗑️ Pasaje eliminado');
 }
 
 let _pendingDeleteCityId = null;
@@ -1604,6 +1948,7 @@ function sanitizeTrips(raw) {
       ci.days = ci.days.map(d => ({ ...d, stops: Array.isArray(d.stops) ? d.stops : [] }));
       return ci;
     });
+    if (!Array.isArray(t.tickets)) t.tickets = [];
     return t;
   });
 }
