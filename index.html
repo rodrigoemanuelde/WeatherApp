@@ -1432,9 +1432,11 @@ function renderDetail() {
 
     let routeActionsHtml = '';
     if (stops.length >= 1 && city.hotelAddr) {
-      const wps = stops.map(s => encodeURIComponent(s.address || s.name)).join('|');
+      const lastStop = stops[stops.length - 1];
+      const midStops = stops.slice(0, -1);
+      const wps = midStops.map(s => encodeURIComponent(s.address || s.name)).join('|');
       const mode = googleMapsMode(stops[0].transport);
-      const fullUrl = `https://www.google.com/maps/dir/?api=1&origin=${encodeURIComponent(city.hotelAddr)}&destination=${encodeURIComponent(stops[stops.length-1].address || stops[stops.length-1].name)}&waypoints=${wps}&travelmode=${mode}`;
+      const fullUrl = `https://www.google.com/maps/dir/?api=1&origin=${encodeURIComponent(city.hotelAddr)}&destination=${encodeURIComponent(lastStop.address || lastStop.name)}${wps ? `&waypoints=${wps}` : ''}&travelmode=${mode}`;
       const retUrl = `https://www.google.com/maps/dir/?api=1&origin=${encodeURIComponent(stops[stops.length-1].address || stops[stops.length-1].name)}&destination=${encodeURIComponent(city.hotelAddr)}&travelmode=transit`;
       routeActionsHtml = `<div class="route-actions">
         <a class="btn-full-route" href="${fullUrl}" target="_blank">🗺️ Ruta completa del día en Maps</a>
