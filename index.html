@@ -2936,34 +2936,54 @@ function onFileSelected(e) {
 function confirmImport(mode) {
   if (!pendingImportData) return;
   if (mode === 'replace') {
-    // Show modal instead of native confirm
     document.getElementById('confirm-import-count').textContent = pendingImportData.length;
     openModal('modal-confirm-import');
     return;
   }
-  // Merge mode: no destructive action, proceed directly
+  // Merge mode
   const existingIds = new Set(trips.map(t => t.id));
-  const newTrips = pendingImportData.filter(t => !existingIds.has(t.id));
-  trips = [...trips, ...sanitizeTrips(newTrips)];
+  const newTrips = pendingImportData.filter(t => t.id && !existingIds.has(t.id));
+  const skipped = pendingImportData.length - newTrips.length;
+
+  // Validate before merging
+  const valid = newTrips.filter(t => t.name && t.startDate && t.endDate && Array.isArray(t.cities));
+  const invalid = newTrips.length - valid.length;
+
+  trips = [...trips, ...sanitizeTrips(valid)];
   save();
   pendingImportData = null;
   document.getElementById('import-warning').style.display = 'none';
+  document.getElementById('import-file-input').value = '';
   closeModal('modal-backup');
   renderTrips();
-  showToast(`✅ ${newTrips.length} viaje${newTrips.length!==1?'s':''} agregado${newTrips.length!==1?'s':''}`);
+
+  let msg = `✅ ${valid.length} viaje${valid.length !== 1 ? 's' : ''} agregado${valid.length !== 1 ? 's' : ''}`;
+  if (skipped > 0) msg += ` · ${skipped} ya existía${skipped !== 1 ? 'n' : ''}`;
+  if (invalid > 0) msg += ` · ${invalid} inválido${invalid !== 1 ? 's' : ''} ignorado${invalid !== 1 ? 's' : ''}`;
+  if (valid.length === 0 && skipped > 0) msg = `⚠️ Todos los viajes del archivo ya existen`;
+  showToast(msg);
   updateBackupCount();
 }
 
 function confirmImportReplace() {
   if (!pendingImportData) return;
-  trips = sanitizeTrips(pendingImportData);
+
+  // Validate before replacing
+  const valid = pendingImportData.filter(t => t.name && t.startDate && t.endDate && Array.isArray(t.cities));
+  const invalid = pendingImportData.length - valid.length;
+
+  trips = sanitizeTrips(valid);
   save();
   pendingImportData = null;
   document.getElementById('import-warning').style.display = 'none';
+  document.getElementById('import-file-input').value = '';
   closeModal('modal-confirm-import');
   closeModal('modal-backup');
   renderTrips();
-  showToast(`✅ ${trips.length} viaje${trips.length!==1?'s':''} importado${trips.length!==1?'s':''}`);
+
+  let msg = `✅ ${trips.length} viaje${trips.length !== 1 ? 's' : ''} importado${trips.length !== 1 ? 's' : ''}`;
+  if (invalid > 0) msg += ` · ${invalid} registro${invalid !== 1 ? 's' : ''} inválido${invalid !== 1 ? 's' : ''} ignorado${invalid !== 1 ? 's' : ''}`;
+  showToast(msg);
   updateBackupCount();
 }
 
@@ -3021,7 +3041,8 @@ function showToast(msg) {
 // INIT — migrate & sanitize old data
 // ══════════════════════════════════════
 function sanitizeTrips(raw) {
-  return raw.map(t => {
+  if (!Array.isArray(raw)) return [];
+  return raw.filter(t => t && t.id && t.name).map(t => {
     // Old format: trip had city/hotel directly, no cities array
     if (!Array.isArray(t.cities)) {
       const city = {
@@ -3033,12 +3054,12 @@ function sanitizeTrips(raw) {
         endDate: t.endDate,
         days: Array.isArray(t.days) ? t.days : buildDays(t.startDate, t.endDate)
       };
-      return { id: t.id, name: t.name, startDate: t.startDate, endDate: t.endDate, cities: [city] };
+      return { id: t.id, name: t.name, startDate: t.startDate, endDate: t.endDate, cities: [city], tickets: [] };
     }
     // Ensure each city has valid days matching its own date range, preserving stops
-    t.cities = (t.cities || []).map(ci => {
+    t.cities = (t.cities || []).filter(ci => ci && ci.startDate && ci.endDate).map(ci => {
       const stopsMap = {};
-      (ci.days || []).forEach(d => { if (Array.isArray(d.stops) && d.stops.length) stopsMap[d.date] = d.stops; });
+      (ci.days || []).forEach(d => { if (d && d.date && Array.isArray(d.stops) && d.stops.length) stopsMap[d.date] = d.stops; });
       ci.days = buildDays(ci.startDate, ci.endDate).map(d => ({
         date: d.date, stops: stopsMap[d.date] || []
       }));
