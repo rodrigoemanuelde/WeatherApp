@@ -127,7 +127,7 @@
     /* ── TRIP DETAIL HEADER ── */
     .trip-header { margin-bottom: 16px; }
     .trip-header-top { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; }
-    .trip-title { font-family: 'Nunito Sans', sans-serif; font-size: clamp(1rem, 4vw, 1.2rem); font-weight: 900; letter-spacing: -0.3px; margin-bottom: 4px; }
+    .trip-title { font-family: 'Nunito Sans', sans-serif; font-size: clamp(1rem, 4vw, 1.2rem); font-weight: 900 !important; letter-spacing: -0.3px; margin-bottom: 4px; }
     .trip-subtitle { display: flex; flex-wrap: wrap; gap: 8px; font-size: 0.78rem; font-weight: 600; color: var(--text2); }
     .btn-edit-trip-dates { flex-shrink: 0; background: rgba(255,255,255,0.05); border: 1px solid var(--border); color: var(--text2); border-radius: 8px; padding: 7px; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: background .2s; margin-top: 2px; }
     .btn-edit-trip-dates:active { background: rgba(255,255,255,0.1); }
@@ -430,7 +430,7 @@
 .ov-wrap { padding: 14px 14px 80px; }
 
 /* title + global dates */
-.ov-trip-title { font-family: 'Nunito Sans', sans-serif; font-size: clamp(1rem, 4vw, 1.15rem); font-weight: 900; letter-spacing: -0.3px; margin-bottom: 3px; }
+.ov-trip-title { font-family: 'Nunito Sans', sans-serif; font-size: clamp(1rem, 4vw, 1.15rem); font-weight: 900 !important; letter-spacing: -0.3px; margin-bottom: 3px; }
 .ov-global-dates { display: flex; align-items: center; gap: 6px; font-size: 0.75rem; font-weight: 700; color: var(--text2); margin-bottom: 12px; flex-wrap: wrap; }
 .ov-arrow { color: var(--accent); }
 .ov-days-pill { font-size: 0.66rem; font-weight: 700; color: var(--accent2); background: rgba(127,207,184,0.1); border: 1px solid rgba(127,207,184,0.2); border-radius: 20px; padding: 2px 8px; white-space: nowrap; }
