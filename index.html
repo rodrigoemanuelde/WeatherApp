@@ -21,6 +21,12 @@
       --text: #f0ede8; --text2: #9896aa; --danger: #e87d7d;
       --radius: 16px;
     }
+    html.light {
+      --bg: #f4f2ee; --bg2: #ffffff; --bg3: #eceae5; --card: #ffffff;
+      --border: rgba(0,0,0,0.09);
+      --accent: #c9922a; --accent2: #3a6abf; --accent3: #2a9d82;
+      --text: #1a1916; --text2: #6b6860; --danger: #c0392b;
+    }
     * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
     html { font-size: 16px; }
     body { font-family: 'DM Sans', sans-serif; background: var(--bg); color: var(--text); min-height: 100dvh; overflow-x: hidden; max-width: 100vw; }
@@ -33,6 +39,7 @@
       padding: 12px 16px;
       display: flex; align-items: center; justify-content: space-between; gap: 10px;
     }
+    html.light #app-header { background: rgba(244,242,238,0.95); }
     .logo { font-family: 'Playfair Display', serif; font-size: clamp(1.2rem, 5vw, 1.6rem); color: var(--accent); letter-spacing: -0.5px; flex-shrink: 0; }
     .logo span { color: var(--text2); font-size: 0.65rem; display: block; font-family: 'DM Sans', sans-serif; letter-spacing: 2px; text-transform: uppercase; margin-top: -2px; }
     #btn-new-trip { flex-shrink: 0; background: var(--accent); color: #111; border: none; padding: 8px 14px; border-radius: 30px; font-weight: 700; font-size: 0.82rem; cursor: pointer; display: flex; align-items: center; gap: 5px; transition: opacity .2s; white-space: nowrap; }
@@ -45,14 +52,32 @@
     /* ── BOTTOM NAV ── */
     #bottom-nav {
       position: fixed; bottom: 0; left: 0; right: 0; z-index: 100;
-      background: rgba(14,14,26,0.97); backdrop-filter: blur(20px);
+      background: rgba(14,14,26,0.96);
+      backdrop-filter: blur(24px); -webkit-backdrop-filter: blur(24px);
       border-top: 1px solid var(--border);
-      display: flex; justify-content: space-around;
-      padding: 8px 0 max(8px, env(safe-area-inset-bottom));
+      display: flex; justify-content: space-around; align-items: stretch;
+      padding-bottom: max(6px, env(safe-area-inset-bottom));
     }
-    .nav-btn { background: none; border: none; color: var(--text2); display: flex; flex-direction: column; align-items: center; gap: 3px; font-size: 0.6rem; font-family: 'DM Sans', sans-serif; cursor: pointer; padding: 4px 12px; transition: color .2s; letter-spacing: 0.5px; text-transform: uppercase; }
-    .nav-btn svg { width: 22px; height: 22px; }
+    html.light #bottom-nav { background: rgba(244,242,238,0.96); }
+
+    .nav-btn {
+      background: none; border: none; color: var(--text2);
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+      gap: 4px; padding: 10px 0 6px;
+      flex: 1; cursor: pointer;
+      font-size: 0.58rem; font-family: 'DM Sans', sans-serif; font-weight: 600;
+      letter-spacing: 0.6px; text-transform: uppercase;
+      transition: color .18s; position: relative;
+    }
+    .nav-btn svg { width: 20px; height: 20px; stroke-width: 1.8; transition: transform .18s; }
+    .nav-btn:active svg { transform: scale(0.88); }
     .nav-btn.active { color: var(--accent); }
+    .nav-btn.active svg { stroke-width: 2.2; }
+    /* Active indicator dot */
+    .nav-btn.active::after {
+      content: ''; position: absolute; bottom: 3px; left: 50%; transform: translateX(-50%);
+      width: 4px; height: 4px; border-radius: 50%; background: var(--accent);
+    }
 
     /* ── TRIP CARDS ── */
     .trips-grid { display: flex; flex-direction: column; gap: 12px; }
@@ -405,16 +430,21 @@
 
 <div id="bottom-nav">
   <button class="nav-btn active" id="nav-trips" onclick="showScreen('trips')">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
     Viajes
   </button>
   <button class="nav-btn" onclick="openModal('modal-backup')">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="8 17 12 21 16 17"/><line x1="12" y1="12" x2="12" y2="21"/><path d="M20.88 18.09A5 5 0 0018 9h-1.26A8 8 0 103 16.29"/></svg>
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><polyline points="8 17 12 21 16 17"/><line x1="12" y1="12" x2="12" y2="21"/><path d="M20.88 18.09A5 5 0 0018 9h-1.26A8 8 0 103 16.29"/></svg>
     Respaldo
   </button>
   <button class="nav-btn" onclick="openModal('modal-info')">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12" y2="16.5" stroke-width="3" stroke-linecap="round"/></svg>
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12" y2="16.01" stroke-width="3" stroke-linecap="round"/></svg>
     Ayuda
+  </button>
+  <button class="nav-btn" id="btn-theme" onclick="toggleTheme()">
+    <svg id="theme-icon-dark" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z"/></svg>
+    <svg id="theme-icon-light" viewBox="0 0 24 24" fill="none" stroke="currentColor" style="display:none"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
+    <span id="theme-label">Claro</span>
   </button>
 </div>
 
@@ -2961,6 +2991,26 @@ document.querySelectorAll('.modal-overlay').forEach(o => o.addEventListener('cli
 // ══════════════════════════════════════
 // TOAST
 // ══════════════════════════════════════
+function toggleTheme() {
+  const isLight = document.documentElement.classList.toggle('light');
+  localStorage.setItem('wandr_theme', isLight ? 'light' : 'dark');
+  document.getElementById('theme-icon-dark').style.display  = isLight ? 'none' : '';
+  document.getElementById('theme-icon-light').style.display = isLight ? '' : 'none';
+  document.getElementById('theme-label').textContent = isLight ? 'Oscuro' : 'Claro';
+  document.querySelector('meta[name="theme-color"]').content = isLight ? '#f4f2ee' : '#0e0e1a';
+}
+
+function initTheme() {
+  const saved = localStorage.getItem('wandr_theme');
+  if (saved === 'light') {
+    document.documentElement.classList.add('light');
+    document.getElementById('theme-icon-dark').style.display  = 'none';
+    document.getElementById('theme-icon-light').style.display = '';
+    document.getElementById('theme-label').textContent = 'Oscuro';
+    document.querySelector('meta[name="theme-color"]').content = '#f4f2ee';
+  }
+}
+
 function showToast(msg) {
   const t = document.getElementById('toast');
   t.textContent = msg; t.classList.add('show');
@@ -3000,8 +3050,9 @@ function sanitizeTrips(raw) {
 }
 
 trips = sanitizeTrips(trips);
-save(); // persist the migrated data
+save();
 renderTrips();
+initTheme();
 if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(()=>{});
 </script>
 </body>
