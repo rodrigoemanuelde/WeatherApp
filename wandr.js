@@ -2,7 +2,16 @@
 // ══════════════════════════════════════
 // STATE
 // ══════════════════════════════════════
-let trips = JSON.parse(localStorage.getItem('wandr_trips') || '[]');
+let _rawTripsFromStorage = (() => {
+  try {
+    const parsed = JSON.parse(localStorage.getItem('wandr_trips') || '[]');
+    return Array.isArray(parsed) ? parsed : [];
+  } catch(e) {
+    console.error('wandr: error parsing localStorage data', e);
+    return [];
+  }
+})();
+let trips = _rawTripsFromStorage;
 let currentTripId = null;
 let currentCityIdx = 0;
 let currentDayIdx = 0;
@@ -17,7 +26,13 @@ let _pendingDeleteTicketId = null;
 let editingStopId = null;
 
 // save() defined in HELPERS section below
-function uid() { return Date.now().toString(36) + Math.random().toString(36).slice(2,6); }
+function uid() {
+  if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+    return crypto.randomUUID();
+  }
+  // Fallback for older environments
+  return Date.now().toString(36) + Math.random().toString(36).slice(2, 10);
+}
 
 // ══════════════════════════════════════
 // SCREENS
@@ -72,6 +87,16 @@ function renderTrips() {
 }
 
 let _pendingDeleteTripId = null;
+let _pendingTransitLegKey = null;
+
+function confirmDeleteTransitLegs() {
+  if (!_pendingTransitLegKey) return;
+  delete transitLegs[_pendingTransitLegKey];
+  _pendingTransitLegKey = null;
+  closeModal('modal-confirm-delete-transit');
+  renderCityEntries();
+  syncCityMins();
+}
 
 function deleteTrip(id) {
   const trip = trips.find(t => t.id === id);
@@ -177,12 +202,9 @@ function addCityEntry() {
 function toggleTransitLegs(fromId, toId) {
   const legKey = fromId + '_' + toId;
   if (transitLegs[legKey] && transitLegs[legKey].length > 0) {
-    // Already has legs — ask to remove or just collapse (toggle off = clear)
-    if (confirm('¿Eliminar los tramos cargados entre estas ciudades?')) {
-      delete transitLegs[legKey];
-      renderCityEntries();
-      syncCityMins();
-    }
+    // Ask to remove via custom modal instead of native confirm()
+    _pendingTransitLegKey = legKey;
+    openModal('modal-confirm-delete-transit');
   } else {
     // Add first leg
     if (!transitLegs[legKey]) transitLegs[legKey] = [];
@@ -259,9 +281,9 @@ function renderCityEntries() {
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
         </button>` : ''}
       </div>
-      <input type="text" id="cn-${id}" placeholder="Nombre de la ciudad (ej: Bruselas)" />
-      <input type="text" id="chn-${id}" placeholder="Hotel / alojamiento" style="margin-top:8px" />
-      <input type="text" id="cha-${id}" placeholder="Dirección del hotel" style="margin-top:8px" />
+      <input type="text" id="cn-${id}" placeholder="Nombre de la ciudad (ej: Bruselas)" maxlength="60" />
+      <input type="text" id="chn-${id}" placeholder="Hotel / alojamiento" style="margin-top:8px" maxlength="80" />
+      <input type="text" id="cha-${id}" placeholder="Dirección del hotel" style="margin-top:8px" maxlength="150" />
       <div class="city-date-row" style="margin-top:10px">
         <div class="city-date-col">
           <label>Llegada</label>
@@ -293,8 +315,8 @@ function renderTransitLegsSection(fromId, toId, legs) {
           `<div class="transport-option${leg.type === t ? ' selected' : ''}" onclick="setLegType('${fromId}','${toId}',${li},'${t}')">${ticketTypeIconStr(t)}<small>${ticketTypeLabelStr(t)}</small></div>`
         ).join('')}
       </div>
-      <input type="text" id="leg-from-${legKey}-${li}" value="${esc(leg.fromTerminal||'')}" placeholder="Terminal / estación de salida" oninput="updateLegField('${fromId}','${toId}',${li},'fromTerminal',this.value)" />
-      <input type="text" id="leg-to-${legKey}-${li}" value="${esc(leg.toTerminal||'')}" placeholder="Terminal / estación de llegada" oninput="updateLegField('${fromId}','${toId}',${li},'toTerminal',this.value)" />
+      <input type="text" id="leg-from-${legKey}-${li}" value="${esc(leg.fromTerminal||'')}" placeholder="Terminal / estación de salida" maxlength="100" oninput="updateLegField('${fromId}','${toId}',${li},'fromTerminal',this.value)" />
+      <input type="text" id="leg-to-${legKey}-${li}" value="${esc(leg.toTerminal||'')}" placeholder="Terminal / estación de llegada" maxlength="100" oninput="updateLegField('${fromId}','${toId}',${li},'toTerminal',this.value)" />
       <div class="city-date-row" style="margin-top:6px">
         <div>
           <input type="time" id="leg-dep-${legKey}-${li}" value="${leg.depTime||''}" oninput="updateLegField('${fromId}','${toId}',${li},'depTime',this.value)" />
@@ -305,7 +327,7 @@ function renderTransitLegsSection(fromId, toId, legs) {
           <div style="font-size:0.68rem;color:var(--text2);margin-top:3px">Hora llegada</div>
         </div>
       </div>
-      <input type="text" id="leg-via-${legKey}-${li}" value="${esc(leg.viaCity||'')}" placeholder="Ciudad de escala (ej: São Paulo)" style="margin-top:6px" oninput="updateLegField('${fromId}','${toId}',${li},'viaCity',this.value)" />
+      <input type="text" id="leg-via-${legKey}-${li}" value="${esc(leg.viaCity||'')}" placeholder="Ciudad de escala (ej: São Paulo)" maxlength="60" style="margin-top:6px" oninput="updateLegField('${fromId}','${toId}',${li},'viaCity',this.value)" />
     </div>
   `).join('');
   return `<div class="transit-legs-section">
@@ -394,6 +416,13 @@ function createTrip() {
     const cityStart = cs < start ? start : cs;
     const cityEnd = ce > end ? end : ce;
 
+    // Validate overlap against already-collected cities
+    const overlap = cities.find(c => cityStart <= c.endDate && cityEnd >= c.startDate);
+    if (overlap) {
+      showToast(`⚠️ Las fechas de "${cityName}" se solapan con "${overlap.name}" (${formatDate(overlap.startDate)} → ${formatDate(overlap.endDate)})`);
+      return;
+    }
+
     cities.push({ id: uid(), name: cityName, hotelName, hotelAddr, startDate: cityStart, endDate: cityEnd, days: buildDays(cityStart, cityEnd) });
   }
 
@@ -476,11 +505,181 @@ function openTrip(id) {
 function switchDetailTab(tab) {
   currentDetailTab = tab;
   document.getElementById('dtab-itinerary').classList.toggle('active', tab === 'itinerary');
+  document.getElementById('dtab-overview').classList.toggle('active', tab === 'overview');
   document.getElementById('dtab-tickets').classList.toggle('active', tab === 'tickets');
-  document.getElementById('detail-content').style.display = tab === 'itinerary' ? '' : 'none';
-  document.getElementById('tickets-content').style.display = tab === 'tickets' ? '' : 'none';
+  document.getElementById('detail-content').style.display   = tab === 'itinerary' ? '' : 'none';
+  document.getElementById('overview-content').style.display = tab === 'overview'  ? '' : 'none';
+  document.getElementById('tickets-content').style.display  = tab === 'tickets'   ? '' : 'none';
+  // FAB only visible on itinerary tab
   document.getElementById('btn-add-stop').style.display = tab === 'itinerary' ? '' : 'none';
   if (tab === 'tickets') renderTickets();
+  if (tab === 'overview') renderOverview();
+}
+
+// ══════════════════════════════════════
+// OVERVIEW TAB
+// ══════════════════════════════════════
+// Palette for city dots — cycles through accent colors
+const _ovCityColors = ['#4A7BF7','#7fcfb8','#e8b86d','#e87d7d','#a78bfa','#38bdf8','#f472b6'];
+
+function renderOverview() {
+  const el = document.getElementById('overview-content');
+  if (!el) return;
+  const trip = trips.find(t => t.id === currentTripId);
+  if (!trip) { el.innerHTML = '<p style="color:var(--danger);padding:20px">Error: viaje no encontrado.</p>'; return; }
+
+  // ── Stats ──
+  const sortedCities = [...(trip.cities || [])].filter(ci => !ci.dayTrip).sort((a, b) => a.startDate.localeCompare(b.startDate));
+  const totalCities  = sortedCities.length;
+  const totalNights  = sortedCities.reduce((acc, ci) => {
+    const s = new Date(ci.startDate + 'T00:00:00');
+    const e = new Date(ci.endDate   + 'T00:00:00');
+    return acc + Math.round((e - s) / 86400000);
+  }, 0);
+  const totalPassajes = (trip.tickets || []).filter(tk => !tk.stub).length;
+
+  // ── Total days label ──
+  const tripS = new Date(trip.startDate + 'T00:00:00');
+  const tripE = new Date(trip.endDate   + 'T00:00:00');
+  const totalDays = Math.round((tripE - tripS) / 86400000) + 1;
+
+  // ── Build transit map: fromCity.name → ticket ──
+  const ticketsByDep = {};
+  (trip.tickets || []).forEach(tk => {
+    if (!ticketsByDep[tk.fromCity]) ticketsByDep[tk.fromCity] = [];
+    ticketsByDep[tk.fromCity].push(tk);
+  });
+
+  // ── Build set of transit dates per city (for chip colouring) ──
+  function getTransitDates(city) {
+    const set = new Set();
+    (trip.tickets || []).forEach(tk => {
+      if (tk.depDate >= city.startDate && tk.depDate <= city.endDate) set.add(tk.depDate);
+      if (tk.arrDate >= city.startDate && tk.arrDate <= city.endDate) set.add(tk.arrDate);
+    });
+    return set;
+  }
+
+  // ── Render ──
+  let html = `
+  <div class="ov-wrap">
+    <div class="ov-trip-title">${esc(trip.name)}</div>
+    <div class="ov-global-dates">
+      <span>${formatDate(trip.startDate)}</span>
+      <span class="ov-arrow">→</span>
+      <span>${formatDate(trip.endDate)}</span>
+      <span class="ov-days-pill">${totalDays} día${totalDays !== 1 ? 's' : ''}</span>
+    </div>
+    <div class="ov-stats">
+      <div class="ov-stat"><div class="ov-stat-n">${totalCities}</div><div class="ov-stat-l">Ciudad${totalCities !== 1 ? 'es' : ''}</div></div>
+      <div class="ov-stat"><div class="ov-stat-n">${totalNights}</div><div class="ov-stat-l">Noche${totalNights !== 1 ? 's' : ''}</div></div>
+      <div class="ov-stat"><div class="ov-stat-n">${totalPassajes}</div><div class="ov-stat-l">Pasaje${totalPassajes !== 1 ? 's' : ''}</div></div>
+    </div>`;
+
+  sortedCities.forEach((city, ci) => {
+    const color = _ovCityColors[ci % _ovCityColors.length];
+    const transitDates = getTransitDates(city);
+    const stopsByDate  = {};
+    (city.days || []).forEach(d => { if (d.stops?.length) stopsByDate[d.date] = d.stops.length; });
+
+    // Day chips
+    const dayChips = (city.days || []).map(d => {
+      const isTransit  = transitDates.has(d.date);
+      const hasStops   = !!stopsByDate[d.date];
+      const wd = new Date(d.date + 'T00:00:00').toLocaleDateString('es-AR', { weekday: 'short' }).slice(0, 3).toLowerCase();
+      const dd = d.date.slice(8);
+      const cls = ['ov-day-chip', isTransit ? 'transit' : (hasStops ? 'has' : '')].filter(Boolean).join(' ');
+      // Clicking a chip switches to itinerary tab on that city+day
+      const cityIdx = trip.cities.findIndex(c => c.id === city.id);
+      const dayIdx  = (city.days || []).findIndex(d2 => d2.date === d.date);
+      return `<div class="${cls}" onclick="ovGoToDay(${cityIdx},${dayIdx})">
+        <span class="ov-dc-wd">${wd}</span>
+        <span class="ov-dc-dd">${dd}</span>
+        <span class="ov-dc-dot"></span>
+      </div>`;
+    }).join('');
+
+    // Nights count
+    const nightCount = Math.round((new Date(city.endDate + 'T00:00:00') - new Date(city.startDate + 'T00:00:00')) / 86400000);
+
+    // Hotel row
+    let hotelHtml;
+    if (city.hotelName) {
+      const times = [
+        city.checkInTime  ? `✅ ${city.checkInTime}`  : '',
+        city.checkOutTime ? `🚪 ${city.checkOutTime}` : '',
+      ].filter(Boolean).join(' · ');
+      hotelHtml = `<div class="ov-hotel-row">
+        <span class="ov-h-icon">🏨</span>
+        <div class="ov-h-info">
+          <div class="ov-h-name">${esc(city.hotelName)}</div>
+          ${city.hotelAddr ? `<div class="ov-h-addr">${esc(city.hotelAddr)}</div>` : ''}
+        </div>
+        ${times ? `<div class="ov-h-times">${times}</div>` : ''}
+      </div>`;
+    } else {
+      hotelHtml = `<div class="ov-no-hotel">
+        <span style="font-size:13px">🏨</span>
+        <span class="ov-no-hotel-txt">Sin hotel asignado</span>
+      </div>`;
+    }
+
+    html += `
+    <div class="ov-city-card">
+      <div class="ov-city-head">
+        <div class="ov-city-dot" style="background:${color}"></div>
+        <div class="ov-city-nm">${esc(city.name)}</div>
+        <div class="ov-nights-badge">${nightCount} noche${nightCount !== 1 ? 's' : ''}</div>
+      </div>
+      <div class="ov-daterange">${formatDate(city.startDate)} → ${formatDate(city.endDate)}</div>
+      <div class="ov-day-strip">${dayChips}</div>
+      ${hotelHtml}
+    </div>`;
+
+    // Transit connector to next city
+    if (ci < sortedCities.length - 1) {
+      const nextCity  = sortedCities[ci + 1];
+      const connector = (trip.tickets || []).find(tk =>
+        tk.fromCity === city.name && tk.toCity === nextCity.name
+      );
+      let badgeContent, badgeClass = 'ov-tr-badge';
+      if (connector && connector.type) {
+        const icon  = ticketTypeIcon(connector.type);
+        const label = ticketTypeLabel(connector.type);
+        badgeContent = `${icon} ${label} · ${esc(city.name)} → ${esc(nextCity.name)}`;
+      } else if (connector) {
+        badgeContent = `🎫 Pasaje pendiente · ${esc(city.name)} → ${esc(nextCity.name)}`;
+        badgeClass  += ' ov-tr-stub';
+      } else {
+        badgeContent = `${esc(city.name)} → ${esc(nextCity.name)}`;
+        badgeClass  += ' ov-tr-stub';
+      }
+      html += `<div class="ov-transit-row">
+        <div class="ov-tr-line"></div>
+        <div class="${badgeClass}">${badgeContent}</div>
+        <div class="ov-tr-line"></div>
+      </div>`;
+    }
+  });
+
+  // Legend
+  html += `
+    <div class="ov-legend">
+      <div class="ov-leg-item"><span class="ov-leg-dot" style="background:var(--accent);opacity:0.9"></span>Con paradas</div>
+      <div class="ov-leg-item"><span class="ov-leg-dot" style="background:rgba(232,184,109,0.3);border:1px solid var(--accent3)"></span>Tránsito</div>
+      <div class="ov-leg-item"><span class="ov-leg-dot" style="background:var(--border)"></span>Sin paradas</div>
+    </div>
+  </div>`;
+
+  el.innerHTML = html;
+}
+
+function ovGoToDay(cityIdx, dayIdx) {
+  currentCityIdx = cityIdx;
+  currentDayIdx  = dayIdx;
+  switchDetailTab('itinerary');
+  renderDetail();
+  window.scrollTo(0, 0);
 }
 
 function renderDetail() {
@@ -1338,6 +1537,8 @@ function confirmDeleteCity() {
   if (idx === -1) return;
   trip.cities.splice(idx, 1);
   if (currentCityIdx >= trip.cities.length) currentCityIdx = trip.cities.length - 1;
+  if (currentCityIdx < 0) currentCityIdx = 0;
+  currentDayIdx = 0; // Always reset day index — it may no longer be valid for the new city
   _pendingDeleteCityId = null;
   save();
   closeModal('modal-confirm-delete-city');
@@ -1996,14 +2197,27 @@ function esc(s) {
 function save() {
   try {
     localStorage.setItem('wandr_trips', JSON.stringify(trips));
+    _showSaveIndicator('saved', '✓ Guardado');
   } catch(e) {
     if (e.name === 'QuotaExceededError' || e.name === 'NS_ERROR_DOM_QUOTA_REACHED') {
       showToast('⚠️ Almacenamiento lleno. No se pudo guardar.');
+      _showSaveIndicator('error', '⚠️ Sin espacio');
     } else {
       showToast('⚠️ Error al guardar datos.');
+      _showSaveIndicator('error', '⚠️ Error');
       console.error('save() error:', e);
     }
   }
+}
+
+let _saveIndicatorTimer = null;
+function _showSaveIndicator(type, text) {
+  const el = document.getElementById('save-indicator');
+  if (!el) return;
+  clearTimeout(_saveIndicatorTimer);
+  el.textContent = text;
+  el.className = type; // 'saved' or 'error'
+  _saveIndicatorTimer = setTimeout(() => { el.className = ''; }, type === 'error' ? 3500 : 2000);
 }
 function mapsUrl(q) { return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(q)}`; }
 function googleMapsMode(t) { return ({walking:'walking',transit:'transit',taxi:'driving',driving:'driving'})[t]||'transit'; }
@@ -2188,7 +2402,24 @@ function sanitizeTrips(raw) {
     // Ensure each city has valid days matching its own date range, preserving stops
     t.cities = (t.cities || []).filter(ci => ci && ci.startDate && ci.endDate).map(ci => {
       const stopsMap = {};
-      (ci.days || []).forEach(d => { if (d && d.date && Array.isArray(d.stops) && d.stops.length) stopsMap[d.date] = d.stops; });
+      (ci.days || []).forEach(d => {
+        if (d && d.date && Array.isArray(d.stops) && d.stops.length) {
+          // Deep-sanitize each stop: ensure required fields exist and are safe strings
+          const cleanStops = d.stops
+            .filter(s => s && typeof s === 'object' && s.name)
+            .map(s => ({
+              id:        (typeof s.id === 'string' && s.id)        ? s.id        : uid(),
+              name:      typeof s.name      === 'string' ? s.name.slice(0, 200)      : '',
+              address:   typeof s.address   === 'string' ? s.address.slice(0, 300)   : '',
+              note:      typeof s.note      === 'string' ? s.note.slice(0, 500)      : '',
+              timeFrom:  typeof s.timeFrom  === 'string' ? s.timeFrom  : '',
+              timeTo:    typeof s.timeTo    === 'string' ? s.timeTo    : '',
+              type:      ['attraction','restaurant','museum','park','hotel'].includes(s.type) ? s.type : 'attraction',
+              transport: ['walking','transit','taxi','driving'].includes(s.transport) ? s.transport : 'walking',
+            }));
+          if (cleanStops.length) stopsMap[d.date] = cleanStops;
+        }
+      });
       ci.days = buildDays(ci.startDate, ci.endDate).map(d => ({
         date: d.date, stops: stopsMap[d.date] || []
       }));
@@ -2199,8 +2430,22 @@ function sanitizeTrips(raw) {
   });
 }
 
-trips = sanitizeTrips(trips);
-save();
+const _sanitized = sanitizeTrips(_rawTripsFromStorage);
+// Only overwrite stored data if sanitization actually produced something useful,
+// or if the original was already empty. This prevents a parse/sanitize bug from
+// wiping all user data by replacing it with an empty array.
+if (_rawTripsFromStorage.length === 0 || _sanitized.length > 0) {
+  trips = _sanitized;
+  // Only call save() if something actually changed to avoid unnecessary writes
+  if (JSON.stringify(trips) !== JSON.stringify(_rawTripsFromStorage)) {
+    save();
+  }
+} else {
+  // Sanitization returned empty but original had data — keep original and warn
+  console.warn('wandr: sanitizeTrips returned empty on non-empty input; keeping original data');
+  trips = _rawTripsFromStorage;
+}
+_rawTripsFromStorage = null; // free reference
 renderTrips();
 initTheme();
 if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(()=>{});
@@ -2210,6 +2455,8 @@ if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catc
 // ══════════════════════════════════════
 let _acTimer = null;
 let _acAbort = null;
+// Safe store for autocomplete results — avoids injecting values into inline handlers
+const _acResults = {};
 
 function addrAutocomplete(input, listId) {
   const q = input.value.trim();
@@ -2236,24 +2483,42 @@ function addrAutocomplete(input, listId) {
         list.innerHTML = '<li class="ac-loading">Sin resultados</li>';
         return;
       }
-      list.innerHTML = data.map(r => {
+      // Store results safely — never interpolate raw values into HTML attributes
+      _acResults[listId] = data.map(r => r.display_name);
+      list.innerHTML = data.map((r, i) => {
         const parts = r.display_name.split(',');
         const main = parts[0].trim();
         const sub = parts.slice(1, 3).join(',').trim();
-        return `<li onmousedown="pickAddr('${listId}','${esc2(r.display_name)}')">
+        return `<li data-ac-index="${i}" data-ac-list="${esc(listId)}">
           <div class="ac-main">${esc(main)}</div>
           <div class="ac-sub">${esc(sub)}</div>
         </li>`;
       }).join('');
+      // Attach events via JS, not inline handlers
+      list.querySelectorAll('li[data-ac-index]').forEach(li => {
+        li.addEventListener('mousedown', () => {
+          const idx = parseInt(li.dataset.acIndex, 10);
+          const lId = li.dataset.acList;
+          pickAddr(lId, idx);
+        });
+        li.addEventListener('touchstart', (e) => {
+          e.preventDefault();
+          const idx = parseInt(li.dataset.acIndex, 10);
+          const lId = li.dataset.acList;
+          pickAddr(lId, idx);
+        }, { passive: false });
+      });
     } catch(e) {
       if (e.name !== 'AbortError') list.innerHTML = '<li class="ac-loading">Error al buscar</li>';
     }
   }, 350);
 }
 
-function pickAddr(listId, value) {
+function pickAddr(listId, index) {
   const list = document.getElementById(listId);
   if (!list) return;
+  const value = (_acResults[listId] || [])[index];
+  if (value === undefined) return;
   // Find the input that owns this list
   const wrap = list.closest('.autocomplete-wrap');
   if (wrap) {
@@ -2268,9 +2533,4 @@ function hideList(listId) {
     const list = document.getElementById(listId);
     if (list) list.classList.remove('open');
   }, 150);
-}
-
-function esc2(s) {
-  if (!s) return '';
-  return String(s).replace(/'/g, "\\'").replace(/"/g, '&quot;');
 }

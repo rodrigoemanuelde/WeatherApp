@@ -399,3 +399,85 @@
 .autocomplete-list li .ac-sub { font-size: 0.74rem; color: var(--text2); margin-top: 2px; }
 .autocomplete-list .ac-loading { color: var(--text2); font-style: italic; cursor: default; }
 .autocomplete-list .ac-loading:hover { background: none; }
+
+/* ── SAVE INDICATOR ── */
+#save-indicator {
+  font-size: 0.65rem; font-weight: 700; letter-spacing: 0.5px;
+  color: rgba(255,255,255,0); transition: color .3s, opacity .3s;
+  white-space: nowrap; flex-shrink: 0; pointer-events: none;
+  display: flex; align-items: center; gap: 3px;
+}
+#save-indicator.saved {
+  color: rgba(255,255,255,0.7);
+  animation: save-fade 2s forwards;
+}
+#save-indicator.error {
+  color: #ffaaaa;
+  animation: save-fade 3.5s forwards;
+}
+@keyframes save-fade {
+  0%   { opacity: 1; }
+  60%  { opacity: 1; }
+  100% { opacity: 0; }
+}
+
+/* ══════════════════════════════════════
+   OVERVIEW TAB
+   ══════════════════════════════════════ */
+#overview-content { padding-bottom: 16px; }
+.ov-wrap { padding: 14px 14px 80px; }
+
+/* title + global dates */
+.ov-trip-title { font-family: 'Nunito Sans', sans-serif; font-size: clamp(1rem, 4vw, 1.15rem); font-weight: 900; letter-spacing: -0.3px; margin-bottom: 3px; }
+.ov-global-dates { display: flex; align-items: center; gap: 6px; font-size: 0.75rem; font-weight: 700; color: var(--text2); margin-bottom: 12px; flex-wrap: wrap; }
+.ov-arrow { color: var(--accent); }
+.ov-days-pill { font-size: 0.66rem; font-weight: 700; color: var(--accent2); background: rgba(127,207,184,0.1); border: 1px solid rgba(127,207,184,0.2); border-radius: 20px; padding: 2px 8px; white-space: nowrap; }
+
+/* stats strip */
+.ov-stats { display: flex; gap: 6px; margin-bottom: 13px; }
+.ov-stat { flex: 1; background: var(--card); border: 1px solid var(--border); border-radius: 10px; padding: 8px 4px; text-align: center; }
+.ov-stat-n { font-size: 1.1rem; font-weight: 900; color: var(--accent); line-height: 1; }
+.ov-stat-l { font-size: 0.53rem; color: var(--text2); font-weight: 700; text-transform: uppercase; letter-spacing: 0.3px; margin-top: 3px; }
+
+/* city card */
+.ov-city-card { background: var(--card); border: 1px solid var(--border); border-radius: 14px; overflow: hidden; margin-bottom: 5px; }
+.ov-city-head { display: flex; align-items: center; gap: 8px; padding: 9px 12px 4px; }
+.ov-city-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+.ov-city-nm { font-weight: 800; font-size: 0.82rem; flex: 1; }
+.ov-nights-badge { font-size: 0.57rem; font-weight: 700; color: var(--text2); background: var(--bg2); border: 1px solid var(--border); border-radius: 20px; padding: 2px 7px; white-space: nowrap; }
+.ov-daterange { font-size: 0.6rem; color: var(--text2); font-weight: 600; padding: 0 12px 7px 28px; }
+
+/* day strip */
+.ov-day-strip { display: flex; padding: 5px 8px 8px; gap: 4px; overflow-x: auto; scrollbar-width: none; border-top: 1px solid var(--border); }
+.ov-day-strip::-webkit-scrollbar { display: none; }
+.ov-day-chip { flex-shrink: 0; width: 34px; height: 44px; border-radius: 8px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; border: 1px solid var(--border); background: var(--bg2); cursor: pointer; transition: transform .1s; }
+.ov-day-chip:active { transform: scale(0.93); }
+.ov-day-chip.has { border-color: rgba(74,123,247,0.3); }
+.ov-day-chip.transit { border-color: var(--accent3); background: rgba(232,184,109,0.07); }
+.ov-dc-wd { font-size: 0.44rem; color: var(--text2); font-weight: 700; text-transform: lowercase; letter-spacing: 0.2px; }
+.ov-dc-dd { font-size: 0.78rem; font-weight: 800; color: var(--text); line-height: 1; }
+.ov-day-chip.transit .ov-dc-dd { color: var(--accent3); }
+.ov-dc-dot { width: 4px; height: 4px; border-radius: 50%; background: var(--border); }
+.ov-day-chip.has .ov-dc-dot { background: var(--accent); }
+.ov-day-chip.transit .ov-dc-dot { background: var(--accent3); }
+
+/* hotel row */
+.ov-hotel-row { display: flex; align-items: center; gap: 8px; padding: 7px 12px 9px; border-top: 1px solid var(--border); }
+.ov-h-icon { font-size: 0.82rem; flex-shrink: 0; }
+.ov-h-info { flex: 1; min-width: 0; }
+.ov-h-name { font-size: 0.7rem; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ov-h-addr { font-size: 0.6rem; color: var(--text2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-top: 1px; }
+.ov-h-times { font-size: 0.58rem; color: var(--accent2); font-weight: 700; white-space: nowrap; flex-shrink: 0; }
+.ov-no-hotel { display: flex; align-items: center; gap: 6px; padding: 7px 12px 9px; border-top: 1px solid var(--border); }
+.ov-no-hotel-txt { font-size: 0.66rem; color: var(--text2); font-style: italic; }
+
+/* transit connector */
+.ov-transit-row { display: flex; align-items: center; gap: 7px; padding: 3px 8px; }
+.ov-tr-line { flex: 1; height: 1px; background: var(--border); }
+.ov-tr-badge { font-size: 0.63rem; font-weight: 700; color: var(--accent3); background: rgba(232,184,109,0.08); border: 1px solid rgba(232,184,109,0.22); border-radius: 20px; padding: 3px 10px; white-space: nowrap; max-width: 74%; overflow: hidden; text-overflow: ellipsis; }
+.ov-tr-stub { color: var(--text2); background: var(--bg2); border-color: var(--border); }
+
+/* legend */
+.ov-legend { display: flex; gap: 13px; padding: 11px 2px 4px; flex-wrap: wrap; }
+.ov-leg-item { display: flex; align-items: center; gap: 4px; font-size: 0.57rem; color: var(--text2); }
+.ov-leg-dot { width: 7px; height: 7px; border-radius: 2px; display: inline-block; }

@@ -3,35 +3,17 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-  <meta name="theme-color" content="#1a1a2e" />
+  <meta name="theme-color" content="#4A7BF7" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
   <meta name="apple-mobile-web-app-title" content="Wandr" />
   <title>Wandr — Planificador de Viajes</title>
   <link rel="manifest" href="manifest.json" />
-  <link rel="apple-touch-icon" href="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA1MTIgNTEyIj48cmVjdCB3aWR0aD0iNTEyIiBoZWlnaHQ9IjUxMiIgcng9IjExMiIgZmlsbD0iIzBkMWYzOCIvPjx0ZXh0IHg9IjM2IiB5PSIzNzAiIGZvbnQtZmFtaWx5PSJBcmlhbCBCbGFjayxBcmlhbCxzYW5zLXNlcmlmIiBmb250LXNpemU9IjMwMCIgZm9udC13ZWlnaHQ9IjkwMCIgZmlsbD0iI2ZmZmZmZiI+VzwvdGV4dD48dGV4dCB4PSIyOTYiIHk9IjM3MCIgZm9udC1mYW1pbHk9Ikdlb3JnaWEsc2VyaWYiIGZvbnQtc2l6ZT0iMzEwIiBmb250LXdlaWdodD0iODAwIiBmb250LXN0eWxlPSJpdGFsaWMiIGZpbGw9IiM3REU4RkYiPmE8L3RleHQ+PC9zdmc+" />
-  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA1MTIgNTEyIj48cmVjdCB3aWR0aD0iNTEyIiBoZWlnaHQ9IjUxMiIgcng9IjExMiIgZmlsbD0iIzBkMWYzOCIvPjx0ZXh0IHg9IjM2IiB5PSIzNzAiIGZvbnQtZmFtaWx5PSJBcmlhbCBCbGFjayxBcmlhbCxzYW5zLXNlcmlmIiBmb250LXNpemU9IjMwMCIgZm9udC13ZWlnaHQ9IjkwMCIgZmlsbD0iI2ZmZmZmZiI+VzwvdGV4dD48dGV4dCB4PSIyOTYiIHk9IjM3MCIgZm9udC1mYW1pbHk9Ikdlb3JnaWEsc2VyaWYiIGZvbnQtc2l6ZT0iMzEwIiBmb250LXdlaWdodD0iODAwIiBmb250LXN0eWxlPSJpdGFsaWMiIGZpbGw9IiM3REU4RkYiPmE8L3RleHQ+PC9zdmc+" />
+  <link rel="apple-touch-icon" href="apple-touch-icon.png" />
+  <link rel="icon" type="image/png" sizes="192x192" href="icon-192.png" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link href="https://fonts.googleapis.com/css2?family=Nunito+Sans:wght@400;600;700;800;900&family=Playfair+Display:wght@400;700;900&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="wandr.css" />
-  <script>
-    // Inline manifest with embedded icons for standalone PWA install
-    const _manifestData = {
-      name: "Wandr — Planificador de Viajes",
-      short_name: "Wandr",
-      start_url: ".",
-      display: "standalone",
-      background_color: "#0d1f38",
-      theme_color: "#4A7BF7",
-      icons: [
-        { src: "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA1MTIgNTEyIj48cmVjdCB3aWR0aD0iNTEyIiBoZWlnaHQ9IjUxMiIgcng9IjExMiIgZmlsbD0iIzBkMWYzOCIvPjx0ZXh0IHg9IjM2IiB5PSIzNzAiIGZvbnQtZmFtaWx5PSJBcmlhbCBCbGFjayxBcmlhbCxzYW5zLXNlcmlmIiBmb250LXNpemU9IjMwMCIgZm9udC13ZWlnaHQ9IjkwMCIgZmlsbD0iI2ZmZmZmZiI+VzwvdGV4dD48dGV4dCB4PSIyOTYiIHk9IjM3MCIgZm9udC1mYW1pbHk9Ikdlb3JnaWEsc2VyaWYiIGZvbnQtc2l6ZT0iMzEwIiBmb250LXdlaWdodD0iODAwIiBmb250LXN0eWxlPSJpdGFsaWMiIGZpbGw9IiM3REU4RkYiPmE8L3RleHQ+PC9zdmc+", sizes: "512x512", type: "image/svg+xml", purpose: "any maskable" },
-        { src: "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA1MTIgNTEyIj48cmVjdCB3aWR0aD0iNTEyIiBoZWlnaHQ9IjUxMiIgcng9IjExMiIgZmlsbD0iIzBkMWYzOCIvPjx0ZXh0IHg9IjM2IiB5PSIzNzAiIGZvbnQtZmFtaWx5PSJBcmlhbCBCbGFjayxBcmlhbCxzYW5zLXNlcmlmIiBmb250LXNpemU9IjMwMCIgZm9udC13ZWlnaHQ9IjkwMCIgZmlsbD0iI2ZmZmZmZiI+VzwvdGV4dD48dGV4dCB4PSIyOTYiIHk9IjM3MCIgZm9udC1mYW1pbHk9Ikdlb3JnaWEsc2VyaWYiIGZvbnQtc2l6ZT0iMzEwIiBmb250LXdlaWdodD0iODAwIiBmb250LXN0eWxlPSJpdGFsaWMiIGZpbGw9IiM3REU4RkYiPmE8L3RleHQ+PC9zdmc+", sizes: "192x192", type: "image/svg+xml", purpose: "any maskable" }
-      ]
-    };
-    const _blob = new Blob([JSON.stringify(_manifestData)], {type:'application/json'});
-    const _manifestUrl = URL.createObjectURL(_blob);
-    document.querySelector('link[rel="manifest"]').href = _manifestUrl;
-  </script>
 </head>
 <body>
 
@@ -48,6 +30,7 @@
     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
     Nuevo viaje
   </button>
+  <span id="save-indicator" aria-live="polite"></span>
 </div>
 
 <div id="screen-trips" class="screen active">
@@ -61,9 +44,11 @@
   </button>
   <div class="detail-tabs">
     <button class="detail-tab active" id="dtab-itinerary" onclick="switchDetailTab('itinerary')">Itinerario</button>
+    <button class="detail-tab" id="dtab-overview" onclick="switchDetailTab('overview')">🗺️ Resumen</button>
     <button class="detail-tab" id="dtab-tickets" onclick="switchDetailTab('tickets')">🎫 Pasajes</button>
   </div>
   <div id="detail-content"></div>
+  <div id="overview-content" style="display:none"></div>
   <div id="tickets-content" style="display:none"></div>
 </div>
 
@@ -97,7 +82,7 @@
 
     <div class="form-group">
       <label>Nombre del viaje</label>
-      <input type="text" id="trip-name" placeholder="Ej: Europa 2026" />
+      <input type="text" id="trip-name" placeholder="Ej: Europa 2026" maxlength="60" />
     </div>
 
     <div class="form-group">
@@ -144,12 +129,12 @@
     </div>
     <div class="form-group">
       <label>Nombre del lugar</label>
-      <input type="text" id="stop-name" placeholder="Ej: Manneken Pis" />
+      <input type="text" id="stop-name" placeholder="Ej: Manneken Pis" maxlength="80" />
     </div>
     <div class="form-group">
       <label>Dirección <span class="label-optional">opcional</span></label>
       <div class="autocomplete-wrap">
-        <input type="text" id="stop-addr" placeholder="Ej: Rue de l'Étuve 31, Bruselas" autocomplete="off" oninput="addrAutocomplete(this,'stop-addr-list')" onblur="hideList('stop-addr-list')" />
+        <input type="text" id="stop-addr" placeholder="Ej: Rue de l'Étuve 31, Bruselas" autocomplete="off" maxlength="150" oninput="addrAutocomplete(this,'stop-addr-list')" onblur="hideList('stop-addr-list')" />
         <ul class="autocomplete-list" id="stop-addr-list"></ul>
       </div>
     </div>
@@ -168,7 +153,7 @@
     </div>
     <div class="form-group">
       <label>Nota <span class="label-optional">opcional</span></label>
-      <input type="text" id="stop-note" placeholder="Ej: Entrada gratis, reservar con anticipación" />
+      <input type="text" id="stop-note" placeholder="Ej: Entrada gratis, reservar con anticipación" maxlength="200" />
     </div>
     <div class="form-group">
       <label>Cómo llegar (desde parada anterior)</label>
@@ -416,14 +401,14 @@
 
     <div class="form-group">
       <label>Compañía <span class="label-optional">opcional</span></label>
-      <input type="text" id="ticket-company" placeholder="Ej: Ryanair, FlixBus, Renfe, MSC" />
+      <input type="text" id="ticket-company" placeholder="Ej: Ryanair, FlixBus, Renfe, MSC" maxlength="60" />
     </div>
 
     <div class="form-group">
       <label>Origen → Destino</label>
       <div class="date-row">
-        <input type="text" id="ticket-from-city" placeholder="Ciudad de salida" />
-        <input type="text" id="ticket-to-city" placeholder="Ciudad de llegada" />
+        <input type="text" id="ticket-from-city" placeholder="Ciudad de salida" maxlength="60" />
+        <input type="text" id="ticket-to-city" placeholder="Ciudad de llegada" maxlength="60" />
       </div>
     </div>
 
@@ -435,12 +420,12 @@
 
       <div class="form-group" id="ticket-dep-terminal-group">
         <label id="ticket-dep-terminal-label">Terminal</label>
-        <input type="text" id="ticket-dep-terminal" />
+        <input type="text" id="ticket-dep-terminal" maxlength="100" />
       </div>
 
       <div class="form-group" id="ticket-dep-gate-group">
         <label id="ticket-dep-gate-label">Puerta de embarque <span class="label-optional">opcional</span></label>
-        <input type="text" id="ticket-dep-gate" placeholder="Ej: B22" />
+        <input type="text" id="ticket-dep-gate" placeholder="Ej: B22" maxlength="20" />
       </div>
 
       <div class="form-group">
@@ -458,12 +443,12 @@
 
       <div class="form-group" id="ticket-arr-terminal-group">
         <label id="ticket-arr-terminal-label">Terminal</label>
-        <input type="text" id="ticket-arr-terminal" />
+        <input type="text" id="ticket-arr-terminal" maxlength="100" />
       </div>
 
       <div class="form-group" id="ticket-arr-gate-group">
         <label id="ticket-arr-gate-label">Puerta de desembarque <span class="label-optional">opcional</span></label>
-        <input type="text" id="ticket-arr-gate" placeholder="Ej: C14" />
+        <input type="text" id="ticket-arr-gate" placeholder="Ej: C14" maxlength="20" />
       </div>
 
       <div class="form-group">
@@ -594,6 +579,18 @@
     </p>
 
     <button class="btn-primary" onclick="closeModal('modal-info')">Entendido</button>
+  </div>
+</div>
+
+<!-- ══ MODAL: CONFIRMAR ELIMINAR TRAMOS DE TRÁNSITO ══ -->
+<div class="modal-overlay" id="modal-confirm-delete-transit">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <div class="confirm-icon">🗑️</div>
+    <h2 style="text-align:center;margin-bottom:10px">¿Eliminar tramos?</h2>
+    <p style="color:var(--text2);font-size:0.88rem;line-height:1.55;margin-bottom:24px;text-align:center">Se eliminarán los tramos de viaje cargados entre estas ciudades. Esta acción no se puede deshacer.</p>
+    <button class="btn-danger-full" onclick="confirmDeleteTransitLegs()">Sí, eliminar</button>
+    <button class="btn-secondary" onclick="closeModal('modal-confirm-delete-transit')">Cancelar</button>
   </div>
 </div>
 
