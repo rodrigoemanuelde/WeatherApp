@@ -217,7 +217,7 @@
 
     /* ── STOPS ── */
     .stops-list { display: flex; flex-direction: column; gap: 8px; }
-    .stop-item { display: flex; gap: 12px; align-items: flex-start; padding: 14px; background: var(--card); border-radius: 18px; box-shadow: var(--shadow-card); border: 1px solid var(--border); touch-action: none; position: relative; }
+    .stop-item { display: flex; gap: 12px; align-items: flex-start; padding: 14px; background: var(--card); border-radius: 18px; box-shadow: var(--shadow-card); border: 1px solid var(--border); position: relative; }
     .stop-item.dragging { opacity: 0.4; }
     .stop-item.drag-over { border-color: var(--accent); background: rgba(74,123,247,0.05); }
     .drag-handle { display: flex; align-items: center; justify-content: center; width: 22px; flex-shrink: 0; padding-top: 8px; color: var(--border); cursor: grab; touch-action: none; }
@@ -2693,11 +2693,12 @@ function initDragDrop() {
   const list = document.getElementById('stops-list-el');
   if (!list) return;
 
-  let dragEl = null;      // the element being dragged
-  let ghost = null;       // floating clone
+  let dragEl = null;
+  let ghost = null;
   let startY = 0;
-  let offsetY = 0;        // touch offset within the element
+  let offsetY = 0;
   let lastOver = null;
+  let isDragging = false;
 
   function getItems() {
     return Array.from(list.querySelectorAll('.stop-item[data-stopid]'));
@@ -2734,7 +2735,9 @@ function initDragDrop() {
     const item = handle.closest('.stop-item[data-stopid]');
     if (!item) return;
 
+    // Only prevent default scroll when starting drag from handle
     e.preventDefault();
+    isDragging = true;
     dragEl = item;
     const rect = item.getBoundingClientRect();
     startY = getClientY(e);
@@ -2750,22 +2753,20 @@ function initDragDrop() {
   }
 
   function onDragMove(e) {
-    if (!dragEl || !ghost) return;
+    if (!dragEl || !ghost || !isDragging) return;
     e.preventDefault();
 
     const clientY = getClientY(e);
     ghost.style.top = (clientY - offsetY) + 'px';
 
-    // Find which item we're hovering over
     const items = getItems();
     let overEl = null;
     for (const item of items) {
       if (item === dragEl) continue;
       const r = item.getBoundingClientRect();
-      const mid = r.top + r.height / 2;
       if (clientY > r.top && clientY < r.bottom) {
         overEl = item;
-        // Insert before or after based on which half
+        const mid = r.top + r.height / 2;
         if (clientY < mid) {
           list.insertBefore(dragEl, item);
         } else {
@@ -2775,7 +2776,6 @@ function initDragDrop() {
       }
     }
 
-    // Highlight target
     items.forEach(i => i.classList.remove('drag-over'));
     if (overEl) overEl.classList.add('drag-over');
     lastOver = overEl;
@@ -2784,7 +2784,6 @@ function initDragDrop() {
   function onDragEnd() {
     if (!dragEl) return;
 
-    // Commit new order to data
     const items = getItems();
     const trip = trips.find(t => t.id === currentTripId);
     const stopsArr = trip.cities[currentCityIdx].days[currentDayIdx].stops;
@@ -2792,13 +2791,11 @@ function initDragDrop() {
     trip.cities[currentCityIdx].days[currentDayIdx].stops = newOrder;
     save();
 
-    // Cleanup
     dragEl.classList.remove('dragging');
     if (lastOver) lastOver.classList.remove('drag-over');
     if (ghost) { ghost.remove(); ghost = null; }
-    dragEl = null; lastOver = null;
+    dragEl = null; lastOver = null; isDragging = false;
 
-    // Re-render to refresh connectors / transport badges
     renderDetail();
 
     document.removeEventListener('touchmove', onDragMove);
@@ -2807,6 +2804,7 @@ function initDragDrop() {
     document.removeEventListener('mouseup', onDragEnd);
   }
 
+  // passive: true allows normal scrolling — only preventDefault inside onDragStart when handle is touched
   list.addEventListener('touchstart', onDragStart, { passive: false });
   list.addEventListener('mousedown', onDragStart);
 }
