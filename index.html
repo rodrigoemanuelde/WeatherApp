@@ -163,9 +163,9 @@
 
     /* ── DAY TABS — scroll horizontal con indicador visible ── */
     .days-scroll {
-      display: flex; gap: 6px;
+      display: flex; gap: 7px;
       overflow-x: auto; overflow-y: hidden;
-      padding-bottom: 8px; margin-bottom: 10px;
+      padding-bottom: 8px; margin-bottom: 14px;
       scrollbar-width: thin; scrollbar-color: var(--border) transparent;
       -webkit-overflow-scrolling: touch;
       scroll-snap-type: x mandatory;
@@ -174,72 +174,73 @@
     .days-scroll::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.15); border-radius: 2px; }
     .day-tab {
       flex-shrink: 0; background: var(--card); border: 1px solid var(--border);
-      border-radius: 10px; padding: 7px 10px; cursor: pointer; text-align: center;
-      transition: all .2s; min-width: 50px; scroll-snap-align: start;
+      border-radius: 11px; padding: 8px 12px; cursor: pointer; text-align: center;
+      transition: all .2s; min-width: 54px; scroll-snap-align: start;
     }
     .day-tab.active { background: var(--accent); border-color: var(--accent); color: #111; }
-    .day-tab small { display: block; font-size: 0.58rem; text-transform: uppercase; letter-spacing: 0.3px; opacity: 0.75; }
-    .day-tab strong { display: block; font-size: 0.88rem; }
+    .day-tab small { display: block; font-size: 0.6rem; text-transform: uppercase; letter-spacing: 0.4px; opacity: 0.7; }
+    .day-tab strong { display: block; font-size: 0.95rem; margin-top: 2px; }
 
     /* ── HOTEL BANNER ── */
-    .hotel-banner { background: linear-gradient(135deg, rgba(109,158,235,0.12), rgba(109,158,235,0.04)); border: 1px solid rgba(109,158,235,0.25); border-radius: 12px; padding: 11px 13px; margin-bottom: 12px; display: flex; align-items: center; gap: 10px; }
-    .hotel-banner-icon { font-size: 1.3rem; flex-shrink: 0; }
+    .hotel-banner { background: var(--card); border: 1px solid rgba(109,158,235,0.35); border-radius: 14px; padding: 14px 16px; margin-bottom: 16px; display: flex; align-items: center; gap: 13px; }
+    .hotel-banner-icon { width: 42px; height: 42px; border-radius: 11px; background: rgba(109,158,235,0.15); display: flex; align-items: center; justify-content: center; font-size: 1.3rem; flex-shrink: 0; }
     .hotel-banner-info { flex: 1; min-width: 0; }
-    .hotel-banner-info strong { display: block; font-size: 0.9rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-    .hotel-banner-info small { color: var(--text2); font-size: 0.73rem; display: block; margin-top: 2px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-    .btn-edit-hotel { flex-shrink: 0; background: rgba(109,158,235,0.15); border: 1px solid rgba(109,158,235,0.3); color: var(--accent2); border-radius: 8px; padding: 7px; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: background .2s; }
+    .hotel-banner-info strong { display: block; font-size: 0.95rem; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .hotel-banner-info small { color: var(--text2); font-size: 0.74rem; display: block; margin-top: 3px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .btn-edit-hotel { flex-shrink: 0; background: rgba(109,158,235,0.12); border: 1px solid rgba(109,158,235,0.3); color: var(--accent2); border-radius: 9px; padding: 8px; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: background .2s; }
     .btn-edit-hotel:active { background: rgba(109,158,235,0.3); }
-    .hotel-missing-banner { background: rgba(255,255,255,0.03); border: 1px dashed rgba(255,255,255,0.15); border-radius: 12px; padding: 12px 14px; margin-bottom: 12px; display: flex; align-items: center; justify-content: space-between; gap: 10px; cursor: pointer; transition: background .2s; }
+    .hotel-missing-banner { background: rgba(255,255,255,0.03); border: 1px dashed rgba(255,255,255,0.15); border-radius: 14px; padding: 14px 16px; margin-bottom: 16px; display: flex; align-items: center; justify-content: space-between; gap: 10px; cursor: pointer; transition: background .2s; }
     .hotel-missing-banner:active { background: rgba(255,255,255,0.06); }
     .hotel-missing-banner > span:first-child { color: var(--text2); font-size: 0.84rem; }
     .hotel-missing-add { color: var(--accent); font-weight: 600; font-size: 0.8rem; white-space: nowrap; flex-shrink: 0; }
-    .hotel-time-tags { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 5px; }
-    .hotel-time-tag { font-size: 0.72rem; font-weight: 600; border-radius: 20px; padding: 2px 8px; cursor: default; }
+    .hotel-time-tags { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 7px; }
+    .hotel-time-tag { font-size: 0.72rem; font-weight: 600; border-radius: 20px; padding: 3px 9px; cursor: default; }
     .hotel-time-tag.checkin { background: rgba(127,207,184,0.15); color: var(--accent3); }
     .hotel-time-tag.checkout { background: rgba(232,125,125,0.12); color: var(--danger); }
     .hotel-time-tag.checkin-empty { background: rgba(127,207,184,0.07); color: var(--text2); border: 1px dashed rgba(127,207,184,0.3); cursor: pointer; }
     .hotel-time-tag.checkout-empty { background: rgba(232,125,125,0.06); color: var(--text2); border: 1px dashed rgba(232,125,125,0.25); cursor: pointer; }
 
     /* ── DAY INFO BAR ── */
-    .day-info-bar { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 11px 14px; margin-bottom: 12px; display: flex; align-items: center; justify-content: space-between; }
-    .day-info-bar .day-label { font-family: 'Playfair Display', serif; font-size: 0.96rem; }
-    .day-info-bar .day-date { color: var(--text2); font-size: 0.74rem; margin-top: 1px; }
-    .stops-count { font-size: 0.78rem; color: var(--text2); white-space: nowrap; }
+    .day-info-bar { padding: 4px 2px; margin-bottom: 18px; display: flex; align-items: center; justify-content: space-between; }
+    .day-info-bar .day-label { font-family: 'Playfair Display', serif; font-size: 1.15rem; }
+    .day-info-bar .day-date { color: var(--text2); font-size: 0.76rem; margin-top: 2px; }
+    .stops-count { font-size: 0.75rem; color: var(--text2); background: var(--bg3); padding: 4px 10px; border-radius: 10px; white-space: nowrap; }
 
     /* ── STOPS ── */
     .stops-list { display: flex; flex-direction: column; }
-    .stop-item { display: flex; gap: 10px; align-items: flex-start; padding: 9px 0; touch-action: none; }
+    .stop-item { display: flex; gap: 12px; align-items: flex-start; padding: 12px 0; touch-action: none; }
     .stop-item.dragging { opacity: 0.4; }
-    .stop-item.drag-over { background: rgba(232,184,109,0.06); border-radius: 10px; }
-    .drag-handle { display: flex; align-items: center; justify-content: center; width: 22px; flex-shrink: 0; padding-top: 6px; color: var(--border); cursor: grab; touch-action: none; }
+    .stop-item.drag-over { background: rgba(232,184,109,0.06); border-radius: 12px; }
+    .drag-handle { display: flex; align-items: center; justify-content: center; width: 22px; flex-shrink: 0; padding-top: 8px; color: var(--border); cursor: grab; touch-action: none; }
     .drag-handle:active { cursor: grabbing; color: var(--text2); }
     .drag-handle svg { pointer-events: none; }
     .stop-connector { display: flex; flex-direction: column; align-items: center; flex-shrink: 0; padding-top: 4px; }
-    .stop-dot { width: 30px; height: 30px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 0.82rem; flex-shrink: 0; }
-    .stop-dot.hotel { background: rgba(109,158,235,0.2); border: 2px solid var(--accent2); }
-    .stop-dot.attraction { background: rgba(232,184,109,0.2); border: 2px solid var(--accent); }
-    .stop-dot.restaurant { background: rgba(127,207,184,0.2); border: 2px solid var(--accent3); }
-    .stop-line { width: 2px; flex: 1; min-height: 16px; background: var(--border); margin-top: 4px; }
+    .stop-dot { width: 34px; height: 34px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 0.9rem; flex-shrink: 0; }
+    .stop-dot.hotel { background: rgba(109,158,235,0.15); border: 2px solid rgba(109,158,235,0.5); }
+    .stop-dot.attraction { background: rgba(232,184,109,0.15); border: 2px solid rgba(232,184,109,0.5); }
+    .stop-dot.restaurant { background: rgba(127,207,184,0.15); border: 2px solid rgba(127,207,184,0.5); }
+    .stop-line { width: 2px; flex: 1; min-height: 18px; background: var(--border); margin-top: 5px; border-radius: 1px; }
     .stop-last .stop-line { display: none; }
     .stop-body { flex: 1; min-width: 0; padding-bottom: 2px; }
-    .stop-name { font-weight: 600; font-size: 0.91rem; margin-bottom: 2px; word-break: break-word; }
-    .stop-meta { color: var(--text2); font-size: 0.76rem; display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin-top: 2px; }
+    .stop-name { font-weight: 600; font-size: 0.97rem; margin-bottom: 3px; word-break: break-word; }
+    .stop-meta { color: var(--text2); font-size: 0.77rem; display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin-top: 3px; }
     .stop-meta span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 100%; }
-    .transport-badge { display: inline-flex; align-items: center; gap: 3px; padding: 2px 8px; border-radius: 20px; font-size: 0.68rem; font-weight: 600; }
+    .transport-badge { display: inline-flex; align-items: center; gap: 4px; padding: 3px 9px; border-radius: 20px; font-size: 0.7rem; font-weight: 600; }
     .transport-walking { background: rgba(127,207,184,0.15); color: var(--accent3); }
     .transport-transit { background: rgba(109,158,235,0.15); color: var(--accent2); }
     .transport-taxi { background: rgba(232,184,109,0.15); color: var(--accent); }
     .transport-car { background: rgba(200,150,200,0.15); color: #c89edc; }
-    .stop-actions { display: flex; gap: 6px; margin-top: 8px; flex-wrap: wrap; }
-    .btn-maps { display: inline-flex; align-items: center; gap: 4px; padding: 6px 10px; border-radius: 20px; font-size: 0.71rem; font-weight: 600; border: 1px solid var(--border); background: var(--bg3); color: var(--text); cursor: pointer; text-decoration: none; transition: background .2s; white-space: nowrap; }
+    .stop-actions { display: flex; gap: 7px; margin-top: 10px; flex-wrap: wrap; }
+    .btn-maps { display: inline-flex; align-items: center; gap: 4px; padding: 7px 12px; border-radius: 20px; font-size: 0.72rem; font-weight: 600; border: 1px solid var(--border); background: var(--bg3); color: var(--text); cursor: pointer; text-decoration: none; transition: background .2s; white-space: nowrap; }
     .btn-maps:active { background: var(--border); }
-    .btn-delete-stop { background: none; border: none; color: var(--text2); cursor: pointer; padding: 5px; flex-shrink: 0; }
+    .btn-return-chip { background: rgba(127,207,184,0.1) !important; border-color: rgba(127,207,184,0.35) !important; color: var(--accent3) !important; }
+    .btn-delete-stop { background: none; border: none; color: var(--text2); cursor: pointer; padding: 6px; flex-shrink: 0; }
     .btn-delete-stop:active { color: var(--danger); }
 
     /* ── ROUTE ACTIONS ── */
-    .route-actions { margin-top: 16px; display: flex; flex-direction: column; gap: 9px; }
-    .btn-full-route { display: flex; align-items: center; justify-content: center; gap: 7px; padding: 13px 10px; border-radius: 12px; background: rgba(109,158,235,0.1); border: 1px solid rgba(109,158,235,0.3); color: var(--accent2); font-family: 'DM Sans', sans-serif; font-weight: 600; font-size: 0.85rem; text-decoration: none; text-align: center; }
-    .btn-return-hotel { display: flex; align-items: center; justify-content: center; gap: 7px; padding: 13px 10px; border-radius: 12px; background: rgba(127,207,184,0.1); border: 1px solid rgba(127,207,184,0.3); color: var(--accent3); font-family: 'DM Sans', sans-serif; font-weight: 600; font-size: 0.85rem; text-decoration: none; text-align: center; }
+    .route-actions { margin-top: 20px; display: flex; flex-direction: column; gap: 10px; }
+    .btn-full-route { display: flex; align-items: center; justify-content: center; gap: 7px; padding: 14px 10px; border-radius: 14px; background: rgba(109,158,235,0.1); border: 1px solid rgba(109,158,235,0.3); color: var(--accent2); font-family: 'DM Sans', sans-serif; font-weight: 600; font-size: 0.87rem; text-decoration: none; text-align: center; }
+    .btn-return-hotel { display: flex; align-items: center; justify-content: center; gap: 7px; padding: 14px 10px; border-radius: 14px; background: rgba(127,207,184,0.1); border: 1px solid rgba(127,207,184,0.3); color: var(--accent3); font-family: 'DM Sans', sans-serif; font-weight: 600; font-size: 0.87rem; text-decoration: none; text-align: center; }
 
     /* ── FAB ── */
     #btn-add-stop { position: fixed; bottom: 86px; right: 16px; z-index: 90; width: 54px; height: 54px; border-radius: 50%; background: var(--accent); border: none; display: none; align-items: center; justify-content: center; box-shadow: 0 4px 20px rgba(232,184,109,0.4); cursor: pointer; transition: transform .2s; font-size: 1.5rem; color: #111; line-height: 1; }
@@ -1716,10 +1717,10 @@ function renderDetail() {
 
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
         <div class="section-label">Destino</div>
-        <button class="btn-add-city-inline" onclick="openAddCityModal()" title="Agregar ciudad">
+        ${!gapBanner ? `<button class="btn-add-city-inline" onclick="openAddCityModal()" title="Agregar ciudad o excursión">
           <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
           Ciudad
-        </button>
+        </button>` : ''}
       </div>
       <div class="city-selector">${cityTabs}</div>
 
