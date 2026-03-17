@@ -1177,7 +1177,8 @@ function buildCombinations(tickets, trip) {
       const arrCity = (current.toCity || '').trim().toLowerCase();
       const arrDT   = current.arrDate ? (current.arrDate + 'T' + (current.arrTime || '00:00')) : null;
 
-      // If the arrival city is a stay-city, stop the chain here — it's a destination, not a layover
+      // If the arrival city of the current ticket is a stay-city, stop —
+      // the traveller is staying there, so any departing ticket is a new independent trip.
       if (stayCities.has(arrCity)) break;
 
       const next = sorted.find(t => {
