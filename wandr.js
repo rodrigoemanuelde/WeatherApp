@@ -751,19 +751,50 @@ function renderDetail() {
       const segs = dayTickets.map(tk => {
         const icon = ticketTypeIcon(tk.type);
         const isDep = tk.depDate === day.date;
-        const timeStr = isDep ? tk.depTime : tk.arrTime;
-        const termStr = isDep ? (tk.depTerminal || tk.fromTerminal) : (tk.arrTerminal || tk.toTerminal);
-        const gateStr = isDep ? tk.depGate : tk.arrGate;
-        const label = isDep
-          ? `Salida hacia ${esc(tk.toCity)}${timeStr ? ' · ' + timeStr : ''}${termStr ? ' · ' + esc(termStr) : ''}${gateStr ? ' · Puerta ' + esc(gateStr) : ''}`
-          : `Llegada desde ${esc(tk.fromCity)}${timeStr ? ' · ' + timeStr : ''}${termStr ? ' · ' + esc(termStr) : ''}${gateStr ? ' · Puerta ' + esc(gateStr) : ''}`;
-        const detail = `${esc(tk.company || '')}${tk.company && tk.fromCity ? ' · ' : ''}${isDep ? esc(tk.fromCity) : esc(tk.toCity)}`;
+        const isArr = tk.arrDate === day.date;
+        const termDep = tk.depTerminal || tk.fromTerminal || '';
+        const termArr = tk.arrTerminal || tk.toTerminal || '';
+        const gateDep = tk.depGate || '';
+        const gateArr = tk.arrGate || '';
+
+        // Route label: always show origin → destination
+        const routeLabel = `${esc(tk.fromCity)} → ${esc(tk.toCity)}`;
+        const companyLabel = tk.company ? `<span class="transit-seg-company">${esc(tk.company)}</span>` : '';
+
+        // Times row — show dep and arr with their context
+        let timesHtml = '';
+        if (tk.depTime || tk.arrTime) {
+          const depBlock = `<div class="transit-time-block">
+            <span class="transit-time-label">Salida</span>
+            <span class="transit-time-value">${tk.depTime || '–'}</span>
+            ${termDep ? `<span class="transit-time-sub">${esc(termDep)}${gateDep ? ' · ' + esc(gateDep) : ''}</span>` : ''}
+          </div>`;
+          const arrBlock = `<div class="transit-time-block transit-time-block-right">
+            <span class="transit-time-label">Llegada</span>
+            <span class="transit-time-value">${tk.arrTime || '–'}</span>
+            ${termArr ? `<span class="transit-time-sub">${esc(termArr)}${gateArr ? ' · ' + esc(gateArr) : ''}</span>` : ''}
+          </div>`;
+          timesHtml = `<div class="transit-times-row">${depBlock}<div class="transit-times-arrow">${icon}</div>${arrBlock}</div>`;
+        }
+
+        // Context badge — is this a departure day, arrival day, or both?
+        let badgeHtml = '';
+        if (isDep && isArr) {
+          badgeHtml = `<span class="transit-badge transit-badge-both">Salida y llegada</span>`;
+        } else if (isDep) {
+          badgeHtml = `<span class="transit-badge transit-badge-dep">Día de salida</span>`;
+        } else {
+          badgeHtml = `<span class="transit-badge transit-badge-arr">Día de llegada</span>`;
+        }
+
         return `<div class="transit-segment">
-          <div class="transit-seg-icon">${icon}</div>
-          <div class="transit-seg-info">
-            <div class="transit-seg-route">${label}</div>
-            ${detail ? `<div class="transit-seg-detail">${detail}</div>` : ''}
+          <div class="transit-seg-header">
+            <div class="transit-seg-icon">${icon}</div>
+            <div class="transit-seg-route">${routeLabel}</div>
+            ${badgeHtml}
           </div>
+          ${companyLabel}
+          ${timesHtml}
         </div>`;
       }).join('');
       transitBannerHtml = `<div class="transit-banner">
