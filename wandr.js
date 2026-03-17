@@ -724,14 +724,18 @@ function renderDetail() {
       if (arrDate >= city.startDate && arrDate <= city.endDate) transitDaysSet.add(arrDate);
     });
 
-    const cityTabs = trip.cities.map((ci, i) =>
-      `<div class="city-tab ${i === currentCityIdx ? 'active' : ''} ${ci.dayTrip ? 'daytrip' : ''}" onclick="switchCity(${i})">
+    const cityTabs = trip.cities.map((ci, i) => {
+      const nightCount = ci.dayTrip ? 0
+        : Math.round((new Date(ci.endDate + 'T00:00:00') - new Date(ci.startDate + 'T00:00:00')) / 86400000);
+      const nightsLabel = ci.dayTrip ? 'excursión' : `${nightCount} noche${nightCount !== 1 ? 's' : ''}`;
+      return `<div class="city-tab ${i === currentCityIdx ? 'active' : ''} ${ci.dayTrip ? 'daytrip' : ''}" onclick="switchCity(${i})">
         <span class="city-tab-name">${ci.dayTrip ? '🗺️ ' : ''}${esc(ci.name)}</span>
+        <span class="city-tab-nights">${nightsLabel}</span>
         ${trip.cities.length > 1 ? `<button class="city-tab-del" onclick="event.stopPropagation();deleteCity('${ci.id}')" title="Eliminar">
           <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
         </button>` : ''}
-      </div>`
-    ).join('');
+      </div>`;
+    }).join('');
 
     const dayTabs = city.days.map((d, i) => {
       const isTransit = transitDaysSet.has(d.date);
