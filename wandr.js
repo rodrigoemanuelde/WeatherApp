@@ -1148,9 +1148,17 @@ function ticketIsComplete(tk) {
 }
 
 // Auto-detect combinations: tickets where arrCity of one matches depCity of next,
-// within a reasonable layover window (arrival <= departure, same or next day).
-function buildCombinations(tickets) {
+// AND the intermediate city is not a stay-city in the trip (i.e. it's a layover, not a destination).
+function buildCombinations(tickets, trip) {
   if (!tickets.length) return [];
+
+  // Build set of stay-city names (lowercase) from the trip — these break chains
+  const stayCities = new Set(
+    (trip?.cities || [])
+      .filter(ci => !ci.dayTrip)
+      .map(ci => (ci.name || '').trim().toLowerCase())
+  );
+
   const sorted = [...tickets].sort((a, b) =>
     (a.depDate + (a.depTime||'00:00')).localeCompare(b.depDate + (b.depTime||'00:00'))
   );
@@ -1160,27 +1168,28 @@ function buildCombinations(tickets) {
 
   sorted.forEach(tk => {
     if (used.has(tk.id)) return;
-    // Try to build a chain starting from this ticket
     const chain = [tk];
     used.add(tk.id);
     let current = tk;
 
-    // Look for a ticket whose depCity matches current arrCity and departs after current arrives
     let safeGuard = 0;
     while (safeGuard++ < 10) {
       const arrCity = (current.toCity || '').trim().toLowerCase();
       const arrDT   = current.arrDate ? (current.arrDate + 'T' + (current.arrTime || '00:00')) : null;
+
+      // If the arrival city is a stay-city, stop the chain here — it's a destination, not a layover
+      if (stayCities.has(arrCity)) break;
+
       const next = sorted.find(t => {
         if (used.has(t.id)) return false;
         const depCity = (t.fromCity || '').trim().toLowerCase();
         if (depCity !== arrCity || !arrCity) return false;
-        // Departs after current arrives (allow same minute — back-to-back)
         if (arrDT && t.depDate) {
           const depDT = t.depDate + 'T' + (t.depTime || '00:00');
           if (depDT < arrDT) return false;
-          // Reject if layover > 48h (probably unrelated tickets)
+          // Reject if layover > 24h even for non-stay cities
           const diff = new Date(depDT) - new Date(arrDT);
-          if (diff > 48 * 3600000) return false;
+          if (diff > 24 * 3600000) return false;
         }
         return true;
       });
@@ -1220,7 +1229,7 @@ function renderTickets() {
       <small>Agregá al menos dos ciudades al viaje</small>
     </div>`;
   } else {
-    const groups = buildCombinations(tickets);
+    const groups = buildCombinations(tickets, trip);
     html += `<div class="tickets-list">`;
 
     groups.forEach(group => {
