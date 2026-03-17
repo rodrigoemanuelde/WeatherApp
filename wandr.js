@@ -1352,7 +1352,8 @@ function openEditTicketModal(ticketId) {
   document.getElementById('ticket-arr-date').value = tk.arrDate || '';
   document.getElementById('ticket-dep-time').value = tk.depTime || '';
   document.getElementById('ticket-arr-time').value = tk.arrTime || '';
-  updateTicketFields(selectedTicketType);  openModal('modal-ticket');
+  updateTicketFields(selectedTicketType);
+  openModal('modal-ticket');
 }
 
 function selectTicketType(el, type) {
