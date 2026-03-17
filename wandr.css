@@ -138,9 +138,9 @@
       display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 0;
     }
     .city-tab {
-      flex: 1 1 0; min-width: 0;
+      flex: 0 1 auto;
       background: var(--bg2); border: 1.5px solid var(--border);
-      border-radius: 13px; padding: 9px 10px 8px;
+      border-radius: 13px; padding: 9px 12px 8px;
       cursor: pointer; text-align: center;
       transition: all .18s;
       display: inline-flex; flex-direction: column; align-items: center; gap: 2px;
@@ -150,17 +150,12 @@
       background: var(--accent); border-color: var(--accent);
       color: #fff; box-shadow: 0 3px 12px rgba(74,123,247,0.4);
     }
-    .city-tab.has-transit::after {
-      content: ''; position: absolute; top: 6px; right: 6px;
-      width: 6px; height: 6px; border-radius: 50%; background: var(--accent3);
-    }
-    .city-tab.active.has-transit::after { background: rgba(255,255,255,0.8); }
     .city-tab.daytrip { border-color: rgba(34,176,125,0.4); }
     .city-tab.daytrip.active { background: var(--accent2); border-color: var(--accent2); color: #fff; }
     html.light .city-tab.daytrip.active { color: #fff; }
     .city-tab-name {
       font-size: 0.88rem; font-weight: 900; letter-spacing: -0.2px; line-height: 1;
-      overflow: hidden; text-overflow: ellipsis; white-space: nowrap; width: 100%;
+      white-space: nowrap;
     }
     .city-tab-nights { font-size: 0.6rem; font-weight: 700; color: var(--text2); }
     .city-tab.active .city-tab-nights { color: rgba(255,255,255,0.65); }
