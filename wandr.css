@@ -112,7 +112,7 @@
 
     /* ── CITIES IN NEW-TRIP MODAL ── */
     .cities-section-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; margin-top: 18px; }
-    .section-label { font-size: 0.7rem; text-transform: uppercase; letter-spacing: 1.5px; color: var(--text2); font-weight: 600; }
+    .section-label { font-size: 0.7rem; text-transform: uppercase; letter-spacing: 1.5px; color: var(--text2); font-weight: 600; margin-top: 20px; }
     .btn-add-city { background: rgba(232,184,109,0.15); border: 1px solid rgba(232,184,109,0.3); color: var(--accent); border-radius: 20px; padding: 6px 14px; font-size: 0.78rem; font-weight: 600; cursor: pointer; font-family: 'Nunito Sans', sans-serif; }
     .city-entry { background: var(--bg3); border: 1px solid var(--border); border-radius: 12px; padding: 12px; margin-bottom: 10px; }
     .city-entry-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
@@ -133,7 +133,7 @@
     .btn-edit-trip-dates:active { background: rgba(255,255,255,0.1); }
 
     /* ── CITY SELECTOR — responsive, wrap, ancho igual por fila ── */
-    .city-selector-wrap { margin-bottom: 10px; }
+    .city-selector-wrap { margin-bottom: 18px; }
     .city-selector {
       display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 0;
     }
@@ -194,14 +194,14 @@
     .day-tab strong { display: block; font-size: 0.95rem; margin-top: 2px; font-weight: 800; }
 
     /* ── HOTEL BANNER ── */
-    .hotel-banner { background: var(--accent); border: none; border-radius: 18px; padding: 14px 16px; margin-bottom: 16px; display: flex; align-items: center; gap: 13px; box-shadow: 0 4px 16px rgba(74,123,247,0.35); }
+    .hotel-banner { background: var(--accent); border: none; border-radius: 18px; padding: 14px 16px; margin-top: 6px; margin-bottom: 16px; display: flex; align-items: center; gap: 13px; box-shadow: 0 4px 16px rgba(74,123,247,0.35); }
     .hotel-banner-icon { width: 42px; height: 42px; border-radius: 11px; background: rgba(255,255,255,0.2); display: flex; align-items: center; justify-content: center; font-size: 1.3rem; flex-shrink: 0; }
     .hotel-banner-info { flex: 1; min-width: 0; }
     .hotel-banner-info strong { display: block; font-size: 0.95rem; font-weight: 800; color: #fff; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     .hotel-banner-info small { color: rgba(255,255,255,0.7); font-size: 0.74rem; font-weight: 600; display: block; margin-top: 3px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     .btn-edit-hotel { flex-shrink: 0; background: rgba(255,255,255,0.2); border: none; color: #fff; border-radius: 9px; padding: 8px; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: background .2s; }
     .btn-edit-hotel:active { background: rgba(255,255,255,0.35); }
-    .hotel-missing-banner { background: var(--card); border: 1.5px dashed rgba(74,123,247,0.3); border-radius: 18px; padding: 14px 16px; margin-bottom: 16px; display: flex; align-items: center; justify-content: space-between; gap: 10px; cursor: pointer; transition: background .2s; box-shadow: var(--shadow-card); }
+    .hotel-missing-banner { background: var(--card); border: 1.5px dashed rgba(74,123,247,0.3); border-radius: 18px; padding: 14px 16px; margin-top: 6px; margin-bottom: 16px; display: flex; align-items: center; justify-content: space-between; gap: 10px; cursor: pointer; transition: background .2s; box-shadow: var(--shadow-card); }
     .hotel-missing-banner:active { opacity: 0.8; }
     .hotel-missing-banner > span:first-child { color: var(--text2); font-size: 0.84rem; font-weight: 600; }
     .hotel-missing-add { color: var(--accent); font-weight: 800; font-size: 0.8rem; white-space: nowrap; flex-shrink: 0; }
