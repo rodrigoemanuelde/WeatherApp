@@ -132,31 +132,17 @@
     .btn-edit-trip-dates { flex-shrink: 0; background: rgba(255,255,255,0.05); border: 1px solid var(--border); color: var(--text2); border-radius: 8px; padding: 7px; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: background .2s; margin-top: 2px; }
     .btn-edit-trip-dates:active { background: rgba(255,255,255,0.1); }
 
-    /* ── CITY SELECTOR — scroll horizontal, ancho natural ── */
-    .city-selector-wrap {
-      position: relative; margin-bottom: 10px;
-    }
-    .city-selector-wrap::after {
-      content: ''; position: absolute; top: 0; right: 0; bottom: 8px;
-      width: 44px; pointer-events: none;
-      background: linear-gradient(to right, transparent, var(--bg));
-    }
-    html.light .city-selector-wrap::after { background: linear-gradient(to right, transparent, var(--bg)); }
+    /* ── CITY SELECTOR — responsive, wrap, ancho igual por fila ── */
+    .city-selector-wrap { margin-bottom: 10px; }
     .city-selector {
-      display: flex; gap: 6px;
-      overflow-x: auto; overflow-y: hidden;
-      padding: 4px 2px 8px; margin-bottom: 0;
-      scrollbar-width: none; -webkit-overflow-scrolling: touch;
-      scroll-snap-type: x mandatory;
+      display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 0;
     }
-    .city-selector::-webkit-scrollbar { display: none; }
     .city-tab {
-      flex-shrink: 0;
+      flex: 1 1 0; min-width: 0;
       background: var(--bg2); border: 1.5px solid var(--border);
-      border-radius: 13px; padding: 9px 14px 8px;
+      border-radius: 13px; padding: 9px 10px 8px;
       cursor: pointer; text-align: center;
-      transition: all .18s; white-space: nowrap;
-      scroll-snap-align: start;
+      transition: all .18s;
       display: inline-flex; flex-direction: column; align-items: center; gap: 2px;
       position: relative;
     }
@@ -172,7 +158,10 @@
     .city-tab.daytrip { border-color: rgba(34,176,125,0.4); }
     .city-tab.daytrip.active { background: var(--accent2); border-color: var(--accent2); color: #fff; }
     html.light .city-tab.daytrip.active { color: #fff; }
-    .city-tab-name { font-size: 0.88rem; font-weight: 900; letter-spacing: -0.2px; line-height: 1; }
+    .city-tab-name {
+      font-size: 0.88rem; font-weight: 900; letter-spacing: -0.2px; line-height: 1;
+      overflow: hidden; text-overflow: ellipsis; white-space: nowrap; width: 100%;
+    }
     .city-tab-nights { font-size: 0.6rem; font-weight: 700; color: var(--text2); }
     .city-tab.active .city-tab-nights { color: rgba(255,255,255,0.65); }
     .city-tab-del { flex-shrink: 0; background: rgba(0,0,0,0.15); border: none; border-radius: 50%; width: 16px; height: 16px; display: flex; align-items: center; justify-content: center; cursor: pointer; color: inherit; opacity: 0.7; padding: 0; transition: opacity .15s, background .15s; margin-top: 2px; }
