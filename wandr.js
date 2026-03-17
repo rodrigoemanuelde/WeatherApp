@@ -807,15 +807,18 @@ function renderOverview() {
     }
 
     html += `
-    <div class="ov-city-card">
+    <div class="ov-city-card" onclick="this.classList.toggle('ov-city-open')">
       <div class="ov-city-head">
         <div class="ov-city-dot" style="background:${color}"></div>
         <div class="ov-city-nm">${esc(city.name)}</div>
         <div class="ov-nights-badge">${nightCount} noche${nightCount !== 1 ? 's' : ''}</div>
+        <span class="ov-city-chevron">▼</span>
       </div>
-      <div class="ov-daterange">${formatDate(city.startDate)} → ${formatDate(city.endDate)}</div>
-      <div class="ov-day-strip">${dayChips}</div>
-      ${hotelHtml}
+      <div class="ov-city-dates">${formatDate(city.startDate)} → ${formatDate(city.endDate)}</div>
+      <div class="ov-city-details">
+        <div class="ov-day-strip">${dayChips}</div>
+        ${hotelHtml}
+      </div>
     </div>`;
 
     // Transit connector to next city
@@ -1559,7 +1562,7 @@ function openEditTicketModal(ticketId) {
   if (!tk) return;
   editingTicketId = ticketId;
   document.getElementById('ticket-modal-title').textContent = '🎫 Editar pasaje';
-  selectedTicketType = tk.type || null;
+  selectedTicketType = tk.type || 'flight';
   document.querySelectorAll('#ticket-type-grid .transport-option').forEach(el =>
     el.classList.toggle('selected', el.dataset.ttype === selectedTicketType)
   );

@@ -522,12 +522,17 @@
 .ov-stat-l { font-size: 0.53rem; color: var(--text2); font-weight: 700; text-transform: uppercase; letter-spacing: 0.3px; margin-top: 3px; }
 
 /* city card */
-.ov-city-card { background: var(--card); border: 1px solid var(--border); border-radius: 14px; overflow: hidden; margin-bottom: 5px; }
+.ov-city-card { background: var(--card); border: 1px solid var(--border); border-radius: 14px; overflow: hidden; margin-bottom: 5px; cursor: pointer; }
+.ov-city-card:active { background: var(--bg2); }
 .ov-city-head { display: flex; align-items: center; gap: 8px; padding: 9px 12px 4px; }
 .ov-city-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
 .ov-city-nm { font-weight: 800; font-size: 0.82rem; flex: 1; }
 .ov-nights-badge { font-size: 0.57rem; font-weight: 700; color: var(--text2); background: var(--bg2); border: 1px solid var(--border); border-radius: 20px; padding: 2px 7px; white-space: nowrap; }
-.ov-daterange { font-size: 0.6rem; color: var(--text2); font-weight: 600; padding: 0 12px 7px 28px; }
+.ov-city-chevron { font-size: 0.6rem; color: var(--text2); transition: transform .2s; margin-left: auto; }
+.ov-city-card.ov-city-open .ov-city-chevron { transform: rotate(180deg); }
+.ov-city-dates { font-size: 0.6rem; color: var(--text2); font-weight: 600; padding: 0 12px 7px 28px; }
+.ov-city-details { display: none; border-top: 1px solid var(--border); }
+.ov-city-card.ov-city-open .ov-city-details { display: block; }
 
 /* day strip */
 .ov-day-strip { display: flex; padding: 5px 8px 8px; gap: 4px; overflow-x: auto; scrollbar-width: none; border-top: 1px solid var(--border); }

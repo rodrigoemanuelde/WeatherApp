@@ -22,5 +22,43 @@
     }
   ],
   "categories": ["travel", "productivity"],
-  "lang": "es"
+  "lang": "es",
+  "shortcuts": [
+    {
+      "name": "Nuevo Viaje",
+      "short_name": "Nuevo",
+      "description": "Crear un nuevo viaje",
+      "url": "./index.html?action=new-trip",
+      "icons": [
+        {
+          "src": "icon-192.png",
+          "sizes": "192x192"
+        }
+      ]
+    },
+    {
+      "name": "Mis Viajes",
+      "short_name": "Viajes",
+      "description": "Ver todos mis viajes",
+      "url": "./index.html?action=trips",
+      "icons": [
+        {
+          "src": "icon-192.png",
+          "sizes": "192x192"
+        }
+      ]
+    },
+    {
+      "name": "Respaldo",
+      "short_name": "Respaldo",
+      "description": "Exportar o importar viajes",
+      "url": "./index.html?action=backup",
+      "icons": [
+        {
+          "src": "icon-192.png",
+          "sizes": "192x192"
+        }
+      ]
+    }
+  ]
 }
