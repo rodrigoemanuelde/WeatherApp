@@ -1,4 +1,4 @@
-const CACHE = 'wandr-v6';
+const CACHE = 'wandr-v7';
 const ASSETS = ['./index.html', './wandr.css', './wandr.js', './manifest.json', './icon-192.png', './icon-512.png'];
 
 // Assets that should always try network first so updates are picked up automatically

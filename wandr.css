@@ -9,12 +9,12 @@
       --radius: 18px;
     }
     html.light {
-      --bg: #F2F4F8; --bg2: #ffffff; --bg3: #e8effe; --card: #ffffff;
-      --border: rgba(74,123,247,0.1);
+      --bg: #E8ECF2; --bg2: #F4F6FA; --bg3: #e8effe; --card: #ffffff;
+      --border: rgba(74,123,247,0.18);
       --accent: #4A7BF7; --accent2: #22b07d; --accent3: #e07a20;
-      --text: #1a2540; --text2: #8090a8; --danger: #e03a3a;
-      --shadow: 0 2px 12px rgba(74,123,247,0.08);
-      --shadow-card: 0 1px 8px rgba(74,123,247,0.07);
+      --text: #1a2540; --text2: #6a7a95; --danger: #e03a3a;
+      --shadow: 0 2px 12px rgba(74,123,247,0.1);
+      --shadow-card: 0 1px 6px rgba(74,123,247,0.1);
     }
     * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
     html { font-size: 16px; }
@@ -133,10 +133,19 @@
     .btn-edit-trip-dates:active { background: rgba(255,255,255,0.1); }
 
     /* ── CITY SELECTOR — scroll horizontal, ancho natural ── */
+    .city-selector-wrap {
+      position: relative; margin-bottom: 10px;
+    }
+    .city-selector-wrap::after {
+      content: ''; position: absolute; top: 0; right: 0; bottom: 8px;
+      width: 44px; pointer-events: none;
+      background: linear-gradient(to right, transparent, var(--bg));
+    }
+    html.light .city-selector-wrap::after { background: linear-gradient(to right, transparent, var(--bg)); }
     .city-selector {
       display: flex; gap: 6px;
       overflow-x: auto; overflow-y: hidden;
-      padding: 4px 2px 8px; margin-bottom: 10px;
+      padding: 4px 2px 8px; margin-bottom: 0;
       scrollbar-width: none; -webkit-overflow-scrolling: touch;
       scroll-snap-type: x mandatory;
     }
@@ -149,11 +158,17 @@
       transition: all .18s; white-space: nowrap;
       scroll-snap-align: start;
       display: inline-flex; flex-direction: column; align-items: center; gap: 2px;
+      position: relative;
     }
     .city-tab.active {
       background: var(--accent); border-color: var(--accent);
       color: #fff; box-shadow: 0 3px 12px rgba(74,123,247,0.4);
     }
+    .city-tab.has-transit::after {
+      content: ''; position: absolute; top: 6px; right: 6px;
+      width: 6px; height: 6px; border-radius: 50%; background: var(--accent3);
+    }
+    .city-tab.active.has-transit::after { background: rgba(255,255,255,0.8); }
     .city-tab.daytrip { border-color: rgba(34,176,125,0.4); }
     .city-tab.daytrip.active { background: var(--accent2); border-color: var(--accent2); color: #fff; }
     html.light .city-tab.daytrip.active { color: #fff; }

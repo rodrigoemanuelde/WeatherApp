@@ -728,7 +728,14 @@ function renderDetail() {
       const nightCount = ci.dayTrip ? 0
         : Math.round((new Date(ci.endDate + 'T00:00:00') - new Date(ci.startDate + 'T00:00:00')) / 86400000);
       const nightsLabel = ci.dayTrip ? 'excursión' : `${nightCount} noche${nightCount !== 1 ? 's' : ''}`;
-      return `<div class="city-tab ${i === currentCityIdx ? 'active' : ''} ${ci.dayTrip ? 'daytrip' : ''}" onclick="switchCity(${i})">
+      // Check if this city has any transit days
+      const ciTransitDates = new Set();
+      (trip.tickets || []).forEach(tk => {
+        if (tk.depDate >= ci.startDate && tk.depDate <= ci.endDate) ciTransitDates.add(tk.depDate);
+        if (tk.arrDate >= ci.startDate && tk.arrDate <= ci.endDate) ciTransitDates.add(tk.arrDate);
+      });
+      const hasTransit = ciTransitDates.size > 0;
+      return `<div class="city-tab ${i === currentCityIdx ? 'active' : ''} ${ci.dayTrip ? 'daytrip' : ''} ${hasTransit ? 'has-transit' : ''}" onclick="switchCity(${i})">
         <span class="city-tab-name">${ci.dayTrip ? '🗺️ ' : ''}${esc(ci.name)}</span>
         <span class="city-tab-nights">${nightsLabel}</span>
         ${trip.cities.length > 1 ? `<button class="city-tab-del" onclick="event.stopPropagation();deleteCity('${ci.id}')" title="Eliminar">
@@ -989,7 +996,7 @@ function renderDetail() {
           Ciudad
         </button>` : ''}
       </div>
-      <div class="city-selector">${cityTabs}</div>
+      <div class="city-selector-wrap"><div class="city-selector">${cityTabs}</div></div>
 
       ${city.dayTrip ? `<div class="daytrip-banner">
         <div class="daytrip-banner-icon">🗺️</div>
