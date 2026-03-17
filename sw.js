@@ -1,4 +1,4 @@
-const CACHE = 'wandr-v11';
+const CACHE = 'wandr-v13';
 const ASSETS = ['./index.html', './wandr.css', './wandr.js', './manifest.json', './icon-192.png', './icon-512.png'];
 
 const NETWORK_FIRST = ['/index.html', '/wandr.js', '/wandr.css'];

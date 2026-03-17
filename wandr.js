@@ -728,14 +728,7 @@ function renderDetail() {
       const nightCount = ci.dayTrip ? 0
         : Math.round((new Date(ci.endDate + 'T00:00:00') - new Date(ci.startDate + 'T00:00:00')) / 86400000);
       const nightsLabel = ci.dayTrip ? 'excursión' : `${nightCount} noche${nightCount !== 1 ? 's' : ''}`;
-      // Check if this city has any transit days
-      const ciTransitDates = new Set();
-      (trip.tickets || []).forEach(tk => {
-        if (tk.depDate >= ci.startDate && tk.depDate <= ci.endDate) ciTransitDates.add(tk.depDate);
-        if (tk.arrDate >= ci.startDate && tk.arrDate <= ci.endDate) ciTransitDates.add(tk.arrDate);
-      });
-      const hasTransit = ciTransitDates.size > 0;
-      return `<div class="city-tab ${i === currentCityIdx ? 'active' : ''} ${ci.dayTrip ? 'daytrip' : ''} ${hasTransit ? 'has-transit' : ''}" onclick="switchCity(${i})">
+      return `<div class="city-tab ${i === currentCityIdx ? 'active' : ''} ${ci.dayTrip ? 'daytrip' : ''}" onclick="switchCity(${i})">
         <span class="city-tab-name">${ci.dayTrip ? '🗺️ ' : ''}${esc(ci.name)}</span>
         <span class="city-tab-nights">${nightsLabel}</span>
         ${trip.cities.length > 1 ? `<button class="city-tab-del" onclick="event.stopPropagation();deleteCity('${ci.id}')" title="Eliminar">
@@ -998,45 +991,52 @@ function renderDetail() {
       </div>
       <div class="city-selector-wrap"><div class="city-selector">${cityTabs}</div></div>
 
-      ${city.dayTrip ? `<div class="daytrip-banner">
-        <div class="daytrip-banner-icon">🗺️</div>
-        <div class="daytrip-banner-info">
-          <strong>Excursión de día · ${esc(city.name)}</strong>
-          <small>${formatDate(city.startDate)}${city.dayTripTransport ? ' · ' + transportIcon(city.dayTripTransport) + ' ' + transportLabel(city.dayTripTransport) : ''}${city.dayTripDepartTime ? ' · Salida ' + city.dayTripDepartTime : ''}${city.dayTripReturnTime ? ' · Regreso ' + city.dayTripReturnTime : ''}</small>
-        </div>
-      </div>` : city.hotelName ? `<div class="hotel-banner">
-        <div class="hotel-banner-icon">🏨</div>
-        <div class="hotel-banner-info">
-          <strong>${esc(city.hotelName)}</strong>
-          <small>${city.hotelAddr ? esc(city.hotelAddr) + ' · ' : ''}${formatDate(city.startDate)} → ${formatDate(city.endDate)}</small>
-          ${(() => {
-            const isFirstDay = day.date === city.startDate;
-            const isLastDay  = day.date === city.endDate;
-            const tags = [];
-            if (isFirstDay && city.checkInTime)  tags.push(`<span class="hotel-time-tag checkin">✅ Check-in ${city.checkInTime}</span>`);
-            if (isFirstDay && !city.checkInTime) tags.push(`<span class="hotel-time-tag checkin-empty" onclick="openEditHotelModal()">✅ Agregar check-in</span>`);
-            if (isLastDay  && city.checkOutTime) tags.push(`<span class="hotel-time-tag checkout">🚪 Check-out ${city.checkOutTime}</span>`);
-            if (isLastDay  && !city.checkOutTime) tags.push(`<span class="hotel-time-tag checkout-empty" onclick="openEditHotelModal()">🚪 Agregar check-out</span>`);
-            return tags.length ? `<div class="hotel-time-tags">${tags.join('')}</div>` : '';
-          })()}
-        </div>
-        <div style="display:flex;gap:6px;flex-shrink:0">
+      ${(() => {
+        if (city.dayTrip) {
+          return `<div class="daytrip-banner">
+            <div class="daytrip-banner-icon">🗺️</div>
+            <div class="daytrip-banner-info">
+              <strong>Excursión de día · ${esc(city.name)}</strong>
+              <small>${formatDate(city.startDate)}${city.dayTripTransport ? ' · ' + transportIcon(city.dayTripTransport) + ' ' + transportLabel(city.dayTripTransport) : ''}${city.dayTripDepartTime ? ' · Salida ' + city.dayTripDepartTime : ''}${city.dayTripReturnTime ? ' · Regreso ' + city.dayTripReturnTime : ''}</small>
+            </div>
+          </div>`;
+        }
+        const isFirstDay = day.date === city.startDate;
+        const isLastDay  = day.date === city.endDate;
+        const hotelLabel = `<div class="section-label" style="margin-bottom:8px">Hotel</div>`;
+        if (city.hotelName) {
+          const tags = [];
+          if (isFirstDay && city.checkInTime)   tags.push(`<span class="hotel-time-tag checkin">✅ Check-in ${city.checkInTime}</span>`);
+          if (isFirstDay && !city.checkInTime)  tags.push(`<span class="hotel-time-tag checkin-empty" onclick="openEditHotelModal()">✅ Agregar check-in</span>`);
+          if (isLastDay  && city.checkOutTime)  tags.push(`<span class="hotel-time-tag checkout">🚪 Check-out ${city.checkOutTime}</span>`);
+          if (isLastDay  && !city.checkOutTime) tags.push(`<span class="hotel-time-tag checkout-empty" onclick="openEditHotelModal()">🚪 Agregar check-out</span>`);
+          return hotelLabel + `<div class="hotel-banner">
+            <div class="hotel-banner-icon">🏨</div>
+            <div class="hotel-banner-info">
+              <strong>${esc(city.hotelName)}</strong>
+              <small>${city.hotelAddr ? esc(city.hotelAddr) + ' · ' : ''}${formatDate(city.startDate)} → ${formatDate(city.endDate)}</small>
+              ${tags.length ? `<div class="hotel-time-tags">${tags.join('')}</div>` : ''}
+            </div>
+            <div style="display:flex;gap:6px;flex-shrink:0">
+              <button class="btn-edit-hotel" onclick="openEditCityDatesModal()" title="Editar fechas de ${esc(city.name)}">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+              </button>
+              <button class="btn-edit-hotel" onclick="openEditHotelModal()" title="Editar hotel">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+              </button>
+            </div>
+          </div>`;
+        }
+        return hotelLabel + `<div class="hotel-missing-banner">
+          <div style="display:flex;align-items:center;gap:8px;flex:1" onclick="openEditHotelModal()">
+            <span>🏨 Sin hotel · ${formatDate(city.startDate)} → ${formatDate(city.endDate)}</span>
+            <span class="hotel-missing-add">+ Agregar hotel</span>
+          </div>
           <button class="btn-edit-hotel" onclick="openEditCityDatesModal()" title="Editar fechas de ${esc(city.name)}">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
           </button>
-          <button class="btn-edit-hotel" onclick="openEditHotelModal()" title="Editar hotel">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
-          </button>
-        </div>
-      </div>` : `<div class="hotel-missing-banner">
-        <div style="display:flex;align-items:center;gap:8px;flex:1" onclick="openEditHotelModal()">
-          <span>🏨 Sin hotel · ${formatDate(city.startDate)} → ${formatDate(city.endDate)}</span>
-          <span class="hotel-missing-add">+ Agregar hotel</span>
-        </div>
-        <button class="btn-edit-hotel" onclick="openEditCityDatesModal()" title="Editar fechas de ${esc(city.name)}">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
-        </button>
-      </div>`}
+        </div>`;
+      })()}
 
       <div class="section-label" style="margin-bottom:8px">Día</div>
       <div class="days-scroll">${dayTabs}</div>
@@ -2451,7 +2451,15 @@ if (_rawTripsFromStorage.length === 0 || _sanitized.length > 0) {
 _rawTripsFromStorage = null; // free reference
 renderTrips();
 initTheme();
-if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(()=>{});
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('sw.js').catch(() => {});
+  // Reload the page automatically when a new SW version takes control
+  navigator.serviceWorker.addEventListener('message', e => {
+    if (e.data?.type === 'SW_UPDATED') {
+      window.location.reload();
+    }
+  });
+}
 
 // ══════════════════════════════════════
 // ADDRESS AUTOCOMPLETE (Nominatim/OSM)
