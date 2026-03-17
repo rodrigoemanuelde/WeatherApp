@@ -25,6 +25,22 @@ let editingTicketId = null;
 let _pendingDeleteTicketId = null;
 let editingStopId = null;
 
+// Handle app shortcuts on launch
+(function handleAppShortcuts() {
+  const params = new URLSearchParams(window.location.search);
+  const action = params.get('action');
+  if (action === 'new-trip') {
+    setTimeout(() => openNewTripModal(), 300);
+  } else if (action === 'backup') {
+    setTimeout(() => openModal('modal-backup'), 300);
+  } else if (action === 'trips') {
+    setTimeout(() => showScreen('trips'), 300);
+  }
+  if (action) {
+    history.replaceState({}, '', './index.html');
+  }
+})();
+
 // save() defined in HELPERS section below
 function uid() {
   if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
@@ -52,6 +68,13 @@ function showScreen(name) {
   }
 }
 function goBack() { showScreen('trips'); }
+function goHome() {
+  if (document.getElementById('screen-trips').classList.contains('active')) {
+    window.scrollTo(0, 0);
+  } else {
+    showScreen('trips');
+  }
+}
 
 // ══════════════════════════════════════
 // TRIPS LIST
@@ -64,26 +87,86 @@ function renderTrips() {
       <p>Aún no tenés viajes</p><small>Tocá "Nuevo viaje" para empezar</small></div>`;
     return;
   }
-  c.innerHTML = '<div class="trips-grid">' + trips.map(t => {
+  const today = new Date().toISOString().slice(0, 10);
+  c.innerHTML = '<div class="trips-grid">' + trips.map((t, idx) => {
     const cities = t.cities || [];
     const days = cities.reduce((a, ci) => a + (ci.days || []).length, 0);
     const stops = cities.reduce((a, ci) => a + (ci.days || []).reduce((b, d) => b + (d.stops || []).length, 0), 0);
-    const pills = cities.length
-      ? cities.map(ci => `<span class="city-pill">📍 ${esc(ci.name)}</span>`).join('')
+    const totalNights = cities.reduce((acc, ci) => {
+      if (ci.dayTrip) return acc;
+      const s = new Date(ci.startDate + 'T00:00:00');
+      const e = new Date(ci.endDate + 'T00:00:00');
+      return acc + Math.round((e - s) / 86400000);
+    }, 0);
+    const ticketsCount = (t.tickets || []).filter(tk => !tk.stub).length;
+    const isPast = t.endDate < today;
+    const isOngoing = t.startDate <= today && t.endDate >= today;
+    
+    const citiesRow = cities.length
+      ? cities.map((ci, i) => `<span class="city-pill">📍 ${esc(ci.name)}</span>`).join('')
       : `<span class="city-pill" style="opacity:0.5">Sin ciudades</span>`;
-    return `<div class="trip-card" onclick="openTrip('${t.id}')">
+    
+    return `<div class="trip-card${isPast ? ' trip-card-past' : ''}${isOngoing ? ' trip-card-ongoing' : ''}" draggable="true" data-trip-id="${t.id}" data-trip-index="${idx}"
+      ondragstart="onDragTripStart(event)"
+      ondragover="onDragTripOver(event)"
+      ondrop="onDropTrip(event)"
+      onclick="if(_justDragged){_justDragged=false;return;}openTrip('${t.id}')">
+      ${isPast ? '<div class="trip-card-badge">✓ Finalizado</div>' : ''}
+      ${isOngoing ? '<div class="trip-card-badge trip-card-badge-ongoing">En curso</div>' : ''}
+      <div class="trip-card-drag-handle">⋮⋮</div>
       <div class="trip-card-accent"></div>
       <h3>${esc(t.name)}</h3>
       <div class="trip-card-meta">
         <span>📅 ${formatDate(t.startDate)} → ${formatDate(t.endDate)}</span>
-        <span>🌤️ ${days} días · ${stops} paradas</span>
       </div>
-      <div class="cities-pills">${pills}</div>
+      <div class="trip-card-stats">
+        <span>${days} días</span>
+        <span class="stat-dot"></span>
+        <span>${totalNights} noches</span>
+        <span class="stat-dot"></span>
+        <span>${stops} paradas</span>
+        ${ticketsCount > 0 ? `<span class="stat-dot"></span><span>🎫 ${ticketsCount}</span>` : ''}
+      </div>
+      <div class="cities-pills">${citiesRow}</div>
       <button class="trip-card-delete" onclick="event.stopPropagation();deleteTrip('${t.id}')">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/></svg>
       </button>
     </div>`;
   }).join('') + '</div>';
+}
+
+let _draggedTripIndex = null;
+let _justDragged = false;
+
+function onDragTripStart(e) {
+  _draggedTripIndex = parseInt(e.currentTarget.dataset.tripIndex);
+  _justDragged = false;
+  e.currentTarget.classList.add('dragging');
+  e.dataTransfer.effectAllowed = 'move';
+}
+
+function onDragTripOver(e) {
+  e.preventDefault();
+  e.dataTransfer.dropEffect = 'move';
+}
+
+function onDropTrip(e) {
+  e.preventDefault();
+  const targetCard = e.target.closest('.trip-card');
+  if (!targetCard) return;
+  
+  const targetIndex = parseInt(targetCard.dataset.tripIndex);
+  document.querySelectorAll('.trip-card.dragging').forEach(el => el.classList.remove('dragging'));
+  
+  if (_draggedTripIndex === null || _draggedTripIndex === targetIndex) return;
+  
+  const [movedTrip] = trips.splice(_draggedTripIndex, 1);
+  trips.splice(targetIndex, 0, movedTrip);
+  
+  save();
+  renderTrips();
+  _draggedTripIndex = null;
+  _justDragged = true;
 }
 
 let _pendingDeleteTripId = null;
@@ -135,12 +218,109 @@ function openNewTripModal() {
   document.getElementById('trip-end-error').classList.remove('visible');
   ei.classList.remove('error');
   document.getElementById('cities-list').innerHTML = '';
-  // Add first city entry after resetting
   const id = uid();
   cityEntries.push(id);
   renderCityEntries();
   syncCityMins();
+  wizardGoToStep(1);
   openModal('modal-new-trip');
+}
+
+function wizardGoToStep(step) {
+  document.querySelectorAll('.wizard-step').forEach((el, i) => {
+    el.classList.toggle('active', i + 1 <= step);
+    el.classList.toggle('completed', i + 1 < step);
+  });
+  document.querySelectorAll('.wizard-content').forEach((el, i) => {
+    el.style.display = (i + 1 === step) ? 'block' : 'none';
+  });
+  if (step === 3) wizardRenderSummary();
+}
+
+function wizardNextStep(currentStep) {
+  if (currentStep === 1) {
+    const name = document.getElementById('trip-name').value.trim();
+    const start = document.getElementById('trip-start').value;
+    const end = document.getElementById('trip-end').value;
+    if (!name) { showToast('⚠️ Ingresá el nombre del viaje'); return; }
+    if (!start || !end) { showToast('⚠️ Elegí las fechas del viaje'); return; }
+    if (end < start) { showToast('⚠️ La fecha fin no puede ser anterior'); return; }
+  }
+  wizardGoToStep(currentStep + 1);
+}
+
+function wizardPrevStep(currentStep) {
+  wizardGoToStep(currentStep - 1);
+}
+
+function wizardRenderSummary() {
+  const name = document.getElementById('trip-name').value.trim();
+  const start = document.getElementById('trip-start').value;
+  const end = document.getElementById('trip-end').value;
+  
+  let citiesHtml = '';
+  let totalDays = 0;
+  cityEntries.forEach((id, i) => {
+    const cityName = document.getElementById('cn-' + id)?.value || '';
+    const hotelName = document.getElementById('chn-' + id)?.value || '';
+    const cs = document.getElementById('cs-' + id)?.value || '';
+    const ce = document.getElementById('ce-' + id)?.value || '';
+    
+    if (cityName && cs && ce) {
+      const s = new Date(cs + 'T00:00:00');
+      const e = new Date(ce + 'T00:00:00');
+      const days = Math.round((e - s) / 86400000) + 1;
+      totalDays += days;
+      
+      citiesHtml += `<span class="city-pill">📍 ${esc(cityName)}</span>`;
+    }
+  });
+  
+  document.getElementById('wizard-summary').innerHTML = `
+    <div class="trip-card" style="margin-bottom:16px">
+      <div class="trip-card-accent"></div>
+      <h3>${esc(name)}</h3>
+      <div class="trip-card-meta">
+        <span>📅 ${formatDate(start)} → ${formatDate(end)}</span>
+        <span>🌤️ ${totalDays} días · ${cityEntries.length} ciudad${cityEntries.length !== 1 ? 'es' : ''}</span>
+      </div>
+      <div class="cities-pills">${citiesHtml || '<span class="city-pill" style="opacity:0.5">Sin ciudades</span>'}</div>
+    </div>
+    <div class="summary-detail">
+      <div class="summary-detail-title">Detalle del viaje</div>
+      ${renderWizardCitiesDetail()}
+    </div>
+  `;
+}
+
+function renderWizardCitiesDetail() {
+  let html = '';
+  cityEntries.forEach((id, i) => {
+    const cityName = document.getElementById('cn-' + id)?.value || '';
+    const hotelName = document.getElementById('chn-' + id)?.value || '';
+    const hotelAddr = document.getElementById('cha-' + id)?.value || '';
+    const cs = document.getElementById('cs-' + id)?.value || '';
+    const ce = document.getElementById('ce-' + id)?.value || '';
+    
+    if (cityName && cs && ce) {
+      const s = new Date(cs + 'T00:00:00');
+      const e = new Date(ce + 'T00:00:00');
+      const nights = Math.round((e - s) / 86400000);
+      
+      html += `
+        <div class="summary-city-card">
+          <div class="summary-city-header">
+            <span class="summary-city-num">${i + 1}</span>
+            <span class="summary-city-name">${esc(cityName)}</span>
+            <span class="summary-city-nights">${nights} noche${nights !== 1 ? 's' : ''}</span>
+          </div>
+          <div class="summary-city-dates">${formatDate(cs)} → ${formatDate(ce)}</div>
+          ${hotelName ? `<div class="summary-city-hotel">🏨 ${esc(hotelName)}${hotelAddr ? ` · ${esc(hotelAddr)}` : ''}</div>` : ''}
+        </div>
+      `;
+    }
+  });
+  return html;
 }
 
 function onTripStartChange() {
@@ -416,8 +596,8 @@ function createTrip() {
     const cityStart = cs < start ? start : cs;
     const cityEnd = ce > end ? end : ce;
 
-    // Validate overlap against already-collected cities
-    const overlap = cities.find(c => cityStart <= c.endDate && cityEnd >= c.startDate);
+    // Validate overlap against already-collected cities (allow shared day for check-out/check-in same day)
+    const overlap = cities.find(c => cityStart < c.endDate && cityEnd > c.startDate);
     if (overlap) {
       showToast(`⚠️ Las fechas de "${cityName}" se solapan con "${overlap.name}" (${formatDate(overlap.startDate)} → ${formatDate(overlap.endDate)})`);
       return;
@@ -465,7 +645,7 @@ function createTrip() {
   }
 
   // Auto-generate stub tickets for transitions without explicit legs
-  trips.unshift(trip);
+  trips.push(trip);
   save();
   ensureTransitionTickets(trip);
   save();
@@ -609,6 +789,7 @@ function renderOverview() {
         city.checkInTime  ? `✅ ${city.checkInTime}`  : '',
         city.checkOutTime ? `🚪 ${city.checkOutTime}` : '',
       ].filter(Boolean).join(' · ');
+      const hotelMapsUrl = city.hotelAddr ? mapsUrl(city.hotelAddr) : (city.hotelName ? mapsUrl(city.hotelName) : '');
       hotelHtml = `<div class="ov-hotel-row">
         <span class="ov-h-icon">🏨</span>
         <div class="ov-h-info">
@@ -616,6 +797,7 @@ function renderOverview() {
           ${city.hotelAddr ? `<div class="ov-h-addr">${esc(city.hotelAddr)}</div>` : ''}
         </div>
         ${times ? `<div class="ov-h-times">${times}</div>` : ''}
+        ${hotelMapsUrl ? `<a class="ov-h-maps" href="${hotelMapsUrl}" target="_blank" title="Ver en Maps">📌</a>` : ''}
       </div>`;
     } else {
       hotelHtml = `<div class="ov-no-hotel">
@@ -1663,7 +1845,78 @@ function openEditCityDatesModal() {
   ['edit-city-start-err','edit-city-end-err'].forEach(id =>
     document.getElementById(id).classList.remove('visible')
   );
+  document.getElementById('city-dates-timeline').innerHTML = renderCityDatesTimeline(trip, city);
   openModal('modal-edit-city-dates');
+}
+
+function renderCityDatesTimeline(trip, currentCity) {
+  if (!trip || !trip.cities || !trip.cities.length) return '';
+  
+  const tripStart = new Date(trip.startDate + 'T00:00:00');
+  const tripEnd = new Date(trip.endDate + 'T00:00:00');
+  const totalDays = Math.round((tripEnd - tripStart) / 86400000) + 1;
+  
+  if (totalDays <= 0 || totalDays > 60) return '';
+  
+  const sortedCities = [...trip.cities].sort((a, b) => a.startDate.localeCompare(b.startDate));
+  const currentCityId = currentCity.id;
+  
+  let html = `<div class="timeline-container">
+    <div class="timeline-label">Viaje: ${formatDate(trip.startDate)} → ${formatDate(trip.endDate)}</div>
+    <div class="timeline-bar">`;
+  
+  for (let i = 0; i < totalDays; i++) {
+    const currentDate = new Date(tripStart);
+    currentDate.setDate(currentDate.getDate() + i);
+    const dateStr = currentDate.toISOString().slice(0, 10);
+    const dayNum = currentDate.getDate();
+    const weekday = currentDate.toLocaleDateString('es-AR', { weekday: 'short' }).slice(0, 2);
+    
+    let segmentClass = 'timeline-segment';
+    let title = '';
+    
+    const cityForDay = sortedCities.find(ci => dateStr >= ci.startDate && dateStr <= ci.endDate);
+    if (cityForDay) {
+      if (cityForDay.id === currentCityId) {
+        segmentClass += ' city-active';
+        title = currentCity.name;
+      } else {
+        segmentClass += ' other-city';
+        title = cityForDay.name + (cityForDay.dayTrip ? ' (excursión)' : '');
+      }
+    }
+    
+    html += `<div class="${segmentClass}" title="${title}" onclick="jumpToCityFromTimeline('${dateStr}')">
+      <span class="tl-day">${dayNum}</span>
+      <span class="tl-wd">${weekday}</span>
+    </div>`;
+  }
+  
+  html += `</div>
+    <div class="timeline-legend">
+      <span class="tl-leg-item"><span class="tl-dot active"></span> ${esc(currentCity.name)}</span>
+      <span class="tl-leg-item"><span class="tl-dot other"></span> Otra ciudad</span>
+      <span class="tl-leg-item"><span class="tl-dot empty"></span> Sin asignar</span>
+    </div>
+  </div>`;
+  
+  return html;
+}
+
+function jumpToCityFromTimeline(dateStr) {
+  const trip = trips.find(t => t.id === currentTripId);
+  if (!trip) return;
+  const city = trip.cities.find(ci => dateStr >= ci.startDate && dateStr <= ci.endDate);
+  if (city) {
+    const cityIdx = trip.cities.findIndex(c => c.id === city.id);
+    if (cityIdx !== -1) {
+      currentCityIdx = cityIdx;
+      const dayIdx = city.days.findIndex(d => d.date === dateStr);
+      if (dayIdx !== -1) currentDayIdx = dayIdx;
+      closeModal('modal-edit-city-dates');
+      renderDetail();
+    }
+  }
 }
 
 function onEditCityStartChange() {
@@ -1708,9 +1961,9 @@ function saveEditCityDates() {
     return;
   }
 
-  // Check overlap with other cities (not the current one, not day trips)
+  // Check overlap with other cities (not the current one, not day trips) - allow shared day for check-out/check-in
   const overlap = trip.cities.filter((ci, i) => i !== currentCityIdx && !ci.dayTrip).find(ci => {
-    return newStart <= ci.endDate && newEnd >= ci.startDate;
+    return newStart < ci.endDate && newEnd > ci.startDate;
   });
   if (overlap) {
     showToast(`⚠️ Se solapa con "${overlap.name}" (${formatDate(overlap.startDate)} → ${formatDate(overlap.endDate)})`);
@@ -1921,9 +2174,9 @@ function saveNewCity() {
     return;
   }
 
-  // Validate overlap with existing cities (excluding day trips which can share dates)
+  // Validate overlap with existing cities (excluding day trips) - allow shared day for check-out/check-in
   const overlap = trip.cities.filter(ci => !ci.dayTrip).find(ci => {
-    return cs <= ci.endDate && ce >= ci.startDate;
+    return cs < ci.endDate && ce > ci.startDate;
   });
   if (overlap) {
     showToast(`⚠️ Las fechas se solapan con "${overlap.name}" (${formatDate(overlap.startDate)} → ${formatDate(overlap.endDate)})`);
@@ -2381,8 +2634,32 @@ function openModal(id) {
     pendingImportData = null;
   }
 }
-function closeModal(id) { document.getElementById(id).classList.remove('open'); }
-document.querySelectorAll('.modal-overlay').forEach(o => o.addEventListener('click', e => { if (e.target===o) o.classList.remove('open'); }));
+function toggleHelpSection(el) {
+  const section = el.parentElement;
+  const isOpen = section.classList.contains('open');
+  document.querySelectorAll('.help-section').forEach(s => s.classList.remove('open'));
+  if (!isOpen) {
+    section.classList.add('open');
+  }
+}
+function closeModal(id) {
+  document.getElementById(id).classList.remove('open');
+  if (id === 'modal-backup') {
+    pendingImportData = null;
+    document.getElementById('import-warning').style.display = 'none';
+    document.getElementById('import-file-input').value = '';
+  }
+}
+document.querySelectorAll('.modal-overlay').forEach(o => o.addEventListener('click', e => { 
+  if (e.target === o) {
+    o.classList.remove('open');
+    if (o.id === 'modal-backup') {
+      pendingImportData = null;
+      document.getElementById('import-warning').style.display = 'none';
+      document.getElementById('import-file-input').value = '';
+    }
+  }
+}));
 
 // ══════════════════════════════════════
 // TOAST
