@@ -1136,6 +1136,54 @@ function ticketIsComplete(tk) {
   return !!(tk.depTime && tk.arrTime && (tk.depTerminal || tk.fromTerminal || tk.arrTerminal || tk.toTerminal || tk.company));
 }
 
+// Auto-detect combinations: tickets where arrCity of one matches depCity of next,
+// within a reasonable layover window (arrival <= departure, same or next day).
+function buildCombinations(tickets) {
+  if (!tickets.length) return [];
+  const sorted = [...tickets].sort((a, b) =>
+    (a.depDate + (a.depTime||'00:00')).localeCompare(b.depDate + (b.depTime||'00:00'))
+  );
+
+  const groups = [];
+  const used = new Set();
+
+  sorted.forEach(tk => {
+    if (used.has(tk.id)) return;
+    // Try to build a chain starting from this ticket
+    const chain = [tk];
+    used.add(tk.id);
+    let current = tk;
+
+    // Look for a ticket whose depCity matches current arrCity and departs after current arrives
+    let safeGuard = 0;
+    while (safeGuard++ < 10) {
+      const arrCity = (current.toCity || '').trim().toLowerCase();
+      const arrDT   = current.arrDate ? (current.arrDate + 'T' + (current.arrTime || '00:00')) : null;
+      const next = sorted.find(t => {
+        if (used.has(t.id)) return false;
+        const depCity = (t.fromCity || '').trim().toLowerCase();
+        if (depCity !== arrCity || !arrCity) return false;
+        // Departs after current arrives (allow same minute — back-to-back)
+        if (arrDT && t.depDate) {
+          const depDT = t.depDate + 'T' + (t.depTime || '00:00');
+          if (depDT < arrDT) return false;
+          // Reject if layover > 48h (probably unrelated tickets)
+          const diff = new Date(depDT) - new Date(arrDT);
+          if (diff > 48 * 3600000) return false;
+        }
+        return true;
+      });
+      if (!next) break;
+      chain.push(next);
+      used.add(next.id);
+      current = next;
+    }
+    groups.push(chain);
+  });
+
+  return groups;
+}
+
 function renderTickets() {
   const trip = trips.find(t => t.id === currentTripId);
   if (!trip) return;
@@ -1150,79 +1198,57 @@ function renderTickets() {
   let html = `<div class="trip-header">
     <div class="trip-title">${esc(trip.name)}</div>
     <div class="trip-subtitle">
-      <span>🎫 ${tickets.length} tramo${tickets.length !== 1 ? 's' : ''}</span>
+      <span>🎫 ${tickets.length} pasaje${tickets.length !== 1 ? 's' : ''}</span>
       ${pending > 0 ? `<span class="tickets-pending-badge">${pending} sin completar</span>` : `<span class="tickets-complete-badge">✓ Todo completo</span>`}
     </div>
   </div>`;
 
   if (!tickets.length) {
     html += `<div class="empty-state" style="padding:40px 0">
-      <p>Sin tramos detectados</p>
+      <p>Sin pasajes detectados</p>
       <small>Agregá al menos dos ciudades al viaje</small>
     </div>`;
   } else {
-    // Group tickets: chained ones together, standalone ones alone
-    const rendered = new Set();
-    // Build chain map
-    const chainMap = {};
-    tickets.forEach(tk => {
-      if (tk.chainId) {
-        if (!chainMap[tk.chainId]) chainMap[tk.chainId] = [];
-        chainMap[tk.chainId].push(tk);
-      }
-    });
-    // Sort each chain by depDate+depTime
-    Object.values(chainMap).forEach(arr =>
-      arr.sort((a, b) => (a.depDate + (a.depTime||'')).localeCompare(b.depDate + (b.depTime||'')))
-    );
-
+    const groups = buildCombinations(tickets);
     html += `<div class="tickets-list">`;
 
-    tickets.forEach(tk => {
-      if (rendered.has(tk.id)) return;
-
-      if (tk.chainId && chainMap[tk.chainId]) {
-        // Render as chained group
-        const chain = chainMap[tk.chainId];
-        chain.forEach(t => rendered.add(t.id));
-        const firstTk = chain[0];
-        const lastTk = chain[chain.length - 1];
-        const allComplete = chain.every(t => ticketIsComplete(t));
-        const anyStub = chain.some(t => t.stub && !ticketIsComplete(t));
-
+    groups.forEach(group => {
+      if (group.length === 1) {
+        html += renderTicketCard(group[0]);
+      } else {
+        // Auto-detected combination group
+        const first = group[0];
+        const last  = group[group.length - 1];
+        const anyStub = group.some(t => t.stub && !ticketIsComplete(t));
         html += `<div class="ticket-chain-group">
           <div class="ticket-chain-header">
-            <span>📎 Viaje encadenado · ${chain.length} tramos</span>
-            <small>${esc(firstTk.fromCity)} → ${esc(lastTk.toCity)}</small>
-            ${anyStub ? `<span class="ticket-status-badge pending" style="margin-left:auto">Pendiente</span>` : `<span class="ticket-status-badge done" style="margin-left:auto">✓</span>`}
+            <span>🔗 Combinación · ${group.length} tramos</span>
+            <small>${esc(first.fromCity)} → ${esc(last.toCity)}</small>
+            ${anyStub
+              ? `<span class="ticket-status-badge pending" style="margin-left:auto">Pendiente</span>`
+              : `<span class="ticket-status-badge done" style="margin-left:auto">✓</span>`}
           </div>`;
-
-        chain.forEach((t, ci) => {
+        group.forEach((t, ci) => {
           if (ci > 0) {
-            // Show connection time between segments
-            const prev = chain[ci - 1];
+            const prev = group[ci - 1];
             const waitStr = calcWaitTime(prev.arrDate, prev.arrTime, t.depDate, t.depTime);
+            const layoverCity = (prev.toCity || '').trim();
             html += `<div class="ticket-chain-connector">
               <div class="ticket-chain-connector-line"></div>
-              <span class="ticket-chain-wait">⏱ ${waitStr || 'Conexión'}</span>
+              <span class="ticket-chain-wait">⏱ ${layoverCity ? esc(layoverCity) + ' · ' : ''}${waitStr || 'Conexión'}</span>
               <div class="ticket-chain-connector-line"></div>
             </div>`;
           }
           html += renderTicketCard(t);
         });
-
         html += `</div>`;
-      } else {
-        // Standalone ticket
-        rendered.add(tk.id);
-        html += renderTicketCard(tk);
       }
     });
 
     html += `</div>`;
   }
 
-  html += `<button class="btn-add-ticket" onclick="openAddTicketModal()">+ Agregar pasaje extra</button>`;
+  html += `<button class="btn-add-ticket" onclick="openAddTicketModal()">+ Agregar pasaje</button>`;
   el.innerHTML = html;
 }
 
@@ -1299,7 +1325,6 @@ function openAddTicketModal() {
   document.getElementById('ticket-dep-time').value = '';
   document.getElementById('ticket-arr-time').value = '';
   document.querySelectorAll('#ticket-type-grid .transport-option').forEach(el => el.classList.remove('selected'));
-  populateChainSelector(trip, null);
   updateTicketFields(null);
   openModal('modal-ticket');
 }
@@ -1327,37 +1352,7 @@ function openEditTicketModal(ticketId) {
   document.getElementById('ticket-arr-date').value = tk.arrDate || '';
   document.getElementById('ticket-dep-time').value = tk.depTime || '';
   document.getElementById('ticket-arr-time').value = tk.arrTime || '';
-  populateChainSelector(trip, tk.chainId || null, tk.id);
-  updateTicketFields(selectedTicketType);
-  openModal('modal-ticket');
-}
-
-function populateChainSelector(trip, currentChainId, excludeTicketId) {
-  const sel = document.getElementById('ticket-chain-select');
-  sel.innerHTML = '<option value="">Sin encadenar (tramo independiente)</option>';
-  if (!trip) return;
-
-  // Collect existing chains
-  const chains = {};
-  (trip.tickets || []).forEach(tk => {
-    if (tk.id === excludeTicketId) return;
-    if (tk.chainId) {
-      if (!chains[tk.chainId]) chains[tk.chainId] = [];
-      chains[tk.chainId].push(tk);
-    }
-  });
-
-  // Option to create new chain
-  sel.innerHTML += `<option value="__new__">➕ Crear nuevo viaje encadenado</option>`;
-
-  // Options for existing chains
-  Object.entries(chains).forEach(([chainId, tks]) => {
-    const sorted = tks.sort((a, b) => (a.depDate + (a.depTime||'')).localeCompare(b.depDate + (b.depTime||'')));
-    const label = sorted.map(t => `${t.fromCity}→${t.toCity}`).join(' · ');
-    sel.innerHTML += `<option value="${chainId}">📎 ${label}</option>`;
-  });
-
-  sel.value = currentChainId || '';
+  updateTicketFields(selectedTicketType);  openModal('modal-ticket');
 }
 
 function selectTicketType(el, type) {
@@ -1458,9 +1453,6 @@ function saveTicket() {
   if (!fromCity || !toCity) { showToast('⚠️ Ingresá las ciudades de origen y destino'); return; }
   if (!depDate || !arrDate) { showToast('⚠️ Ingresá las fechas de salida y llegada');    return; }
 
-  const chainVal = document.getElementById('ticket-chain-select').value;
-  const chainId = chainVal === '__new__' ? uid() : (chainVal || null);
-
   const data = {
     type: selectedTicketType,
     company:      document.getElementById('ticket-company').value.trim(),
@@ -1471,7 +1463,6 @@ function saveTicket() {
     arrGate:      document.getElementById('ticket-arr-gate').value.trim(),
     depDate, depTime: document.getElementById('ticket-dep-time').value,
     arrDate, arrTime: document.getElementById('ticket-arr-time').value,
-    chainId,
   };
 
   if (!trip.tickets) trip.tickets = [];
