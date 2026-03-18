@@ -994,8 +994,9 @@ function renderDetail() {
     // Check if this day has a *defined* arrival ticket → last stop needs connector line
     const dayHasArrival = !!(todayArrival && city.hotelName && (todayArrival.type || todayArrival.arrTerminal || todayArrival.toTerminal));
 
+    // Si hay vuelo de llegada, mostrar: 1) Terminal 2) Hotel 3) Paradas
     if (todayArrival && (todayArrival.type || todayArrival.arrTerminal || todayArrival.toTerminal)) {
-      // Arrival day: show terminal as departure point, not hotel
+      // 1. Mostrar terminal de llegada
       const terminalName = todayArrival.arrTerminal || todayArrival.toTerminal || null;
       const terminalLabel = terminalName || ticketTypeLabel(todayArrival.type) + ' llegada';
       const arrTimeStr = todayArrival.arrTime ? ` · ${todayArrival.arrTime}` : '';
@@ -1021,8 +1022,67 @@ function renderDetail() {
           </div>
         </div>
       </div>`;
+      
+      // 2. Mostrar hotel después de la terminal
+      if (city.hotelName) {
+        const hotelRouteFromTerminal = terminalName && city.hotelAddr
+          ? `https://www.google.com/maps/dir/?api=1&origin=${encodeURIComponent(terminalName)}&destination=${encodeURIComponent(city.hotelAddr)}&travelmode=transit`
+          : null;
+        
+        // Determinar si es el primer o último día de la ciudad
+        const isFirstDayOfTrip = day.date === city.startDate;
+        const isLastDayOfTrip = day.date === city.endDate;
+        
+        let hotelMeta = '';
+        if (isFirstDayOfTrip && city.checkInTime) {
+          hotelMeta = `<span class="hotel-time-tag checkin">✅ Check-in ${city.checkInTime}</span>`;
+        } else if (isFirstDayOfTrip && !city.checkInTime) {
+          hotelMeta = `<span class="hotel-time-tag checkin-empty" onclick="openEditHotelModal()">✅ Agregar check-in</span>`;
+        } else if (isLastDayOfTrip && city.checkOutTime) {
+          hotelMeta = `<span class="hotel-time-tag checkout">🚪 Check-out ${city.checkOutTime}</span>`;
+        } else if (isLastDayOfTrip && !city.checkOutTime) {
+          hotelMeta = `<span class="hotel-time-tag checkout-empty" onclick="openEditHotelModal()">🚪 Agregar check-out</span>`;
+        } else {
+          hotelMeta = `<span style="color:var(--accent2)">Hotel</span>`;
+        }
+        
+        stopsHtml += `<div class="stop-item">
+          <div class="stop-connector">
+            <div class="stop-dot hotel">🏨</div>
+            ${stops.length ? '<div class="stop-line"></div>' : ''}
+          </div>
+          <div class="stop-body">
+            <div class="stop-name">${esc(city.hotelName)}</div>
+            <div class="stop-meta">
+              ${hotelMeta}
+              ${city.hotelAddr ? `<span>📍 ${esc(city.hotelAddr)}</span>` : ''}
+            </div>
+            <div class="stop-actions">
+              ${city.hotelAddr ? `<a class="btn-maps" href="${mapsUrl(city.hotelAddr)}" target="_blank">📌 Ver en Maps</a>` : ''}
+              ${hotelRouteFromTerminal ? `<a class="btn-maps btn-return-chip" href="${hotelRouteFromTerminal}" target="_blank">📍 Cómo llegar</a>` : ''}
+            </div>
+          </div>
+        </div>`;
+      }
     } else if (city.hotelName) {
-      // Normal day: show hotel as departure point
+      // Si no hay vuelo de llegada, mostrar hotel como primer elemento
+      // Determinar si es el primer o último día de la ciudad
+      const isFirstDayOfTrip = day.date === city.startDate;
+      const isLastDayOfTrip = day.date === city.endDate;
+      
+      let hotelMeta = '';
+      if (isFirstDayOfTrip && city.checkInTime) {
+        hotelMeta = `<span class="hotel-time-tag checkin">✅ Check-in ${city.checkInTime}</span>`;
+      } else if (isFirstDayOfTrip && !city.checkInTime) {
+        hotelMeta = `<span class="hotel-time-tag checkin-empty" onclick="openEditHotelModal()">✅ Agregar check-in</span>`;
+      } else if (isLastDayOfTrip && city.checkOutTime) {
+        hotelMeta = `<span class="hotel-time-tag checkout">🚪 Check-out ${city.checkOutTime}</span>`;
+      } else if (isLastDayOfTrip && !city.checkOutTime) {
+        hotelMeta = `<span class="hotel-time-tag checkout-empty" onclick="openEditHotelModal()">🚪 Agregar check-out</span>`;
+      } else {
+        hotelMeta = `<span style="color:var(--accent2)">Punto de partida</span>`;
+      }
+      
       stopsHtml += `<div class="stop-item">
         <div class="stop-connector">
           <div class="stop-dot hotel">🏨</div>
@@ -1030,8 +1090,13 @@ function renderDetail() {
         </div>
         <div class="stop-body">
           <div class="stop-name">${esc(city.hotelName)}</div>
-          <div class="stop-meta"><span style="color:var(--accent2)">Punto de partida</span></div>
-          ${city.hotelAddr ? `<div class="stop-actions"><a class="btn-maps" href="${mapsUrl(city.hotelAddr)}" target="_blank">📌 Ver en Maps</a></div>` : ''}
+          <div class="stop-meta">
+            ${hotelMeta}
+            ${city.hotelAddr ? `<span>📍 ${esc(city.hotelAddr)}</span>` : ''}
+          </div>
+          <div class="stop-actions">
+            ${city.hotelAddr ? `<a class="btn-maps" href="${mapsUrl(city.hotelAddr)}" target="_blank">📌 Ver en Maps</a></div>` : ''}
+          </div>
         </div>
       </div>`;
     }
@@ -1039,16 +1104,55 @@ function renderDetail() {
     stops.forEach((stop, idx) => {
       const isLast = idx === stops.length - 1;
       const isVisuallyLast = isLast && !dayHasArrival && !todayDeparture;
-      // On arrival day, first stop comes from the terminal, not the hotel
-      const defaultOrigin = todayArrival
-        ? (todayArrival.arrTerminal || todayArrival.toTerminal || todayArrival.toCity)
-        : (city.hotelAddr || city.hotelName || city.name);
-      const prevAddr = idx === 0 ? defaultOrigin : (stops[idx-1].address || stops[idx-1].name);
+      
+      // Primera parada: siempre desde el hotel
+      // Segunda+: desde la parada anterior
+      const prevStop = idx === 0 ? null : stops[idx - 1];
+      const hotelOrigin = city.hotelAddr || city.hotelName || city.name;
+      
+      // Determinar origen: hotel para primera parada, parada anterior para las demás
+      let originCoords = null;
+      let originName = null;
+      
+      if (idx === 0) {
+        // Primera parada: usar hotel
+        originName = hotelOrigin;
+        if (city.hotelLat && city.hotelLon) {
+          originCoords = { lat: city.hotelLat, lon: city.hotelLon };
+        }
+      } else if (prevStop) {
+        // Usar coords de la parada anterior si existen
+        if (prevStop.lat && prevStop.lon) {
+          originCoords = { lat: prevStop.lat, lon: prevStop.lon };
+        } else {
+          originName = prevStop.address || prevStop.name;
+        }
+      }
+      
       const gmMode = googleMapsMode(stop.transport);
-      const routeUrl = prevAddr && stop.address
-        ? `https://www.google.com/maps/dir/?api=1&origin=${encodeURIComponent(prevAddr)}&destination=${encodeURIComponent(stop.address)}&travelmode=${gmMode}`
-        : mapsUrl(stop.address || stop.name);
+      
+      // Generar URL de ruta
+      let routeUrl = '';
+      if (stop.lat && stop.lon && originCoords) {
+        // Usar coordenadas para mejor precisión
+        routeUrl = `https://www.google.com/maps/dir/?api=1&origin=${originCoords.lat},${originCoords.lon}&destination=${stop.lat},${stop.lon}&travelmode=${gmMode}`;
+      } else if (originName && stop.address) {
+        routeUrl = `https://www.google.com/maps/dir/?api=1&origin=${encodeURIComponent(originName)}&destination=${encodeURIComponent(stop.address)}&travelmode=${gmMode}`;
+      } else if (stop.address || stop.name) {
+        routeUrl = mapsUrl(stop.address || stop.name);
+      }
 
+      // Generar URL para volver al hotel
+      let returnToHotelUrl = '';
+      if (city.hotelAddr || city.hotelName) {
+        const hotelDest = city.hotelAddr || city.hotelName;
+        if (stop.lat && stop.lon && city.hotelLat && city.hotelLon) {
+          returnToHotelUrl = `https://www.google.com/maps/dir/?api=1&origin=${stop.lat},${stop.lon}&destination=${city.hotelLat},${city.hotelLon}&travelmode=transit`;
+        } else {
+          returnToHotelUrl = `https://www.google.com/maps/dir/?api=1&origin=${encodeURIComponent(stop.address || stop.name)}&destination=${encodeURIComponent(hotelDest)}&travelmode=transit`;
+        }
+      }
+      
       stopsHtml += `<div class="stop-item ${isVisuallyLast ? 'stop-last' : ''}" data-stopid="${stop.id}">
         <div class="drag-handle" title="Arrastrar para reordenar">
           <svg width="14" height="20" viewBox="0 0 14 20" fill="currentColor"><circle cx="4" cy="4" r="1.8"/><circle cx="10" cy="4" r="1.8"/><circle cx="4" cy="10" r="1.8"/><circle cx="10" cy="10" r="1.8"/><circle cx="4" cy="16" r="1.8"/><circle cx="10" cy="16" r="1.8"/></svg>
@@ -1068,7 +1172,7 @@ function renderDetail() {
           <div class="stop-actions">
             <a class="btn-maps" href="${routeUrl}" target="_blank">🗺️ Cómo llegar</a>
             <a class="btn-maps" href="${mapsUrl(stop.address || stop.name)}" target="_blank">📌 Ver lugar</a>
-            ${city.hotelAddr ? `<a class="btn-maps btn-return-chip" href="https://www.google.com/maps/dir/?api=1&origin=${encodeURIComponent(stop.address || stop.name)}&destination=${encodeURIComponent(city.hotelAddr)}&travelmode=transit" target="_blank">🏨 Volver al hotel</a>` : ''}
+            ${returnToHotelUrl ? `<a class="btn-maps btn-return-chip" href="${returnToHotelUrl}" target="_blank">🏨 Volver al hotel</a>` : ''}
             <button class="btn-edit-stop" onclick="openEditStopModal('${stop.id}')">
               <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
             </button>
@@ -1118,7 +1222,10 @@ function renderDetail() {
     }
 
     // ── Parada automática: hotel de llegada si hay pasaje que llega hoy ──
+    // NOTA: Ya no se usa porque ahora el hotel se muestra inmediatamente después del vuelo de llegada
+    // Esta lógica está comentada para evitar duplicación
     let arrivalHotelHtml = '';
+    /*
     if (todayArrival && city.hotelName && (todayArrival.type || todayArrival.arrTerminal || todayArrival.toTerminal)) {
       // Origin: last user stop if any, otherwise the arrival terminal
       const lastStopAddr = stops.length > 0 ? (stops[stops.length-1].address || stops[stops.length-1].name) : null;
@@ -1145,6 +1252,7 @@ function renderDetail() {
         </div>
       </div>`;
     }
+    */
 
     if (!stops.length && !city.hotelName && !arrivalHotelHtml && !departureTerminalHtml) {
       stopsHtml = `<div class="empty-state" style="padding:30px 0"><p>Sin paradas aún</p><small>Tocá + para agregar</small></div>`;
@@ -1491,16 +1599,30 @@ function calcWaitTime(date1, time1, date2, time2) {
   return `${hrs}h ${mins}min de espera`;
 }
 
+function calcDuration(date1, time1, date2, time2) {
+  if (!date1 || !date2 || !time1 || !time2) return null;
+  const t1 = new Date(date1 + 'T' + time1);
+  const t2 = new Date(date2 + 'T' + time2);
+  const diff = t2 - t1;
+  if (isNaN(diff) || diff < 0) return null;
+  const hrs = Math.floor(diff / 3600000);
+  const mins = Math.floor((diff % 3600000) / 60000);
+  if (hrs === 0) return `${mins}min`;
+  if (mins === 0) return `${hrs}h`;
+  return `${hrs}h ${mins}min`;
+}
+
 function renderTicketCard(tk) {
   const icon = ticketTypeIcon(tk.type);
   const complete = ticketIsComplete(tk);
   const isStub = tk.stub && !complete;
+  const duration = calcDuration(tk.depDate, tk.depTime, tk.arrDate, tk.arrTime);
   return `<div class="ticket-card ${isStub ? 'ticket-stub' : ''}">
     <div class="ticket-card-header">
       <div class="ticket-type-icon">${icon}</div>
       <div class="ticket-header-info">
         <div class="ticket-route">${esc(tk.fromCity)} → ${esc(tk.toCity)}</div>
-        <div class="ticket-company">${ticketTypeLabel(tk.type)}${tk.company ? ' · ' + esc(tk.company) : ''}</div>
+        <div class="ticket-company">${ticketTypeLabel(tk.type)}${tk.company ? ' · ' + esc(tk.company) : ''}${duration ? ` · ⏱️ ${duration}` : ''}</div>
       </div>
       ${isStub
         ? `<span class="ticket-status-badge pending">Pendiente</span>`
@@ -1543,8 +1665,12 @@ function openAddTicketModal() {
   document.getElementById('ticket-from-city').value = '';
   document.getElementById('ticket-to-city').value = '';
   document.getElementById('ticket-dep-terminal').value = '';
+  document.getElementById('ticket-dep-terminal-lat').value = '';
+  document.getElementById('ticket-dep-terminal-lon').value = '';
   document.getElementById('ticket-dep-gate').value = '';
   document.getElementById('ticket-arr-terminal').value = '';
+  document.getElementById('ticket-arr-terminal-lat').value = '';
+  document.getElementById('ticket-arr-terminal-lon').value = '';
   document.getElementById('ticket-arr-gate').value = '';
   document.getElementById('ticket-dep-date').value = trip?.startDate || '';
   document.getElementById('ticket-arr-date').value = trip?.startDate || '';
@@ -1552,6 +1678,7 @@ function openAddTicketModal() {
   document.getElementById('ticket-arr-time').value = '';
   document.querySelectorAll('#ticket-type-grid .transport-option').forEach(el => el.classList.remove('selected'));
   updateTicketFields(null);
+  ticketWizardGoToStep(1);
   openModal('modal-ticket');
 }
 
@@ -1562,7 +1689,7 @@ function openEditTicketModal(ticketId) {
   if (!tk) return;
   editingTicketId = ticketId;
   document.getElementById('ticket-modal-title').textContent = '🎫 Editar pasaje';
-  selectedTicketType = tk.type || 'flight';
+  selectedTicketType = tk.type || null;
   document.querySelectorAll('#ticket-type-grid .transport-option').forEach(el =>
     el.classList.toggle('selected', el.dataset.ttype === selectedTicketType)
   );
@@ -1571,15 +1698,47 @@ function openEditTicketModal(ticketId) {
   document.getElementById('ticket-to-city').value = tk.toCity || '';
   // Support both old field names and new ones
   document.getElementById('ticket-dep-terminal').value = tk.depTerminal || tk.fromTerminal || '';
+  document.getElementById('ticket-dep-terminal-lat').value = tk.depTerminalLat || '';
+  document.getElementById('ticket-dep-terminal-lon').value = tk.depTerminalLon || '';
   document.getElementById('ticket-dep-gate').value = tk.depGate || '';
   document.getElementById('ticket-arr-terminal').value = tk.arrTerminal || tk.toTerminal || '';
+  document.getElementById('ticket-arr-terminal-lat').value = tk.arrTerminalLat || '';
+  document.getElementById('ticket-arr-terminal-lon').value = tk.arrTerminalLon || '';
   document.getElementById('ticket-arr-gate').value = tk.arrGate || '';
   document.getElementById('ticket-dep-date').value = tk.depDate || '';
   document.getElementById('ticket-arr-date').value = tk.arrDate || '';
   document.getElementById('ticket-dep-time').value = tk.depTime || '';
   document.getElementById('ticket-arr-time').value = tk.arrTime || '';
-  updateTicketFields(selectedTicketType);
+  if (selectedTicketType) {
+    updateTicketFields(selectedTicketType);
+  }
+  ticketWizardGoToStep(1);
   openModal('modal-ticket');
+}
+
+function ticketWizardGoToStep(step) {
+  document.querySelectorAll('#modal-ticket .wizard-step').forEach((el, i) => {
+    el.classList.toggle('active', i + 1 <= step);
+    el.classList.toggle('completed', i + 1 < step);
+  });
+  document.querySelectorAll('#modal-ticket .wizard-content').forEach((el, i) => {
+    el.style.display = (i + 1 === step) ? 'block' : 'none';
+  });
+}
+
+function ticketWizardNextStep(currentStep) {
+  if (currentStep === 1) {
+    const fromCity = document.getElementById('ticket-from-city').value.trim();
+    const toCity = document.getElementById('ticket-to-city').value.trim();
+    if (!fromCity) { showToast('⚠️ Ingresá la ciudad de salida'); return; }
+    if (!toCity) { showToast('⚠️ Ingresá la ciudad de llegada'); return; }
+    if (!selectedTicketType) { showToast('⚠️ Elegí el tipo de transporte'); return; }
+  }
+  ticketWizardGoToStep(currentStep + 1);
+}
+
+function ticketWizardPrevStep(currentStep) {
+  ticketWizardGoToStep(currentStep - 1);
 }
 
 function selectTicketType(el, type) {
@@ -1637,9 +1796,6 @@ const TICKET_CONFIG = {
 };
 
 function updateTicketFields(type) {
-  const show = !!type;
-  document.getElementById('ticket-dep-fields').style.display = show ? '' : 'none';
-  document.getElementById('ticket-arr-fields').style.display = show ? '' : 'none';
   if (!type) return;
 
   const cfg = TICKET_CONFIG[type] || TICKET_CONFIG.flight;
@@ -1647,23 +1803,51 @@ function updateTicketFields(type) {
   document.getElementById('ticket-dep-section-label').textContent = cfg.depSection;
   document.getElementById('ticket-arr-section-label').textContent = cfg.arrSection;
 
-  document.getElementById('ticket-dep-terminal-label').textContent = cfg.terminalLabel + ' de salida';
-  document.getElementById('ticket-dep-terminal').placeholder = cfg.depTerminalPh;
-  document.getElementById('ticket-arr-terminal-label').textContent = cfg.terminalLabel + ' de llegada';
-  document.getElementById('ticket-arr-terminal').placeholder = cfg.arrTerminalPh;
+  // Siempre mostrar campos de terminal (son necesarios para el autocomplete)
+  document.getElementById('ticket-dep-terminal-group').style.display = '';
+  document.getElementById('ticket-arr-terminal-group').style.display = '';
+  
+  // Actualizar labels según el tipo de transporte
+  if (type === 'flight') {
+    document.getElementById('ticket-dep-terminal-label').textContent = 'Aeropuerto de salida';
+    document.getElementById('ticket-arr-terminal-label').textContent = 'Aeropuerto de llegada';
+    document.getElementById('ticket-dep-terminal').placeholder = 'Escribí el aeropuerto...';
+    document.getElementById('ticket-arr-terminal').placeholder = 'Escribí el aeropuerto...';
+    document.getElementById('ticket-dep-gate-label').innerHTML = 'Puerta de embarque <span class="label-optional">opcional</span>';
+    document.getElementById('ticket-dep-gate').placeholder = 'Ej: B22';
+    document.getElementById('ticket-arr-gate-label').innerHTML = 'Puerta de desembarque <span class="label-optional">opcional</span>';
+    document.getElementById('ticket-arr-gate').placeholder = 'Ej: C14';
+  } else if (type === 'bus') {
+    document.getElementById('ticket-dep-terminal-label').textContent = 'Terminal de salida';
+    document.getElementById('ticket-arr-terminal-label').textContent = 'Terminal de llegada';
+    document.getElementById('ticket-dep-terminal').placeholder = 'Escribí la terminal de bus...';
+    document.getElementById('ticket-arr-terminal').placeholder = 'Escribí la terminal de bus...';
+    document.getElementById('ticket-dep-gate-group').style.display = 'none';
+    document.getElementById('ticket-arr-gate-group').style.display = 'none';
+  } else if (type === 'train') {
+    document.getElementById('ticket-dep-terminal-label').textContent = 'Estación de salida';
+    document.getElementById('ticket-arr-terminal-label').textContent = 'Estación de llegada';
+    document.getElementById('ticket-dep-terminal').placeholder = 'Escribí la estación de tren...';
+    document.getElementById('ticket-arr-terminal').placeholder = 'Escribí la estación de tren...';
+    document.getElementById('ticket-dep-gate-label').innerHTML = 'Andén / Wagon <span class="label-optional">opcional</span>';
+    document.getElementById('ticket-dep-gate').placeholder = 'Ej: Andén 3, Wagon 5';
+    document.getElementById('ticket-arr-gate-label').innerHTML = 'Andén / Wagon <span class="label-optional">opcional</span>';
+    document.getElementById('ticket-arr-gate').placeholder = 'Ej: Andén 4';
+    document.getElementById('ticket-dep-gate-group').style.display = '';
+    document.getElementById('ticket-arr-gate-group').style.display = '';
+  } else if (type === 'boat') {
+    document.getElementById('ticket-dep-terminal-label').textContent = 'Puerto de salida';
+    document.getElementById('ticket-arr-terminal-label').textContent = 'Puerto de llegada';
+    document.getElementById('ticket-dep-terminal').placeholder = 'Escribí el puerto...';
+    document.getElementById('ticket-arr-terminal').placeholder = 'Escribí el puerto...';
+    document.getElementById('ticket-dep-gate-group').style.display = 'none';
+    document.getElementById('ticket-arr-gate-group').style.display = 'none';
+  }
 
   const gateGroups = [
     document.getElementById('ticket-dep-gate-group'),
     document.getElementById('ticket-arr-gate-group'),
   ];
-  gateGroups.forEach(g => g.style.display = cfg.showGate ? '' : 'none');
-
-  if (cfg.showGate) {
-    document.getElementById('ticket-dep-gate-label').innerHTML = cfg.depGateLabel + ' <span class="label-optional">opcional</span>';
-    document.getElementById('ticket-dep-gate').placeholder = cfg.depGatePh;
-    document.getElementById('ticket-arr-gate-label').innerHTML = cfg.arrGateLabel + ' <span class="label-optional">opcional</span>';
-    document.getElementById('ticket-arr-gate').placeholder = cfg.arrGatePh;
-  }
 }
 
 // Keep old name as alias for any remaining calls
@@ -1685,8 +1869,12 @@ function saveTicket() {
     company:      document.getElementById('ticket-company').value.trim(),
     fromCity, toCity,
     depTerminal:  document.getElementById('ticket-dep-terminal').value.trim(),
+    depTerminalLat: document.getElementById('ticket-dep-terminal-lat').value.trim(),
+    depTerminalLon: document.getElementById('ticket-dep-terminal-lon').value.trim(),
     depGate:      document.getElementById('ticket-dep-gate').value.trim(),
     arrTerminal:  document.getElementById('ticket-arr-terminal').value.trim(),
+    arrTerminalLat: document.getElementById('ticket-arr-terminal-lat').value.trim(),
+    arrTerminalLon: document.getElementById('ticket-arr-terminal-lon').value.trim(),
     arrGate:      document.getElementById('ticket-arr-gate').value.trim(),
     depDate, depTime: document.getElementById('ticket-dep-time').value,
     arrDate, arrTime: document.getElementById('ticket-arr-time').value,
@@ -2009,6 +2197,8 @@ function openEditHotelModal() {
   document.getElementById('edit-hotel-city-name').textContent = city.name;
   document.getElementById('edit-hotel-name').value = city.hotelName || '';
   document.getElementById('edit-hotel-addr').value = city.hotelAddr || '';
+  document.getElementById('edit-hotel-lat').value = city.hotelLat || '';
+  document.getElementById('edit-hotel-lon').value = city.hotelLon || '';
   document.getElementById('edit-hotel-checkin').value = city.checkInTime || '';
   document.getElementById('edit-hotel-checkout').value = city.checkOutTime || '';
   openModal('modal-edit-hotel');
@@ -2020,6 +2210,8 @@ function saveEditHotel() {
   const city = trip.cities[currentCityIdx];
   city.hotelName = document.getElementById('edit-hotel-name').value.trim();
   city.hotelAddr = document.getElementById('edit-hotel-addr').value.trim();
+  city.hotelLat = document.getElementById('edit-hotel-lat').value.trim();
+  city.hotelLon = document.getElementById('edit-hotel-lon').value.trim();
   city.checkInTime = document.getElementById('edit-hotel-checkin').value;
   city.checkOutTime = document.getElementById('edit-hotel-checkout').value;
   save();
@@ -2188,6 +2380,8 @@ function saveNewCity() {
 
   const newCity = {
     id: uid(), name, hotelName, hotelAddr,
+    hotelLat: isDayTrip ? '' : document.getElementById('new-city-hotel-lat').value.trim(),
+    hotelLon: isDayTrip ? '' : document.getElementById('new-city-hotel-lon').value.trim(),
     startDate: cs, endDate: ce,
     days: buildDays(cs, ce),
     ...(isDayTrip ? {
@@ -2209,11 +2403,19 @@ function saveNewCity() {
 }
 
 // ══════════════════════════════════════
-// ADD / DELETE STOP
+// ADD / DELETE STOP (WIZARD)
 // ══════════════════════════════════════
+let stopSelectedLat = null;
+let stopSelectedLon = null;
+let stopAutocompleteTimeout = null;
+
+const LOCATIONIQ_TOKEN = 'pk.f2bfecca9e17523deafccb3c8cd5d043';
+
 function openAddStopModal() {
   editingStopId = null;
   selectedType = 'attraction'; selectedTransport = 'walking';
+  stopSelectedLat = null;
+  stopSelectedLon = null;
   document.getElementById('stop-modal-title').textContent = '📍 Agregar parada';
   document.getElementById('stop-save-btn').textContent = 'Agregar parada';
   ['stop-name','stop-addr','stop-note'].forEach(id => document.getElementById(id).value = '');
@@ -2223,6 +2425,10 @@ function openAddStopModal() {
   document.querySelector('[data-type="attraction"]').classList.add('selected');
   document.querySelectorAll('.transport-option').forEach(e => e.classList.remove('selected'));
   document.querySelector('[data-mode="walking"]').classList.add('selected');
+  document.getElementById('selected-address-display').style.display = 'none';
+  document.getElementById('stop-addr-results').innerHTML = '';
+  document.getElementById('stop-addr-results').style.display = 'none';
+  stopWizardGoToStep(1);
   openModal('modal-add-stop');
 }
 
@@ -2234,6 +2440,8 @@ function openEditStopModal(stopId) {
   editingStopId = stopId;
   selectedType = stop.type || 'attraction';
   selectedTransport = stop.transport || 'walking';
+  stopSelectedLat = stop.lat || null;
+  stopSelectedLon = stop.lon || null;
 
   document.getElementById('stop-modal-title').textContent = '✏️ Editar parada';
   document.getElementById('stop-save-btn').textContent = 'Guardar cambios';
@@ -2251,7 +2459,205 @@ function openEditStopModal(stopId) {
   const transEl = document.querySelector(`[data-mode="${selectedTransport}"]`);
   if (transEl) transEl.classList.add('selected');
 
+  if (stop.address) {
+    document.getElementById('selected-address-display').style.display = 'block';
+  } else {
+    document.getElementById('selected-address-display').style.display = 'none';
+  }
+  document.getElementById('stop-addr-results').innerHTML = '';
+  document.getElementById('stop-addr-results').style.display = 'none';
+
+  stopWizardGoToStep(1);
   openModal('modal-add-stop');
+}
+
+function stopWizardGoToStep(step) {
+  document.querySelectorAll('#modal-add-stop .wizard-step').forEach((el, i) => {
+    el.classList.toggle('active', i + 1 <= step);
+    el.classList.toggle('completed', i + 1 < step);
+  });
+  document.querySelectorAll('#modal-add-stop .wizard-content').forEach((el, i) => {
+    el.style.display = (i + 1 === step) ? 'block' : 'none';
+  });
+
+  if (step === 2) {
+    setTimeout(() => initStopAddressAutocomplete(), 100);
+  }
+}
+
+function stopWizardNextStep(currentStep) {
+  if (currentStep === 1) {
+    const name = document.getElementById('stop-name').value.trim();
+    if (!name) { showToast('⚠️ Ingresá el nombre del lugar'); return; }
+  }
+  if (currentStep === 2) {
+    // Address is optional, no validation needed
+  }
+  stopWizardGoToStep(currentStep + 1);
+}
+
+function stopWizardPrevStep(currentStep) {
+  stopWizardGoToStep(currentStep - 1);
+}
+
+function initStopAddressAutocomplete() {
+  const input = document.getElementById('stop-addr');
+  const results = document.getElementById('stop-addr-results');
+  if (!input || !results) return;
+
+  // Remove existing listener to avoid duplicates
+  const newInput = input.cloneNode(true);
+  input.parentNode.replaceChild(newInput, input);
+  const newInputEl = document.getElementById('stop-addr');
+
+  newInputEl.addEventListener('input', (e) => {
+    clearTimeout(stopAutocompleteTimeout);
+    stopAutocompleteTimeout = setTimeout(() => {
+      searchLocationIQ(e.target.value, results);
+    }, 300);
+  });
+
+  newInputEl.addEventListener('focus', (e) => {
+    if (e.target.value.length >= 3) {
+      searchLocationIQ(e.target.value, results);
+    }
+  });
+
+  document.addEventListener('click', (e) => {
+    if (!newInputEl.contains(e.target) && !results.contains(e.target)) {
+      results.style.display = 'none';
+    }
+  });
+}
+
+function searchLocationIQ(query, resultsEl) {
+  if (!query || query.length < 3) {
+    resultsEl.innerHTML = '';
+    resultsEl.style.display = 'none';
+    return;
+  }
+
+  resultsEl.innerHTML = '<li class="loading">Buscando...</li>';
+  resultsEl.style.display = 'block';
+
+  fetch(`https://api.locationiq.com/v1/autocomplete.php?key=${LOCATIONIQ_TOKEN}&q=${encodeURIComponent(query)}&limit=5&countrycodes=*`)
+    .then(r => r.json())
+    .then(data => {
+      if (data && Array.isArray(data) && data.length > 0) {
+        resultsEl.innerHTML = data.map(place => 
+          `<li onclick="selectStopAddress('${place.display_name.replace(/'/g, "\\'")}', '${place.lat}', '${place.lon}')">
+            <strong>${place.display_name.split(',')[0]}</strong><br>
+            <small>${place.display_name.split(',').slice(1, 4).join(',')}</small>
+          </li>`
+        ).join('');
+      } else if (data && data.error) {
+        resultsEl.innerHTML = '<li class="error">Error: ' + data.error + '</li>';
+      } else {
+        resultsEl.innerHTML = '<li class="no-results">Sin resultados</li>';
+      }
+    })
+    .catch(err => {
+      console.error('LocationIQ error:', err);
+      resultsEl.innerHTML = '<li class="error">Error de conexión</li>';
+    });
+}
+
+function selectStopAddress(displayName, lat, lon) {
+  const input = document.getElementById('stop-addr');
+  const results = document.getElementById('stop-addr-results');
+  const display = document.getElementById('selected-address-display');
+
+  input.value = displayName;
+  stopSelectedLat = lat;
+  stopSelectedLon = lon;
+
+  results.style.display = 'none';
+  display.style.display = 'block';
+}
+
+// Autocomplete para terminales de pasajes
+var terminalAutocompleteTimeouts = {};
+var lastRequestTime = {};
+
+function testTerminalAutocomplete(query, resultsId, inputId) {
+  var resultsEl = document.getElementById(resultsId);
+  if (!resultsEl) return;
+  
+  // Rate limiting: esperar al menos 1 segundo entre requests
+  var now = Date.now();
+  if (lastRequestTime[inputId] && (now - lastRequestTime[inputId]) < 1000) {
+    return;
+  }
+  lastRequestTime[inputId] = now;
+  
+  clearTimeout(terminalAutocompleteTimeouts[inputId]);
+  terminalAutocompleteTimeouts[inputId] = setTimeout(function() {
+    searchTerminalLocationIQ(query, resultsEl, inputId);
+  }, 800);
+}
+
+function searchTerminalLocationIQ(query, resultsEl, inputId) {
+  if (!query || query.length < 3) {
+    resultsEl.innerHTML = '';
+    resultsEl.style.display = 'none';
+    return;
+  }
+
+  resultsEl.innerHTML = '<li class="loading">Buscando...</li>';
+  resultsEl.style.display = 'block';
+
+  fetch('https://api.locationiq.com/v1/autocomplete.php?key=' + LOCATIONIQ_TOKEN + '&q=' + encodeURIComponent(query) + '&limit=5&countrycodes=*')
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+      if (data && Array.isArray(data) && data.length > 0) {
+        resultsEl.innerHTML = data.map(function(place) { 
+          return '<li onclick="selectTerminalAddress(\'' + place.display_name.replace(/'/g, "\\'") + '\', \'' + place.lat + '\', \'' + place.lon + '\', \'' + inputId + '\', \'' + inputId + '-results\')">' +
+            '<strong>' + place.display_name.split(',')[0] + '</strong><br>' +
+            '<small>' + place.display_name.split(',').slice(1, 4).join(',') + '</small>' +
+          '</li>';
+        }).join('');
+      } else {
+        searchTerminalLocationIQFallback(query, resultsEl, inputId);
+      }
+    })
+    .catch(function(err) {
+      resultsEl.innerHTML = '<li class="error">Error de conexión</li>';
+    });
+}
+
+function searchTerminalLocationIQFallback(query, resultsEl, inputId) {
+  fetch(`https://api.locationiq.com/v1/autocomplete.php?key=${LOCATIONIQ_TOKEN}&q=${encodeURIComponent(query)}&limit=5&countrycodes=*`)
+    .then(r => r.json())
+    .then(data => {
+      if (data && Array.isArray(data) && data.length > 0) {
+        resultsEl.innerHTML = data.map(place => 
+          `<li onclick="selectTerminalAddress('${place.display_name.replace(/'/g, "\\'")}', '${place.lat}', '${place.lon}', '${inputId}', '${inputId}-results')">
+            <strong>${place.display_name.split(',')[0]}</strong><br>
+            <small>${place.display_name.split(',').slice(1, 4).join(',')}</small>
+          </li>`
+        ).join('');
+      } else if (data && data.error) {
+        resultsEl.innerHTML = '<li class="error">Error: ' + data.error + '</li>';
+      } else {
+        resultsEl.innerHTML = '<li class="no-results">Sin resultados</li>';
+      }
+    })
+    .catch(err => {
+      resultsEl.innerHTML = '<li class="error">Error de conexión</li>';
+    });
+}
+
+function selectTerminalAddress(displayName, lat, lon, inputId, resultsId) {
+  const input = document.getElementById(inputId);
+  const results = document.getElementById(resultsId);
+  const latInput = document.getElementById(inputId + '-lat');
+  const lonInput = document.getElementById(inputId + '-lon');
+
+  if (input) input.value = displayName;
+  if (latInput) latInput.value = lat;
+  if (lonInput) lonInput.value = lon;
+
+  if (results) results.style.display = 'none';
 }
 
 function saveStop() {
@@ -2265,19 +2671,28 @@ function saveStop() {
   const trip = trips.find(t => t.id === currentTripId);
   const stops = trip.cities[currentCityIdx].days[currentDayIdx].stops;
 
+  const stopData = { name, address, note, timeFrom, timeTo, type: selectedType, transport: selectedTransport };
+
+  if (stopSelectedLat && stopSelectedLon) {
+    stopData.lat = stopSelectedLat;
+    stopData.lon = stopSelectedLon;
+  }
+
   if (editingStopId) {
     const idx = stops.findIndex(s => s.id === editingStopId);
     if (idx !== -1) {
-      stops[idx] = { ...stops[idx], name, address, note, timeFrom, timeTo, type: selectedType, transport: selectedTransport };
+      stops[idx] = { ...stops[idx], ...stopData };
     }
     save(); closeModal('modal-add-stop'); renderDetail();
     showToast('✅ Parada actualizada');
   } else {
-    stops.push({ id: uid(), name, address, note, timeFrom, timeTo, type: selectedType, transport: selectedTransport });
+    stops.push({ id: uid(), ...stopData });
     save(); closeModal('modal-add-stop'); renderDetail();
     showToast('✅ Parada agregada');
   }
   editingStopId = null;
+  stopSelectedLat = null;
+  stopSelectedLon = null;
 }
 
 function deleteStop(stopId) {
@@ -2794,22 +3209,27 @@ function addrAutocomplete(input, listId) {
     try {
       if (_acAbort) _acAbort.abort();
       _acAbort = new AbortController();
-      const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(q)}&limit=5&addressdetails=1`;
-      const res = await fetch(url, {
-        signal: _acAbort.signal,
-        headers: { 'Accept-Language': 'es', 'User-Agent': 'Wandr-TravelPlanner/1.0' }
-      });
+      // Usar LocationIQ en lugar de Nominatim para mejores resultados
+      const url = `https://api.locationiq.com/v1/autocomplete.php?key=${LOCATIONIQ_TOKEN}&q=${encodeURIComponent(q)}&limit=5&countrycodes=*`;
+      const res = await fetch(url, { signal: _acAbort.signal });
       const data = await res.json();
-      if (!data.length) {
+      
+      if (!data || !Array.isArray(data) || data.length === 0) {
         list.innerHTML = '<li class="ac-loading">Sin resultados</li>';
         return;
       }
-      // Store results safely — never interpolate raw values into HTML attributes
-      _acResults[listId] = data.map(r => r.display_name);
+      
+      // Guardar resultados completos incluyendo lat/lon
+      _acResults[listId] = data.map(r => ({
+        display_name: r.display_name,
+        lat: r.lat,
+        lon: r.lon
+      }));
+      
       list.innerHTML = data.map((r, i) => {
         const parts = r.display_name.split(',');
         const main = parts[0].trim();
-        const sub = parts.slice(1, 3).join(',').trim();
+        const sub = parts.slice(1, 4).join(',').trim();
         return `<li data-ac-index="${i}" data-ac-list="${esc(listId)}">
           <div class="ac-main">${esc(main)}</div>
           <div class="ac-sub">${esc(sub)}</div>
@@ -2838,13 +3258,20 @@ function addrAutocomplete(input, listId) {
 function pickAddr(listId, index) {
   const list = document.getElementById(listId);
   if (!list) return;
-  const value = (_acResults[listId] || [])[index];
-  if (value === undefined) return;
+  const result = (_acResults[listId] || [])[index];
+  if (!result) return;
+  
   // Find the input that owns this list
   const wrap = list.closest('.autocomplete-wrap');
   if (wrap) {
-    const input = wrap.querySelector('input');
-    if (input) input.value = value;
+    const input = wrap.querySelector('input[type="text"]');
+    if (input) input.value = result.display_name;
+    
+    // Guardar coordenadas en campos ocultos si existen
+    const latInput = wrap.querySelector('input[type="hidden"][id$="-lat"]');
+    const lonInput = wrap.querySelector('input[type="hidden"][id$="-lon"]');
+    if (latInput) latInput.value = result.lat || '';
+    if (lonInput) lonInput.value = result.lon || '';
   }
   hideList(listId);
 }

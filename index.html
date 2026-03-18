@@ -19,12 +19,6 @@
 <body>
 
 <div id="app-header">
-  <button class="btn-home" onclick="goHome()" title="Ir a Mis Viajes">
-    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
-      <path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/>
-      <polyline points="9 22 9 12 15 12 15 22"/>
-    </svg>
-  </button>
   <div class="logo">
     <svg width="110" height="36" viewBox="0 0 360 96" xmlns="http://www.w3.org/2000/svg">
       <text x="8" y="80" font-family="Arial Black,Arial,sans-serif" font-size="82" font-weight="900" fill="#ffffff">W</text>
@@ -154,59 +148,113 @@
   </div>
 </div>
 
-<!-- ══ MODAL: AGREGAR PARADA ══ -->
+<!-- ══ MODAL: AGREGAR PARADA (WIZARD) ══ -->
 <div class="modal-overlay" id="modal-add-stop">
   <div class="modal">
     <div class="modal-handle"></div>
     <h2 id="stop-modal-title">📍 Agregar parada</h2>
-    <div class="form-group">
-      <label>Tipo de lugar</label>
-      <div class="type-grid">
-        <div class="type-option selected" data-type="attraction" onclick="selectType(this,'attraction')">🏛️<small>Atracción</small></div>
-        <div class="type-option" data-type="restaurant" onclick="selectType(this,'restaurant')">🍽️<small>Restaurant</small></div>
-        <div class="type-option" data-type="museum" onclick="selectType(this,'museum')">🖼️<small>Museo</small></div>
-        <div class="type-option" data-type="park" onclick="selectType(this,'park')">🌿<small>Parque</small></div>
+
+    <!-- Wizard Progress -->
+    <div class="wizard-progress" id="stop-wizard-progress">
+      <div class="wizard-step active" data-step="1">
+        <span class="wizard-step-num">1</span>
+        <span class="wizard-step-label">Info</span>
+      </div>
+      <div class="wizard-line"></div>
+      <div class="wizard-step" data-step="2">
+        <span class="wizard-step-num">2</span>
+        <span class="wizard-step-label">Dirección</span>
+      </div>
+      <div class="wizard-line"></div>
+      <div class="wizard-step" data-step="3">
+        <span class="wizard-step-num">3</span>
+        <span class="wizard-step-label">Horario</span>
+      </div>
+      <div class="wizard-line"></div>
+      <div class="wizard-step" data-step="4">
+        <span class="wizard-step-num">4</span>
+        <span class="wizard-step-label">Transporte</span>
       </div>
     </div>
-    <div class="form-group">
-      <label>Nombre del lugar</label>
-      <input type="text" id="stop-name" placeholder="Ej: Manneken Pis" maxlength="80" />
-    </div>
-    <div class="form-group">
-      <label>Dirección <span class="label-optional">opcional</span></label>
-      <div class="autocomplete-wrap">
-        <input type="text" id="stop-addr" placeholder="Ej: Rue de l'Étuve 31, Bruselas" autocomplete="off" maxlength="150" oninput="addrAutocomplete(this,'stop-addr-list')" onblur="hideList('stop-addr-list')" />
-        <ul class="autocomplete-list" id="stop-addr-list"></ul>
-      </div>
-    </div>
-    <div class="form-group">
-      <label>Horario <span class="label-optional">opcional</span></label>
-      <div class="date-row">
-        <div>
-          <input type="time" id="stop-time-from" />
-          <div style="font-size:0.7rem;color:var(--text2);margin-top:4px">Apertura</div>
+
+    <!-- Step 1: Info básica -->
+    <div class="wizard-content" id="stop-wizard-step-1">
+      <div class="form-group">
+        <label>Tipo de lugar</label>
+        <div class="type-grid">
+          <div class="type-option selected" data-type="attraction" onclick="selectType(this,'attraction')">🏛️<small>Atracción</small></div>
+          <div class="type-option" data-type="restaurant" onclick="selectType(this,'restaurant')">🍽️<small>Restaurant</small></div>
+          <div class="type-option" data-type="museum" onclick="selectType(this,'museum')">🖼️<small>Museo</small></div>
+          <div class="type-option" data-type="park" onclick="selectType(this,'park')">🌿<small>Parque</small></div>
         </div>
-        <div>
-          <input type="time" id="stop-time-to" />
-          <div style="font-size:0.7rem;color:var(--text2);margin-top:4px">Cierre</div>
+      </div>
+      <div class="form-group">
+        <label>Nombre del lugar</label>
+        <input type="text" id="stop-name" placeholder="Ej: Manneken Pis" maxlength="80" />
+      </div>
+      <button class="btn-primary" onclick="stopWizardNextStep(1)">Siguiente: Dirección</button>
+    </div>
+
+    <!-- Step 2: Dirección -->
+    <div class="wizard-content" id="stop-wizard-step-2" style="display:none">
+      <div class="form-group">
+        <label>Dirección</label>
+        <div class="autocomplete-wrap" style="position:relative">
+          <input type="text" id="stop-addr" placeholder="Escribí la dirección..." autocomplete="off" maxlength="150" />
+          <ul class="autocomplete-results" id="stop-addr-results"></ul>
+        </div>
+        <small style="color:var(--text2);font-size:0.75rem;margin-top:6px;display:block">Escribí al menos 3 caracteres para buscar</small>
+      </div>
+      <div class="selected-address" id="selected-address-display" style="display:none">
+        <span style="color:var(--accent2)">✓ Dirección seleccionada</span>
+      </div>
+      <div class="wizard-nav">
+        <button class="btn-secondary" onclick="stopWizardPrevStep(2)" style="flex:1">Atrás</button>
+        <button class="btn-primary" onclick="stopWizardNextStep(2)" style="flex:1;margin-left:10px">Siguiente: Horario</button>
+      </div>
+    </div>
+
+    <!-- Step 3: Horario -->
+    <div class="wizard-content" id="stop-wizard-step-3" style="display:none">
+      <div class="form-group">
+        <label>Horario <span class="label-optional">opcional</span></label>
+        <div class="date-row">
+          <div>
+            <input type="time" id="stop-time-from" />
+            <div style="font-size:0.7rem;color:var(--text2);margin-top:4px">Apertura</div>
+          </div>
+          <div>
+            <input type="time" id="stop-time-to" />
+            <div style="font-size:0.7rem;color:var(--text2);margin-top:4px">Cierre</div>
+          </div>
         </div>
       </div>
-    </div>
-    <div class="form-group">
-      <label>Nota <span class="label-optional">opcional</span></label>
-      <input type="text" id="stop-note" placeholder="Ej: Entrada gratis, reservar con anticipación" maxlength="200" />
-    </div>
-    <div class="form-group">
-      <label>Cómo llegar (desde parada anterior)</label>
-      <div class="transport-grid">
-        <div class="transport-option selected" data-mode="walking" onclick="selectTransport(this,'walking')">🚶<small>Caminando</small></div>
-        <div class="transport-option" data-mode="transit" onclick="selectTransport(this,'transit')">🚌<small>Transporte</small></div>
-        <div class="transport-option" data-mode="taxi" onclick="selectTransport(this,'taxi')">🚕<small>Taxi/Uber</small></div>
-        <div class="transport-option" data-mode="driving" onclick="selectTransport(this,'driving')">🚗<small>Auto</small></div>
+      <div class="form-group">
+        <label>Nota <span class="label-optional">opcional</span></label>
+        <input type="text" id="stop-note" placeholder="Ej: Entrada gratis, reservar con anticipación" maxlength="200" />
+      </div>
+      <div class="wizard-nav">
+        <button class="btn-secondary" onclick="stopWizardPrevStep(3)" style="flex:1">Atrás</button>
+        <button class="btn-primary" onclick="stopWizardNextStep(3)" style="flex:1;margin-left:10px">Siguiente: Transporte</button>
       </div>
     </div>
-    <button class="btn-primary" id="stop-save-btn" onclick="saveStop()">Agregar parada</button>
-    <button class="btn-secondary" onclick="closeModal('modal-add-stop')">Cancelar</button>
+
+    <!-- Step 4: Transporte -->
+    <div class="wizard-content" id="stop-wizard-step-4" style="display:none">
+      <div class="form-group">
+        <label>Cómo llegar (desde parada anterior)</label>
+        <div class="transport-grid">
+          <div class="transport-option selected" data-mode="walking" onclick="selectTransport(this,'walking')">🚶<small>Caminando</small></div>
+          <div class="transport-option" data-mode="transit" onclick="selectTransport(this,'transit')">🚌<small>Transporte</small></div>
+          <div class="transport-option" data-mode="taxi" onclick="selectTransport(this,'taxi')">🚕<small>Taxi/Uber</small></div>
+          <div class="transport-option" data-mode="driving" onclick="selectTransport(this,'driving')">🚗<small>Auto</small></div>
+        </div>
+      </div>
+      <button class="btn-primary" id="stop-save-btn" onclick="saveStop()">Agregar parada</button>
+      <button class="btn-secondary" onclick="stopWizardPrevStep(4)">Atrás</button>
+    </div>
+
+    <button class="btn-cancel-wizard" onclick="closeModal('modal-add-stop')">Cancelar</button>
   </div>
 </div>
 
@@ -241,6 +289,8 @@
         <label>Dirección del hotel</label>
         <div class="autocomplete-wrap">
           <input type="text" id="new-city-hotel-addr" placeholder="Dirección completa" autocomplete="off" oninput="addrAutocomplete(this,'new-hotel-addr-list')" onblur="hideList('new-hotel-addr-list')" />
+          <input type="hidden" id="new-city-hotel-lat" />
+          <input type="hidden" id="new-city-hotel-lon" />
           <ul class="autocomplete-list" id="new-hotel-addr-list"></ul>
         </div>
       </div>
@@ -363,6 +413,8 @@
       <label>Dirección</label>
       <div class="autocomplete-wrap">
         <input type="text" id="edit-hotel-addr" placeholder="Ej: Grand Place 1, Bruselas" autocomplete="off" oninput="addrAutocomplete(this,'edit-hotel-addr-list')" onblur="hideList('edit-hotel-addr-list')" />
+        <input type="hidden" id="edit-hotel-lat" />
+        <input type="hidden" id="edit-hotel-lon" />
         <ul class="autocomplete-list" id="edit-hotel-addr-list"></ul>
       </div>
     </div>
@@ -422,49 +474,73 @@
   </div>
 </div>
 
-<!-- ══ MODAL: PASAJE ══ -->
+<!-- ══ MODAL: PASAJE (WIZARD) ══ -->
 <div class="modal-overlay" id="modal-ticket">
   <div class="modal">
     <div class="modal-handle"></div>
     <h2 id="ticket-modal-title">🎫 Agregar pasaje</h2>
 
-    <div class="form-group">
-      <label>Tipo de transporte</label>
-      <div class="transport-grid" id="ticket-type-grid">
-        <div class="transport-option" data-ttype="flight" onclick="selectTicketType(this,'flight')">✈️<small>Vuelo</small></div>
-        <div class="transport-option" data-ttype="bus"    onclick="selectTicketType(this,'bus')">🚌<small>Bus</small></div>
-        <div class="transport-option" data-ttype="train"  onclick="selectTicketType(this,'train')">🚆<small>Tren</small></div>
-        <div class="transport-option" data-ttype="boat"   onclick="selectTicketType(this,'boat')">⛴️<small>Barco</small></div>
+    <!-- Wizard Progress -->
+    <div class="wizard-progress" id="ticket-wizard-progress">
+      <div class="wizard-step active" data-step="1">
+        <span class="wizard-step-num">1</span>
+        <span class="wizard-step-label">Trayecto</span>
+      </div>
+      <div class="wizard-line"></div>
+      <div class="wizard-step" data-step="2">
+        <span class="wizard-step-num">2</span>
+        <span class="wizard-step-label">Salida</span>
+      </div>
+      <div class="wizard-line"></div>
+      <div class="wizard-step" data-step="3">
+        <span class="wizard-step-num">3</span>
+        <span class="wizard-step-label">Llegada</span>
       </div>
     </div>
 
-    <div class="form-group">
-      <label>Compañía <span class="label-optional">opcional</span></label>
-      <input type="text" id="ticket-company" placeholder="Ej: Ryanair, FlixBus, Renfe, MSC" maxlength="60" />
-    </div>
-
-    <div class="form-group">
-      <label>Origen → Destino</label>
-      <div class="date-row">
-        <input type="text" id="ticket-from-city" placeholder="Ciudad de salida" maxlength="60" />
-        <input type="text" id="ticket-to-city" placeholder="Ciudad de llegada" maxlength="60" />
+    <!-- Step 1: Trayecto -->
+    <div class="wizard-content" id="ticket-wizard-step-1">
+      <div class="form-group">
+        <label>Tipo de transporte</label>
+        <div class="transport-grid" id="ticket-type-grid">
+          <div class="transport-option" data-ttype="flight" onclick="selectTicketType(this,'flight')">✈️<small>Vuelo</small></div>
+          <div class="transport-option" data-ttype="bus"    onclick="selectTicketType(this,'bus')">🚌<small>Bus</small></div>
+          <div class="transport-option" data-ttype="train"  onclick="selectTicketType(this,'train')">🚆<small>Tren</small></div>
+          <div class="transport-option" data-ttype="boat"   onclick="selectTicketType(this,'boat')">⛴️<small>Barco</small></div>
+        </div>
       </div>
+
+      <div class="form-group">
+        <label>Compañía <span class="label-optional">opcional</span></label>
+        <input type="text" id="ticket-company" placeholder="Ej: Ryanair, FlixBus, Renfe, MSC" maxlength="60" />
+      </div>
+
+      <div class="form-group">
+        <label>Origen → Destino</label>
+        <div class="date-row">
+          <input type="text" id="ticket-from-city" placeholder="Ciudad de salida" maxlength="60" />
+          <input type="text" id="ticket-to-city" placeholder="Ciudad de llegada" maxlength="60" />
+        </div>
+      </div>
+
+      <button class="btn-primary" onclick="ticketWizardNextStep(1)">Siguiente: Salida</button>
     </div>
 
-    <!-- Campos dinámicos según tipo — se muestran/ocultan con JS -->
-
-    <!-- SALIDA -->
-    <div id="ticket-dep-fields" style="display:none">
-      <div class="ticket-section-label" id="ticket-dep-section-label">Salida</div>
+    <!-- Step 2: Salida -->
+    <div class="wizard-content" id="ticket-wizard-step-2" style="display:none">
+      <div class="ticket-section-label" id="ticket-dep-section-label">🛫 Salida</div>
 
       <div class="form-group" id="ticket-dep-terminal-group">
-        <label id="ticket-dep-terminal-label">Terminal</label>
-        <input type="text" id="ticket-dep-terminal" maxlength="100" />
+        <label id="ticket-dep-terminal-label">Estación / Terminal de salida</label>
+        <input type="text" id="ticket-dep-terminal" class="terminal-input" placeholder="Ej: Gare du Nord, París" maxlength="150" autocomplete="off" oninput="testTerminalAutocomplete(this.value, 'ticket-dep-terminal-results', 'ticket-dep-terminal')" />
+        <input type="hidden" id="ticket-dep-terminal-lat" />
+        <input type="hidden" id="ticket-dep-terminal-lon" />
+        <ul class="autocomplete-results" id="ticket-dep-terminal-results"></ul>
       </div>
 
       <div class="form-group" id="ticket-dep-gate-group">
-        <label id="ticket-dep-gate-label">Puerta de embarque <span class="label-optional">opcional</span></label>
-        <input type="text" id="ticket-dep-gate" placeholder="Ej: B22" maxlength="20" />
+        <label id="ticket-dep-gate-label">Andén / Wagon <span class="label-optional">opcional</span></label>
+        <input type="text" id="ticket-dep-gate" placeholder="Ej: Andén 3, Wagon 5" maxlength="30" />
       </div>
 
       <div class="form-group">
@@ -474,20 +550,28 @@
           <input type="time" id="ticket-dep-time" />
         </div>
       </div>
+
+      <div class="wizard-nav">
+        <button class="btn-secondary" onclick="ticketWizardPrevStep(2)" style="flex:1">Atrás</button>
+        <button class="btn-primary" onclick="ticketWizardNextStep(2)" style="flex:1;margin-left:10px">Siguiente: Llegada</button>
+      </div>
     </div>
 
-    <!-- LLEGADA -->
-    <div id="ticket-arr-fields" style="display:none">
-      <div class="ticket-section-label" id="ticket-arr-section-label">Llegada</div>
+    <!-- Step 3: Llegada -->
+    <div class="wizard-content" id="ticket-wizard-step-3" style="display:none">
+      <div class="ticket-section-label" id="ticket-arr-section-label">🛬 Llegada</div>
 
       <div class="form-group" id="ticket-arr-terminal-group">
-        <label id="ticket-arr-terminal-label">Terminal</label>
-        <input type="text" id="ticket-arr-terminal" maxlength="100" />
+        <label id="ticket-arr-terminal-label">Estación / Terminal de llegada</label>
+        <input type="text" id="ticket-arr-terminal" class="terminal-input" placeholder="Ej: Bruxelles-Midi" maxlength="150" autocomplete="off" oninput="testTerminalAutocomplete(this.value, 'ticket-arr-terminal-results', 'ticket-arr-terminal')" />
+        <input type="hidden" id="ticket-arr-terminal-lat" />
+        <input type="hidden" id="ticket-arr-terminal-lon" />
+        <ul class="autocomplete-results" id="ticket-arr-terminal-results"></ul>
       </div>
 
       <div class="form-group" id="ticket-arr-gate-group">
-        <label id="ticket-arr-gate-label">Puerta de desembarque <span class="label-optional">opcional</span></label>
-        <input type="text" id="ticket-arr-gate" placeholder="Ej: C14" maxlength="20" />
+        <label id="ticket-arr-gate-label">Andén / Wagon <span class="label-optional">opcional</span></label>
+        <input type="text" id="ticket-arr-gate" placeholder="Ej: Andén 4" maxlength="30" />
       </div>
 
       <div class="form-group">
@@ -497,10 +581,12 @@
           <input type="time" id="ticket-arr-time" />
         </div>
       </div>
+
+      <button class="btn-primary" onclick="saveTicket()">Guardar pasaje</button>
+      <button class="btn-secondary" onclick="ticketWizardPrevStep(3)">Atrás</button>
     </div>
 
-    <button class="btn-primary" onclick="saveTicket()">Guardar pasaje</button>
-    <button class="btn-secondary" onclick="closeModal('modal-ticket')">Cancelar</button>
+    <button class="btn-cancel-wizard" onclick="closeModal('modal-ticket')">Cancelar</button>
   </div>
 </div>
 
