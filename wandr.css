@@ -268,6 +268,9 @@
     .stop-dot.restaurant { background: rgba(34,176,125,0.15); }
     .stop-line { width: 2px; flex: 1; min-height: 18px; background: var(--border); margin-top: 5px; border-radius: 1px; }
     .stop-last .stop-line { display: none; }
+    .stop-dist-separator { display: flex; align-items: center; gap: 8px; padding: 6px 0; margin: 4px 0; }
+    .stop-dist-separator-line { flex: 1; height: 1px; background: var(--border); }
+    .stop-dist-separator-text { font-size: 0.72rem; font-weight: 700; color: var(--accent); background: var(--bg2); border: 1px solid var(--border); border-radius: 20px; padding: 3px 12px; white-space: nowrap; }
     .stop-body { flex: 1; min-width: 0; padding-bottom: 2px; padding-right: 28px; }
     .stop-name { font-weight: 800; font-size: 0.97rem; margin-bottom: 3px; word-break: break-word; letter-spacing: -0.2px; }
     .stop-meta { color: var(--text2); font-size: 0.77rem; display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin-top: 3px; font-weight: 600; }
@@ -294,6 +297,8 @@
 
     /* ── ROUTE ACTIONS ── */
     .route-actions { margin-top: 16px; display: flex; flex-direction: column; gap: 8px; }
+    .btn-optimize { display: flex; align-items: center; justify-content: center; gap: 7px; padding: 15px 10px; border-radius: 18px; background: rgba(127,207,184,0.12); border: 1.5px solid rgba(127,207,184,0.3); color: var(--accent2); font-family: 'Nunito Sans', sans-serif; font-weight: 800; font-size: 0.9rem; text-decoration: none; text-align: center; cursor: pointer; }
+    .btn-optimize:hover { background: rgba(127,207,184,0.2); }
     .btn-full-route { display: flex; align-items: center; justify-content: center; gap: 7px; padding: 15px 10px; border-radius: 18px; background: var(--accent); border: none; color: #fff; font-family: 'Nunito Sans', sans-serif; font-weight: 800; font-size: 0.9rem; text-decoration: none; text-align: center; box-shadow: 0 4px 16px rgba(74,123,247,0.35); }
     .btn-return-hotel { display: flex; align-items: center; justify-content: center; gap: 7px; padding: 15px 10px; border-radius: 18px; background: rgba(74,123,247,0.1); border: 1.5px solid rgba(74,123,247,0.25); color: var(--accent); font-family: 'Nunito Sans', sans-serif; font-weight: 800; font-size: 0.9rem; text-decoration: none; text-align: center; }
     html.light .btn-return-hotel { background: #E8EFFE; border-color: rgba(74,123,247,0.2); color: #4A7BF7; }
@@ -428,26 +433,25 @@
     /* ── TRANSIT DAY in itinerary ── */
     .day-tab.transit { border-color: rgba(127,207,184,0.4); }
     .day-tab.transit small { color: var(--accent3); }
-    .transit-banner { background: rgba(74,123,247,0.07); border: 1.5px solid rgba(74,123,247,0.25); border-radius: 16px; padding: 12px 14px; margin-top: 16px; margin-bottom: 12px; }
-    .transit-banner-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px; }
-    .transit-banner-header strong { font-size: 0.86rem; color: var(--accent); font-weight: 800; }
-    .transit-segment { display: flex; flex-direction: column; gap: 8px; padding: 10px 0; border-top: 1px solid rgba(127,207,184,0.15); }
-    .transit-segment:first-of-type { border-top: none; padding-top: 0; }
+    .transit-banner { border: 1px solid rgba(109,158,235,0.3); border-radius: 14px; overflow: hidden; margin-top: 16px; margin-bottom: 16px; }
+    .transit-banner-header { background: rgba(109,158,235,0.08); padding: 10px 14px; display: flex; align-items: center; gap: 8px; border-bottom: 1px solid rgba(109,158,235,0.2); }
+    .transit-banner-header strong { font-size: 0.78rem; font-weight: 600; color: var(--accent2); }
+    .transit-segment { padding: 10px 14px; }
+    .transit-segment + .transit-segment { border-top: 1px solid var(--border); }
     .transit-seg-header { display: flex; align-items: center; gap: 8px; }
     .transit-seg-icon { font-size: 1rem; flex-shrink: 0; }
     .transit-seg-route { font-size: 0.88rem; font-weight: 800; flex: 1; min-width: 0; letter-spacing: -0.2px; }
     .transit-seg-company { font-size: 0.72rem; color: var(--text2); font-weight: 600; }
-    .transit-badge { font-size: 0.62rem; font-weight: 700; border-radius: 20px; padding: 2px 8px; white-space: nowrap; flex-shrink: 0; }
-    .transit-badge-dep { background: rgba(74,123,247,0.12); color: var(--accent); }
-    .transit-badge-arr { background: rgba(127,207,184,0.12); color: var(--accent2); }
-    .transit-badge-both { background: rgba(232,184,109,0.15); color: var(--accent3); }
-    .transit-times-row { display: flex; align-items: center; gap: 8px; background: var(--bg2); border-radius: 10px; padding: 8px 10px; }
+    .transit-times-row { display: flex; align-items: center; gap: 8px; background: var(--bg2); border-radius: 10px; padding: 8px 10px; margin-top: 8px; }
     .transit-time-block { display: flex; flex-direction: column; gap: 1px; flex: 1; }
     .transit-time-block-right { align-items: flex-end; text-align: right; }
     .transit-time-label { font-size: 0.58rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; color: var(--text2); }
     .transit-time-value { font-size: 1.1rem; font-weight: 900; letter-spacing: -0.5px; color: var(--text); line-height: 1; }
     .transit-time-sub { font-size: 0.65rem; color: var(--text2); font-weight: 600; margin-top: 1px; }
     .transit-times-arrow { font-size: 1rem; color: var(--text2); flex-shrink: 0; }
+    .transit-seg-connector { display: flex; align-items: center; gap: 8px; padding: 6px 14px; background: rgba(109,158,235,0.04); border-top: 1px dashed rgba(109,158,235,0.2); border-bottom: 1px dashed rgba(109,158,235,0.2); }
+    .transit-seg-connector-line { flex: 1; height: 1px; background: rgba(109,158,235,0.3); }
+    .transit-seg-wait { font-size: 0.72rem; color: var(--accent2); white-space: nowrap; }
 
     /* ── BACKUP ── */
     .backup-card { background: var(--bg3); border: 1px solid var(--border); border-radius: 12px; padding: 13px 14px; display: flex; align-items: center; gap: 12px; }
@@ -591,9 +595,190 @@
 /* help accordion */
 .help-accordion { margin-bottom: 16px; }
 .help-section { border: 1px solid var(--border); border-radius: 10px; margin-bottom: 8px; overflow: hidden; }
-.help-section-title { display: flex; justify-content: space-between; align-items: center; padding: 12px 14px; background: var(--bg1); font-weight: 700; font-size: 0.9rem; cursor: pointer; user-select: none; }
+.help-section-title { display: flex; justify-content: space-between; align-items: center; padding: 12px 14px; background: var(--bg3); font-weight: 700; font-size: 0.9rem; cursor: pointer; user-select: none; }
 .help-section-title:active { background: var(--bg2); }
 .help-chevron { font-size: 0.7rem; color: var(--text2); transition: transform .2s; }
 .help-section.open .help-chevron { transform: rotate(180deg); }
 .help-section-content { display: none; padding: 12px 14px; font-size: 0.85rem; line-height: 1.5; color: var(--text2); border-top: 1px solid var(--border); }
 .help-section.open .help-section-content { display: block; }
+
+/* ══════════════════════════════════════
+   NEW: Help grid (icon cards)
+   ══════════════════════════════════════ */
+.help-container { display: flex; flex-direction: column; gap: 12px; margin-bottom: 16px; }
+.help-group { display: flex; flex-direction: column; }
+.help-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 0; }
+.help-card { display: flex; flex-direction: column; align-items: center; justify-content: center; background: var(--bg3); border: 1px solid var(--border); border-radius: 14px; padding: 14px 8px; cursor: pointer; transition: all .2s; }
+.help-card:hover { border-color: var(--accent); background: var(--bg2); }
+.help-card.active { border-color: var(--accent); border-bottom: none; background: var(--bg2); border-top-left-radius: 14px; border-top-right-radius: 14px; border-bottom-left-radius: 0; border-bottom-right-radius: 0; }
+.help-card.active .help-card-title { color: var(--accent); font-weight: 700; }
+.help-card-icon { font-size: 1.6rem; margin-bottom: 6px; }
+.help-card-title { font-size: 0.8rem; font-weight: 600; color: var(--text); text-align: center; }
+.help-text { display: none; padding: 18px 14px 14px 14px; background: var(--bg2); border: 1px solid var(--accent); border-top: none; border-bottom-left-radius: 14px; border-bottom-right-radius: 14px; border-top-left-radius: 0; border-top-right-radius: 0; font-size: 0.9rem; color: var(--text); line-height: 1.5; }
+.help-text.open { display: block; }
+
+/* ══════════════════════════════════════
+   NEW: Wizard summary (step 3)
+   ══════════════════════════════════════ */
+#wizard-summary { margin-bottom: 16px; }
+.summary-detail { margin-top: 16px; }
+.summary-detail-title { font-weight: 700; font-size: 0.95rem; margin-bottom: 12px; }
+.summary-city-card { background: var(--bg3); border: 1px solid var(--border); border-radius: 12px; padding: 12px; margin-bottom: 10px; }
+.summary-city-header { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; }
+.summary-city-num { width: 24px; height: 24px; border-radius: 50%; background: var(--accent); color: #fff; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 0.75rem; flex-shrink: 0; }
+.summary-city-name { font-weight: 700; font-size: 0.95rem; flex: 1; }
+.summary-city-nights { font-size: 0.75rem; color: var(--text2); font-weight: 600; }
+.summary-city-dates { font-size: 0.8rem; color: var(--accent); font-weight: 600; margin-bottom: 4px; }
+.summary-city-hotel { font-size: 0.8rem; color: var(--text2); }
+
+/* ══════════════════════════════════════
+   NEW: City entries (wizard step 2)
+   ══════════════════════════════════════ */
+.city-entry { background: var(--bg3); border: 1px solid var(--border); border-radius: 12px; padding: 12px; margin-bottom: 10px; }
+.city-entry-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
+.city-entry-num { font-weight: 700; font-size: 0.9rem; }
+.btn-remove-city { background: none; border: none; color: var(--text2); font-size: 1.2rem; cursor: pointer; padding: 4px; line-height: 1; }
+.btn-remove-city:hover { color: var(--danger); }
+
+/* Inline add city button */
+.btn-add-city-inline { padding: 6px 12px; border: 1px dashed var(--border); border-radius: 10px; background: transparent; color: var(--accent); font-weight: 700; font-size: 0.8rem; cursor: pointer; transition: all .2s; display: inline-flex; align-items: center; gap: 4px; }
+.btn-add-city-inline:hover { border-color: var(--accent); background: var(--bg2); }
+.btn-add-city-inline svg { flex-shrink: 0; }
+.btn-add-city-inline.full { display: flex; width: 100%; justify-content: center; padding: 12px; border-width: 2px; font-size: 0.9rem; margin-top: 4px; }
+
+/* ══════════════════════════════════════
+   NEW: Transit day banner
+   ══════════════════════════════════════ */
+.transit-day-banner { background: rgba(232,184,109,0.1); border: 1px solid rgba(232,184,109,0.3); border-radius: 14px; padding: 14px; margin-bottom: 12px; }
+.transit-day-title { font-size: 0.8rem; font-weight: 700; color: var(--accent3); margin-bottom: 10px; text-transform: uppercase; letter-spacing: 0.5px; }
+.transit-segment { background: var(--bg2); border-radius: 10px; padding: 12px; margin-bottom: 8px; }
+.transit-segment:last-child { margin-bottom: 0; }
+.transit-seg-header { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
+.transit-seg-icon { font-size: 1.3rem; }
+.transit-seg-route { font-weight: 700; font-size: 0.9rem; flex: 1; }
+.transit-seg-company { font-size: 0.7rem; color: var(--text2); }
+.transit-times-row { display: flex; align-items: center; gap: 8px; }
+.transit-time-block { flex: 1; text-align: center; }
+.transit-time-block-right { text-align: right; }
+.transit-time-label { display: block; font-size: 0.65rem; color: var(--text2); font-weight: 600; text-transform: uppercase; }
+.transit-time-value { display: block; font-size: 1rem; font-weight: 800; margin-top: 2px; }
+.transit-time-sub { display: block; font-size: 0.65rem; color: var(--text2); margin-top: 2px; }
+.transit-times-arrow { font-size: 1.2rem; color: var(--accent); padding: 0 4px; }
+.transit-terminal-info { display: flex; justify-content: space-between; font-size: 0.7rem; color: var(--text2); margin-top: 8px; padding-top: 8px; border-top: 1px solid var(--border); }
+.transit-hotel-link { display: flex; align-items: center; gap: 6px; margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--border); font-size: 0.8rem; color: var(--accent); font-weight: 600; cursor: pointer; }
+.transit-hotel-link:hover { opacity: 0.8; }
+
+/* ══════════════════════════════════════
+   NEW: Backup modal
+   ══════════════════════════════════════ */
+.backup-card { display: flex; align-items: center; gap: 14px; background: var(--bg3); border: 1px solid var(--border); border-radius: 12px; padding: 16px; }
+.backup-icon { font-size: 2rem; flex-shrink: 0; }
+.backup-info { flex: 1; display: flex; flex-direction: column; gap: 2px; }
+.backup-info strong { font-size: 0.95rem; }
+.backup-info span { font-size: 0.8rem; color: var(--text2); }
+.backup-action-btn { padding: 10px 18px; border-radius: 10px; font-weight: 700; font-size: 0.85rem; border: none; cursor: pointer; }
+.backup-export-btn { background: var(--accent); color: #fff; }
+.backup-import-btn { background: var(--accent2); color: var(--bg); }
+#import-warning { display: none; background: rgba(232,125,125,0.1); border: 1px solid rgba(232,125,125,0.3); border-radius: 10px; padding: 12px 14px; margin-top: 14px; }
+.btn-safe-sm { padding: 8px 14px; border-radius: 8px; font-weight: 700; font-size: 0.85rem; border: none; background: var(--accent2); color: var(--bg); cursor: pointer; }
+
+/* ══════════════════════════════════════
+   NEW: Confirm dialog
+   ══════════════════════════════════════ */
+.confirm-icon { font-size: 2.5rem; text-align: center; margin-bottom: 12px; }
+.modal-confirm-text { color: var(--text2); font-size: 0.9rem; line-height: 1.5; margin-bottom: 20px; }
+
+/* ══════════════════════════════════════
+   NEW: Cancel wizard button
+   ══════════════════════════════════════ */
+.btn-cancel-wizard { width: 100%; padding: 12px; border-radius: 10px; font-weight: 700; font-size: 0.9rem; border: 1px solid var(--border); background: transparent; color: var(--text2); cursor: pointer; margin-top: 10px; }
+.btn-cancel-wizard:hover { background: var(--bg2); }
+
+/* ══════════════════════════════════════
+   NEW: Modal full-width buttons
+   ══════════════════════════════════════ */
+#modal-confirm-delete-trip .btn-danger-full,
+#modal-confirm-delete-trip .btn-secondary,
+#modal-confirm-delete-city .btn-danger-full,
+#modal-confirm-delete-city .btn-secondary,
+#modal-confirm-import .btn-danger-full,
+#modal-confirm-import .btn-secondary,
+#modal-confirm-delete-ticket .btn-danger-full,
+#modal-confirm-delete-ticket .btn-secondary,
+#modal-confirm-delete-transit .btn-danger-full,
+#modal-confirm-delete-transit .btn-secondary,
+#modal-info .btn-secondary,
+#modal-backup .btn-secondary { width: 100%; margin-bottom: 10px; }
+
+#modal-confirm-delete-trip .btn-secondary:last-child,
+#modal-confirm-delete-city .btn-secondary:last-child,
+#modal-confirm-import .btn-secondary:last-child,
+#modal-confirm-delete-ticket .btn-secondary:last-child,
+#modal-confirm-delete-transit .btn-secondary:last-child,
+#modal-info .btn-secondary:last-child,
+#modal-backup .btn-secondary:last-child { margin-bottom: 0; }
+
+/* Standalone buttons */
+.btn-danger-full { width: 100%; padding: 12px; border-radius: 10px; font-weight: 700; font-size: 0.9rem; border: none; background: var(--danger); color: #fff; }
+.btn-danger-full:hover { opacity: 0.9; }
+.btn-secondary { padding: 12px 16px; border-radius: 10px; font-weight: 700; font-size: 0.9rem; border: none; background: var(--bg3); color: var(--text); cursor: pointer; }
+.btn-secondary:hover { background: var(--bg2); }
+.btn-danger-sm { padding: 8px 14px; border-radius: 8px; font-weight: 700; font-size: 0.85rem; border: none; background: var(--danger); color: #fff; cursor: pointer; }
+.btn-primary { padding: 12px 16px; border-radius: 10px; font-weight: 700; font-size: 0.9rem; border: none; background: var(--accent); color: #fff; cursor: pointer; }
+
+/* ══════════════════════════════════════
+   NEW: Tickets tab extras
+   ══════════════════════════════════════ */
+.tickets-pending-badge { background: var(--accent3); color: var(--bg); font-size: 0.7rem; font-weight: 700; padding: 2px 8px; border-radius: 8px; }
+.ticket-card-header { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; }
+.ticket-type-icon { font-size: 1.4rem; }
+.ticket-header-info { flex: 1; }
+.ticket-route { font-weight: 700; font-size: 0.95rem; }
+.ticket-company { font-size: 0.75rem; color: var(--text2); margin-top: 2px; }
+.ticket-status-badge { font-size: 0.7rem; font-weight: 700; padding: 3px 8px; border-radius: 8px; }
+.ticket-status-badge.pending { background: rgba(232,184,109,0.2); color: var(--accent3); }
+.ticket-time { font-weight: 700; font-size: 0.9rem; }
+.ticket-date-label { font-size: 0.7rem; color: var(--text2); margin-top: 2px; }
+.ticket-city-label { font-size: 0.7rem; color: var(--text2); margin-top: 2px; }
+.ticket-arrow { display: flex; flex-direction: column; align-items: center; padding: 0 8px; }
+.ticket-arrow-line { width: 30px; height: 1px; background: var(--border); }
+.btn-ticket-edit { padding: 8px 14px; border-radius: 8px; font-weight: 700; font-size: 0.8rem; border: none; cursor: pointer; }
+.btn-ticket-edit-highlight { background: var(--accent); color: #fff; }
+.btn-ticket-delete { background: none; border: none; font-size: 1.1rem; cursor: pointer; padding: 8px; }
+.btn-add-ticket { width: 100%; padding: 12px; border: 2px dashed var(--border); border-radius: 12px; background: transparent; color: var(--accent); font-weight: 700; font-size: 0.9rem; cursor: pointer; margin-top: 16px; transition: all .2s; }
+.btn-add-ticket:hover { border-color: var(--accent); background: var(--bg2); }
+
+/* ══════════════════════════════════════
+   NEW: Itinerary extras
+   ══════════════════════════════════════ */
+.trip-header { margin-bottom: 16px; }
+.trip-header-top { display: flex; justify-content: space-between; align-items: flex-start; }
+.trip-title { font-size: 1.2rem; font-weight: 800; }
+.trip-subtitle { display: flex; gap: 10px; font-size: 0.8rem; color: var(--text2); font-weight: 600; margin-top: 4px; }
+.btn-edit-trip-dates { background: none; border: none; color: var(--text2); cursor: pointer; padding: 4px; }
+.btn-edit-trip-dates:hover { color: var(--accent); }
+.section-label { font-size: 0.8rem; color: var(--text2); font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; margin-top: 16px; margin-bottom: 8px; }
+.city-selector-wrap { margin-bottom: 16px; }
+.hotel-missing-banner { display: flex; align-items: center; justify-content: space-between; background: var(--bg3); border: 1px dashed var(--border); border-radius: 12px; padding: 12px 14px; margin-bottom: 16px; cursor: pointer; }
+.hotel-missing-banner span { font-size: 0.85rem; color: var(--text2); font-weight: 600; }
+.hotel-missing-add { color: var(--accent) !important; font-weight: 700 !important; }
+.btn-edit-hotel { background: none; border: none; color: var(--text2); cursor: pointer; padding: 4px; }
+.btn-edit-hotel:hover { color: var(--accent); }
+.days-scroll { display: flex; gap: 6px; overflow-x: auto; padding-bottom: 6px; scrollbar-width: none; margin-bottom: 12px; }
+.days-scroll::-webkit-scrollbar { display: none; }
+.day-tab { flex-shrink: 0; min-width: 44px; padding: 8px 10px; background: var(--bg3); border: 1px solid var(--border); border-radius: 10px; text-align: center; cursor: pointer; transition: all .2s; }
+.day-tab.active { background: var(--accent); border-color: var(--accent); color: #fff; }
+.day-tab.transit { background: rgba(232,184,109,0.15); border-color: var(--accent3); }
+.day-tab small { display: block; font-size: 0.6rem; font-weight: 600; text-transform: uppercase; }
+.day-tab strong { display: block; font-size: 1rem; font-weight: 800; margin-top: 2px; }
+.day-info-bar { display: flex; justify-content: space-between; align-items: center; background: var(--bg3); border-radius: 10px; padding: 10px 14px; margin-bottom: 12px; }
+.day-label { font-size: 0.85rem; font-weight: 700; }
+.day-date { font-size: 0.75rem; color: var(--text2); margin-top: 2px; }
+.stops-count { font-size: 0.75rem; color: var(--text2); font-weight: 600; }
+
+/* Transit separator */
+.transit-separator { display: flex; align-items: center; gap: 10px; margin: 16px 0 8px; }
+.transit-separator::before, .transit-separator::after { content: ''; flex: 1; height: 1px; background: var(--border); }
+.transit-separator-label { font-size: 0.7rem; font-weight: 700; color: var(--accent3); text-transform: uppercase; letter-spacing: 0.5px; white-space: nowrap; }
+.stop-item.stop-transit { background: rgba(232,184,109,0.06); border: 1px solid rgba(232,184,109,0.2); border-radius: 14px; padding: 14px; }
+.stop-dot.transit-dot { border-color: var(--accent3) !important; }
