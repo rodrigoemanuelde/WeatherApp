@@ -119,12 +119,16 @@
           </div>
         </div>
       </div>
-      <button class="btn-primary" onclick="wizardNextStep(1)">Siguiente</button>
+      <button class="btn-primary" onclick="wizardNextStep(1)">Siguiente: Ciudades</button>
     </div>
 
     <!-- Step 2: Ciudades -->
     <div class="wizard-content" id="wizard-step-2" style="display:none">
       <h2>🏙️ Ciudades</h2>
+      <div class="cities-section-header">
+        <div class="section-label">Agregá las ciudades que vas a visitar</div>
+        <button class="btn-add-city" onclick="addCityEntry()">+ Ciudad</button>
+      </div>
       <div id="cities-list"></div>
       <div class="wizard-nav">
         <button class="btn-secondary" onclick="wizardPrevStep(2)" style="flex:1">Atrás</button>
@@ -186,9 +190,13 @@
       </div>
       <div class="form-group">
         <label>Nombre del lugar</label>
-        <input type="text" id="stop-name" placeholder="Ej: Manneken Pis" maxlength="80" />
+        <div class="autocomplete-wrap" style="position:relative">
+          <input type="text" id="stop-name" placeholder="Ej: Hôtel de Ville, Manneken Pis..." maxlength="80" autocomplete="off" />
+          <ul class="autocomplete-results" id="stop-name-results"></ul>
+        </div>
+        <small style="color:var(--text2);font-size:0.75rem;margin-top:6px;display:block">Escribí al menos 3 caracteres. Si no hay resultados, podés escribir el nombre manualmente y seguir.</small>
       </div>
-      <button class="btn-primary" onclick="stopWizardNextStep(1)">Siguiente</button>
+      <button class="btn-primary" onclick="stopWizardNextStep(1)">Siguiente: Dirección</button>
     </div>
 
     <!-- Step 2: Dirección -->
@@ -206,7 +214,7 @@
       </div>
       <div class="wizard-nav">
         <button class="btn-secondary" onclick="stopWizardPrevStep(2)" style="flex:1">Atrás</button>
-        <button class="btn-primary" onclick="stopWizardNextStep(2)" style="flex:1;margin-left:10px">Siguiente</button>
+        <button class="btn-primary" onclick="stopWizardNextStep(2)" style="flex:1;margin-left:10px">Siguiente: Horario</button>
       </div>
     </div>
 
@@ -231,7 +239,7 @@
       </div>
       <div class="wizard-nav">
         <button class="btn-secondary" onclick="stopWizardPrevStep(3)" style="flex:1">Atrás</button>
-        <button class="btn-primary" onclick="stopWizardNextStep(3)" style="flex:1;margin-left:10px">Siguiente</button>
+        <button class="btn-primary" onclick="stopWizardNextStep(3)" style="flex:1;margin-left:10px">Siguiente: Transporte</button>
       </div>
     </div>
 
@@ -275,22 +283,25 @@
       <input type="text" id="new-city-name" placeholder="Ej: Praga" />
     </div>
 
-    <!-- Campos solo para estadía -->
-    <div id="new-city-stay-fields">
-      <div class="form-group">
-        <label>Hotel / alojamiento</label>
-        <input type="text" id="new-city-hotel-name" placeholder="Nombre del hotel" />
-      </div>
-      <div class="form-group">
-        <label>Dirección del hotel</label>
-        <div class="autocomplete-wrap">
-          <input type="text" id="new-city-hotel-addr" placeholder="Dirección completa" autocomplete="off" oninput="addrAutocomplete(this,'new-hotel-addr-list')" onblur="hideList('new-hotel-addr-list')" />
-          <input type="hidden" id="new-city-hotel-lat" />
-          <input type="hidden" id="new-city-hotel-lon" />
-          <ul class="autocomplete-list" id="new-hotel-addr-list"></ul>
-        </div>
-      </div>
-    </div>
+     <!-- Campos solo para estadía -->
+     <div id="new-city-stay-fields">
+       <div class="form-group">
+         <label>Hotel / alojamiento</label>
+         <div class="autocomplete-wrap">
+           <input type="text" id="new-city-hotel-name" placeholder="Buscá el hotel..." autocomplete="off" />
+           <ul class="autocomplete-list" id="new-hotel-name-list"></ul>
+         </div>
+       </div>
+       <div class="form-group">
+         <label>Dirección del hotel</label>
+         <div class="autocomplete-wrap">
+            <input type="text" id="new-city-hotel-addr" placeholder="Se completa automáticamente" autocomplete="off" />
+           <input type="hidden" id="new-city-hotel-lat" />
+           <input type="hidden" id="new-city-hotel-lon" />
+           <ul class="autocomplete-list" id="new-hotel-addr-list"></ul>
+         </div>
+       </div>
+     </div>
 
     <!-- Campos solo para excursión -->
     <div id="new-city-daytrip-fields" style="display:none">
@@ -403,12 +414,15 @@
     <h2>🏨 Hotel en <span id="edit-hotel-city-name"></span></h2>
     <div class="form-group">
       <label>Nombre del hotel</label>
-      <input type="text" id="edit-hotel-name" placeholder="Ej: Hotel Amigo" />
+      <div class="autocomplete-wrap">
+        <input type="text" id="edit-hotel-name" placeholder="Buscá el hotel..." autocomplete="off" />
+        <ul class="autocomplete-list" id="edit-hotel-name-list"></ul>
+      </div>
     </div>
     <div class="form-group">
       <label>Dirección</label>
       <div class="autocomplete-wrap">
-        <input type="text" id="edit-hotel-addr" placeholder="Ej: Grand Place 1, Bruselas" autocomplete="off" oninput="addrAutocomplete(this,'edit-hotel-addr-list')" onblur="hideList('edit-hotel-addr-list')" />
+        <input type="text" id="edit-hotel-addr" placeholder="Se completa automáticamente" autocomplete="off" />
         <input type="hidden" id="edit-hotel-lat" />
         <input type="hidden" id="edit-hotel-lon" />
         <ul class="autocomplete-list" id="edit-hotel-addr-list"></ul>
@@ -451,7 +465,7 @@
     <div class="confirm-icon">🗑️</div>
     <h2 id="confirm-delete-city-title" style="text-align:center;margin-bottom:10px">¿Eliminar ciudad?</h2>
     <p id="confirm-delete-city-body" style="color:var(--text2);font-size:0.88rem;line-height:1.55;margin-bottom:24px;text-align:center"></p>
-    <button class="btn-danger-full" onclick="confirmRemoveCityEntry()">Sí, eliminar</button>
+    <button class="btn-danger-full" onclick="confirmDeleteCity()">Sí, eliminar</button>
     <button class="btn-secondary" onclick="closeModal('modal-confirm-delete-city')">Cancelar</button>
   </div>
 </div>
@@ -519,7 +533,7 @@
         </div>
       </div>
 
-      <button class="btn-primary" onclick="ticketWizardNextStep(1)">Siguiente</button>
+      <button class="btn-primary" onclick="ticketWizardNextStep(1)">Siguiente: Salida</button>
     </div>
 
     <!-- Step 2: Salida -->
@@ -528,13 +542,10 @@
 
       <div class="form-group" id="ticket-dep-terminal-group">
         <label id="ticket-dep-terminal-label">Estación / Terminal de salida</label>
-        <div class="autocomplete-wrap" style="position:relative">
-          <input type="text" id="ticket-dep-terminal" class="terminal-input" placeholder="Ej: Gare du Nord, París" maxlength="150" autocomplete="off" oninput="testTerminalAutocomplete(this.value, 'ticket-dep-terminal-results', 'ticket-dep-terminal')" onblur="setTimeout(()=>hideResults('ticket-dep-terminal-results'),200)" />
-          <ul class="autocomplete-results" id="ticket-dep-terminal-results"></ul>
-        </div>
+        <input type="text" id="ticket-dep-terminal" class="terminal-input" placeholder="Ej: Gare du Nord, París" maxlength="150" autocomplete="off" oninput="testTerminalAutocomplete(this.value, 'ticket-dep-terminal-results', 'ticket-dep-terminal')" />
         <input type="hidden" id="ticket-dep-terminal-lat" />
         <input type="hidden" id="ticket-dep-terminal-lon" />
-        <input type="hidden" id="ticket-dep-terminal-full" />
+        <ul class="autocomplete-results" id="ticket-dep-terminal-results"></ul>
       </div>
 
       <div class="form-group" id="ticket-dep-gate-group">
@@ -552,7 +563,7 @@
 
       <div class="wizard-nav">
         <button class="btn-secondary" onclick="ticketWizardPrevStep(2)" style="flex:1">Atrás</button>
-        <button class="btn-primary" onclick="ticketWizardNextStep(2)" style="flex:1;margin-left:10px">Siguiente</button>
+        <button class="btn-primary" onclick="ticketWizardNextStep(2)" style="flex:1;margin-left:10px">Siguiente: Llegada</button>
       </div>
     </div>
 
@@ -562,13 +573,10 @@
 
       <div class="form-group" id="ticket-arr-terminal-group">
         <label id="ticket-arr-terminal-label">Estación / Terminal de llegada</label>
-        <div class="autocomplete-wrap" style="position:relative">
-          <input type="text" id="ticket-arr-terminal" class="terminal-input" placeholder="Ej: Bruxelles-Midi" maxlength="150" autocomplete="off" oninput="testTerminalAutocomplete(this.value, 'ticket-arr-terminal-results', 'ticket-arr-terminal')" onblur="setTimeout(()=>hideResults('ticket-arr-terminal-results'),200)" />
-          <ul class="autocomplete-results" id="ticket-arr-terminal-results"></ul>
-        </div>
+        <input type="text" id="ticket-arr-terminal" class="terminal-input" placeholder="Ej: Bruxelles-Midi" maxlength="150" autocomplete="off" oninput="testTerminalAutocomplete(this.value, 'ticket-arr-terminal-results', 'ticket-arr-terminal')" />
         <input type="hidden" id="ticket-arr-terminal-lat" />
         <input type="hidden" id="ticket-arr-terminal-lon" />
-        <input type="hidden" id="ticket-arr-terminal-full" />
+        <ul class="autocomplete-results" id="ticket-arr-terminal-results"></ul>
       </div>
 
       <div class="form-group" id="ticket-arr-gate-group">
@@ -652,85 +660,129 @@
     <div class="modal-handle"></div>
     <h2>📖 Cómo usar Wandr</h2>
 
-    <div class="help-container">
-      <!-- Row 1 -->
-      <div class="help-group">
-        <div class="help-row">
-          <div class="help-card" onclick="toggleHelpCard(this, 'Crear viaje')">
-            <div class="help-card-icon">✈️</div>
-            <div class="help-card-title">Crear viaje</div>
-          </div>
-          <div class="help-card" onclick="toggleHelpCard(this, 'Ciudades')">
-            <div class="help-card-icon">🏙️</div>
-            <div class="help-card-title">Ciudades</div>
-          </div>
-          <div class="help-card" onclick="toggleHelpCard(this, 'Excursiones')">
-            <div class="help-card-icon">🗺️</div>
-            <div class="help-card-title">Excursiones</div>
-          </div>
+    <div class="help-accordion">
+      <div class="help-section">
+        <div class="help-section-title" onclick="toggleHelpSection(this)">
+          <span>1. Crear un viaje</span>
+          <span class="help-chevron">▼</span>
         </div>
-        <div class="help-text" id="help-text-row-1"></div>
+        <div class="help-section-content">
+          Tocá "Nuevo viaje". Ingresá el nombre y las fechas globales. Podés arrancar con una sola ciudad y agregar las demás después — no hace falta tener todo definido desde el principio.
+        </div>
       </div>
 
-      <!-- Row 2 -->
-      <div class="help-group">
-        <div class="help-row">
-          <div class="help-card" onclick="toggleHelpCard(this, 'Hotel')">
-            <div class="help-card-icon">🏨</div>
-            <div class="help-card-title">Hotel</div>
-          </div>
-          <div class="help-card" onclick="toggleHelpCard(this, 'Paradas')">
-            <div class="help-card-icon">📍</div>
-            <div class="help-card-title">Paradas</div>
-          </div>
-          <div class="help-card" onclick="toggleHelpCard(this, 'Google Maps')">
-            <div class="help-card-icon">🗺️</div>
-            <div class="help-card-title">Google Maps</div>
-          </div>
+      <div class="help-section">
+        <div class="help-section-title" onclick="toggleHelpSection(this)">
+          <span>2. Ciudades y fechas</span>
+          <span class="help-chevron">▼</span>
         </div>
-        <div class="help-text" id="help-text-row-2"></div>
+        <div class="help-section-content">
+          Usá los chips de ciudad para cambiar entre destinos. El botón <strong style="color:var(--accent)">+ Ciudad</strong> (al lado de "Destino") agrega una ciudad nueva en cualquier momento. Si quedan días sin ciudad asignada, aparece un aviso en dorado con un botón para cubrirlos. Podés editar las fechas de cada ciudad tocando el ícono 📅 junto al hotel.
+        </div>
       </div>
 
-      <!-- Row 3 -->
-      <div class="help-group">
-        <div class="help-row">
-          <div class="help-card" onclick="toggleHelpCard(this, 'Pasajes')">
-            <div class="help-card-icon">🎫</div>
-            <div class="help-card-title">Pasajes</div>
-          </div>
-          <div class="help-card" onclick="toggleHelpCard(this, 'Días tránsito')">
-            <div class="help-card-icon">✈️</div>
-            <div class="help-card-title">Días tránsito</div>
-          </div>
-          <div class="help-card" onclick="toggleHelpCard(this, 'Resumen')">
-            <div class="help-card-icon">📊</div>
-            <div class="help-card-title">Resumen</div>
-          </div>
+      <div class="help-section">
+        <div class="help-section-title" onclick="toggleHelpSection(this)">
+          <span>3. Excursiones</span>
+          <span class="help-chevron">▼</span>
         </div>
-        <div class="help-text" id="help-text-row-3"></div>
+        <div class="help-section-content">
+          Si visitás una ciudad solo por el día sin pernoctar, elegí "Excursión" al agregar la ciudad. Podés indicar el medio de transporte y los horarios de salida/regreso. Las excursiones aparecen con el ícono 🗺️ y no cuentan noches de hotel.
+        </div>
       </div>
 
-      <!-- Row 4 -->
-      <div class="help-group">
-        <div class="help-row">
-          <div class="help-card" onclick="toggleHelpCard(this, 'Respaldo')">
-            <div class="help-card-icon">💾</div>
-            <div class="help-card-title">Respaldo</div>
-          </div>
-          <div class="help-card" onclick="toggleHelpCard(this, 'Tema')">
-            <div class="help-card-icon">🌙</div>
-            <div class="help-card-title">Tema</div>
-          </div>
-          <div class="help-card" onclick="toggleHelpCard(this, 'Instalar')">
-            <div class="help-card-icon">📲</div>
-            <div class="help-card-title">Instalar</div>
-          </div>
+      <div class="help-section">
+        <div class="help-section-title" onclick="toggleHelpSection(this)">
+          <span>4. Hotel</span>
+          <span class="help-chevron">▼</span>
         </div>
-        <div class="help-text" id="help-text-row-4"></div>
+        <div class="help-section-content">
+          Tocá el ícono ✏️ en el banner del hotel para editar nombre y dirección. Si una ciudad no tiene hotel asignado, aparece un banner punteado con "＋ Agregar hotel".
+        </div>
+      </div>
+
+      <div class="help-section">
+        <div class="help-section-title" onclick="toggleHelpSection(this)">
+          <span>5. Agregar paradas</span>
+          <span class="help-chevron">▼</span>
+        </div>
+        <div class="help-section-content">
+          Tocá el botón <strong style="color:var(--accent)">+</strong> para agregar atracciones, restaurantes, museos o parques. Elegí el medio de transporte desde la parada anterior. Podés reordenar las paradas arrastrando el ícono ⠿ de la izquierda.
+        </div>
+      </div>
+
+      <div class="help-section">
+        <div class="help-section-title" onclick="toggleHelpSection(this)">
+          <span>6. Google Maps</span>
+          <span class="help-chevron">▼</span>
+        </div>
+        <div class="help-section-content">
+          Cada parada tiene "Cómo llegar" (ruta desde la parada anterior) y "Ver lugar". Al final del día podés ver la ruta completa o cómo volver al hotel.
+        </div>
+      </div>
+
+      <div class="help-section">
+        <div class="help-section-title" onclick="toggleHelpSection(this)">
+          <span>7. Pasajes entre ciudades</span>
+          <span class="help-chevron">▼</span>
+        </div>
+        <div class="help-section-content">
+          En la pestaña <strong style="color:var(--accent)">🎫 Pasajes</strong> encontrás los tramos entre ciudades generados automáticamente. Tocá "＋ Completar datos" para cargar vuelo, bus, tren o barco con compañía, horarios, terminal y puerta de embarque. Una vez cargado, el día de salida y el de llegada muestran automáticamente la terminal y el botón "Cómo llegar al hotel".
+        </div>
+      </div>
+
+      <div class="help-section">
+        <div class="help-section-title" onclick="toggleHelpSection(this)">
+          <span>8. Días de tránsito</span>
+          <span class="help-chevron">▼</span>
+        </div>
+        <div class="help-section-content">
+          Si un día es compartido entre dos ciudades (salís a las 10hs de ciudad A y llegás a las 17hs a ciudad B), ese día aparece en ambas ciudades con un marcador ✈ en el tab. En ciudad A ves la terminal de salida al final del itinerario; en ciudad B ves la terminal de llegada al principio y el hotel al final.
+        </div>
+      </div>
+
+      <div class="help-section">
+        <div class="help-section-title" onclick="toggleHelpSection(this)">
+          <span>9. Vista Resumen</span>
+          <span class="help-chevron">▼</span>
+        </div>
+        <div class="help-section-content">
+          En la pestaña <strong style="color:var(--accent)">🗺️ Resumen</strong> encontrás estadísticas del viaje: cantidad de días, ciudades, noches y pasajes. También podés ver cada ciudad con sus fechas, hotel y cómo llegar.
+        </div>
+      </div>
+
+      <div class="help-section">
+        <div class="help-section-title" onclick="toggleHelpSection(this)">
+          <span>10. Respaldo</span>
+          <span class="help-chevron">▼</span>
+        </div>
+        <div class="help-section-content">
+          En la pestaña "Respaldo" podés exportar todos tus viajes a un archivo .json para hacer copia de seguridad o pasarlos a otro dispositivo. También podés importar y elegir si reemplazar todo o agregar a los existentes.
+        </div>
+      </div>
+
+      <div class="help-section">
+        <div class="help-section-title" onclick="toggleHelpSection(this)">
+          <span>11. Tema claro/oscuro</span>
+          <span class="help-chevron">▼</span>
+        </div>
+        <div class="help-section-content">
+          Tocá el botón de sol/luna en la barra inferior para alternar entre modo claro y modo oscuro. La preference se guarda en tu dispositivo.
+        </div>
+      </div>
+
+      <div class="help-section">
+        <div class="help-section-title" onclick="toggleHelpSection(this)">
+          <span>12. Instalar como app</span>
+          <span class="help-chevron">▼</span>
+        </div>
+        <div class="help-section-content">
+          En Chrome Android: menú (⋮) → "Añadir a pantalla de inicio". Los datos se guardan en el dispositivo — no hace falta conexión a internet para usar la app.
+        </div>
       </div>
     </div>
 
-    <button class="btn-secondary" onclick="closeModal('modal-info')">Cancelar</button>
+    <button class="btn-secondary" onclick="closeModal('modal-info')">Cerrar</button>
   </div>
 </div>
 
@@ -746,25 +798,14 @@
   </div>
 </div>
 
-<div class="modal-overlay" id="modal-confirm-delete-stop">
+<div class="modal-overlay" id="modal-packing">
   <div class="modal">
     <div class="modal-handle"></div>
-    <div class="confirm-icon">🗑️</div>
-    <h2 id="confirm-delete-stop-title" style="text-align:center;margin-bottom:10px">¿Eliminar parada?</h2>
-    <p id="confirm-delete-stop-body" style="color:var(--text2);font-size:0.88rem;line-height:1.55;margin-bottom:24px;text-align:center"></p>
-    <button class="btn-danger-full" onclick="confirmDeleteStop()">Sí, eliminar</button>
-    <button class="btn-secondary" onclick="closeModal('modal-confirm-delete-stop')">Cancelar</button>
-  </div>
-</div>
-
-<div class="modal-overlay" id="modal-confirm-delete-transit-leg">
-  <div class="modal">
-    <div class="modal-handle"></div>
-    <div class="confirm-icon">🗑️</div>
-    <h2 id="confirm-delete-transit-leg-title" style="text-align:center;margin-bottom:10px">¿Eliminar tramo?</h2>
-    <p id="confirm-delete-transit-leg-body" style="color:var(--text2);font-size:0.88rem;line-height:1.55;margin-bottom:24px;text-align:center"></p>
-    <button class="btn-danger-full" onclick="confirmRemoveTransitLeg()">Sí, eliminar</button>
-    <button class="btn-secondary" onclick="closeModal('modal-confirm-delete-transit-leg')">Cancelar</button>
+    <div class="modal-header">
+      <h2>🎒 Qué llevar</h2>
+      <button class="modal-close" onclick="closeModal('modal-packing')">&times;</button>
+    </div>
+    <div id="packing-content" style="padding:16px;"></div>
   </div>
 </div>
 

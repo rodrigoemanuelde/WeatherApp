@@ -17,98 +17,13 @@ let currentCityIdx = 0;
 let currentDayIdx = 0;
 let selectedType = 'attraction';
 let selectedTransport = 'walking';
+let cityEntries = [];
+let transitLegs = {}; // key: "fromId_toId" → array of leg objects
 let currentDetailTab = 'itinerary';
 let selectedTicketType = null;
 let editingTicketId = null;
 let _pendingDeleteTicketId = null;
 let editingStopId = null;
-
-// ══════════════════════════════════════
-// CITY WIZARD STORE (Zustand-like pattern)
-// ══════════════════════════════════════
-function createCityWizardStore() {
-  let state = {
-    cityEntries: [],
-    cityEntryState: {},
-    transitLegs: {}
-  };
-  let listeners = new Set();
-
-  function getState() { return state; }
-
-  function setState(partial) {
-    state = typeof partial === 'function' ? partial(state) : { ...state, ...partial };
-    listeners.forEach(fn => fn(state));
-  }
-
-  function subscribe(fn) {
-    listeners.add(fn);
-    return () => listeners.delete(fn);
-  }
-
-  // Actions
-  function addCityEntry(id) {
-    setState(s => ({
-      ...s,
-      cityEntries: [...s.cityEntries, id],
-      cityEntryState: {
-        ...s.cityEntryState,
-        [id]: { name: '', hotel: '', addr: '', start: '', end: '' }
-      }
-    }));
-  }
-
-  function removeCityEntry(id) {
-    setState(s => {
-      const newEntries = s.cityEntries.filter(c => c !== id);
-      const newState = { ...s.cityEntryState };
-      delete newState[id];
-      return { ...s, cityEntries: newEntries, cityEntryState: newState };
-    });
-  }
-
-  function updateCityField(id, field, value) {
-    setState(s => ({
-      ...s,
-      cityEntryState: {
-        ...s.cityEntryState,
-        [id]: { ...s.cityEntryState[id], [field]: value }
-      }
-    }));
-  }
-
-  function syncFromDOM() {
-    setState(s => {
-      const newState = { ...s.cityEntryState };
-      s.cityEntries.forEach(id => {
-        const existing = newState[id] || { name: '', start: '', end: '' };
-        const nameEl = document.getElementById('cn-' + id);
-        const startEl = document.getElementById('cs-' + id);
-        const endEl = document.getElementById('ce-' + id);
-        newState[id] = {
-          name: nameEl?.value || existing.name,
-          hotel: existing.hotel || '',
-          addr: existing.addr || '',
-          start: startEl?.value || existing.start,
-          end: endEl?.value || existing.end
-        };
-      });
-      return { ...s, cityEntryState: newState };
-    });
-  }
-
-  function reset() {
-    setState({ cityEntries: [], cityEntryState: {}, transitLegs: {} });
-  }
-
-  return { getState, setState, subscribe, addCityEntry, removeCityEntry, updateCityField, syncFromDOM, reset };
-}
-
-const cityWizard = createCityWizardStore();
-
-// ══════════════════════════════════════
-// APP SHORTCUTS
-// ══════════════════════════════════════
 
 // Handle app shortcuts on launch
 (function handleAppShortcuts() {
@@ -259,11 +174,7 @@ let _pendingTransitLegKey = null;
 
 function confirmDeleteTransitLegs() {
   if (!_pendingTransitLegKey) return;
-  cityWizard.setState(s => {
-    const newLegs = { ...s.transitLegs };
-    delete newLegs[_pendingTransitLegKey];
-    return { transitLegs: newLegs };
-  });
+  delete transitLegs[_pendingTransitLegKey];
   _pendingTransitLegKey = null;
   closeModal('modal-confirm-delete-transit');
   renderCityEntries();
@@ -296,24 +207,19 @@ function confirmDeleteTrip() {
 // NEW TRIP — date validation
 // ══════════════════════════════════════
 function openNewTripModal() {
-  cityWizard.reset();
+  cityEntries = [];
+  transitLegs = {};
   const today = new Date().toISOString().slice(0, 10);
   document.getElementById('trip-name').value = '';
   const si = document.getElementById('trip-start');
   const ei = document.getElementById('trip-end');
-  // Start empty, set min to today (block past dates)
-  si.value = '';
-  si.min = today;
-  si.max = '';
-  // Return starts empty, min will be updated when start is picked
-  ei.value = '';
-  ei.min = today;
-  ei.max = '';
+  si.value = today; si.max = '';
+  ei.value = today; ei.min = today;
   document.getElementById('trip-end-error').classList.remove('visible');
   ei.classList.remove('error');
   document.getElementById('cities-list').innerHTML = '';
   const id = uid();
-  cityWizard.addCityEntry(id);
+  cityEntries.push(id);
   renderCityEntries();
   syncCityMins();
   wizardGoToStep(1);
@@ -352,17 +258,13 @@ function wizardRenderSummary() {
   const start = document.getElementById('trip-start').value;
   const end = document.getElementById('trip-end').value;
   
-  // Sync DOM values into store
-  cityWizard.syncFromDOM();
-  const state = cityWizard.getState();
-  
   let citiesHtml = '';
   let totalDays = 0;
-  state.cityEntries.forEach((id, i) => {
-    const entry = state.cityEntryState[id] || {};
-    const cityName = entry.name || '';
-    const cs = entry.start || '';
-    const ce = entry.end || '';
+  cityEntries.forEach((id, i) => {
+    const cityName = document.getElementById('cn-' + id)?.value || '';
+    const hotelName = document.getElementById('chn-' + id)?.value || '';
+    const cs = document.getElementById('cs-' + id)?.value || '';
+    const ce = document.getElementById('ce-' + id)?.value || '';
     
     if (cityName && cs && ce) {
       const s = new Date(cs + 'T00:00:00');
@@ -380,7 +282,7 @@ function wizardRenderSummary() {
       <h3>${esc(name)}</h3>
       <div class="trip-card-meta">
         <span>📅 ${formatDate(start)} → ${formatDate(end)}</span>
-        <span>🌤️ ${totalDays} días · ${state.cityEntries.length} ciudad${state.cityEntries.length !== 1 ? 'es' : ''}</span>
+        <span>🌤️ ${totalDays} días · ${cityEntries.length} ciudad${cityEntries.length !== 1 ? 'es' : ''}</span>
       </div>
       <div class="cities-pills">${citiesHtml || '<span class="city-pill" style="opacity:0.5">Sin ciudades</span>'}</div>
     </div>
@@ -392,16 +294,13 @@ function wizardRenderSummary() {
 }
 
 function renderWizardCitiesDetail() {
-  cityWizard.syncFromDOM();
-  const state = cityWizard.getState();
   let html = '';
-  state.cityEntries.forEach((id, i) => {
-    const entry = state.cityEntryState[id] || {};
-    const cityName = entry.name || '';
-    const hotelName = entry.hotel || '';
-    const hotelAddr = entry.addr || '';
-    const cs = entry.start || '';
-    const ce = entry.end || '';
+  cityEntries.forEach((id, i) => {
+    const cityName = document.getElementById('cn-' + id)?.value || '';
+    const hotelName = document.getElementById('chn-' + id)?.value || '';
+    const hotelAddr = document.getElementById('cha-' + id)?.value || '';
+    const cs = document.getElementById('cs-' + id)?.value || '';
+    const ce = document.getElementById('ce-' + id)?.value || '';
     
     if (cityName && cs && ce) {
       const s = new Date(cs + 'T00:00:00');
@@ -454,8 +353,7 @@ function onTripEndChange() {
 function syncCityMins() {
   const tripStart = document.getElementById('trip-start').value;
   const tripEnd = document.getElementById('trip-end').value;
-  const state = cityWizard.getState();
-  state.cityEntries.forEach(id => {
+  cityEntries.forEach(id => {
     const csi = document.getElementById('cs-' + id);
     const cei = document.getElementById('ce-' + id);
     if (!csi || !cei) return;
@@ -471,7 +369,7 @@ function syncCityMins() {
 // ══════════════════════════════════════
 function addCityEntry() {
   const id = uid();
-  cityWizard.addCityEntry(id);
+  cityEntries.push(id);
   renderCityEntries();
   syncCityMins();
   // Scroll to bottom of modal
@@ -481,42 +379,68 @@ function addCityEntry() {
   }, 50);
 }
 
-let _pendingRemoveCityId = null;
-
-function removeCityEntry(id) {
-  const state = cityWizard.getState();
-  if (state.cityEntries.length <= 1) { showToast('⚠️ Necesitás al menos una ciudad'); return; }
-  const cityName = state.cityEntryState[id]?.name || 'esta ciudad';
-  _pendingRemoveCityId = id;
-  document.getElementById('confirm-delete-city-title').textContent = `¿Eliminar "${cityName}"?`;
-  document.getElementById('confirm-delete-city-body').textContent = 'Esta acción no se puede deshacer.';
-  openModal('modal-confirm-delete-city');
+function toggleTransitLegs(fromId, toId) {
+  const legKey = fromId + '_' + toId;
+  if (transitLegs[legKey] && transitLegs[legKey].length > 0) {
+    // Ask to remove via custom modal instead of native confirm()
+    _pendingTransitLegKey = legKey;
+    openModal('modal-confirm-delete-transit');
+  } else {
+    // Add first leg
+    if (!transitLegs[legKey]) transitLegs[legKey] = [];
+    transitLegs[legKey].push({ type: 'flight', fromTerminal: '', toTerminal: '', depTime: '', arrTime: '', viaCity: '' });
+    renderCityEntries();
+    syncCityMins();
+  }
 }
 
-function confirmRemoveCityEntry() {
-  const id = _pendingRemoveCityId;
-  _pendingRemoveCityId = null;
-  if (!id) return;
-  cityWizard.removeCityEntry(id);
-  closeModal('modal-confirm-delete-city');
+function addTransitLeg(fromId, toId) {
+  const legKey = fromId + '_' + toId;
+  if (!transitLegs[legKey]) transitLegs[legKey] = [];
+  transitLegs[legKey].push({ type: 'flight', fromTerminal: '', toTerminal: '', depTime: '', arrTime: '', viaCity: '' });
   renderCityEntries();
   syncCityMins();
-  showToast('Ciudad eliminada');
+}
+
+function removeTransitLeg(fromId, toId, idx) {
+  const legKey = fromId + '_' + toId;
+  if (!transitLegs[legKey]) return;
+  transitLegs[legKey].splice(idx, 1);
+  if (transitLegs[legKey].length === 0) delete transitLegs[legKey];
+  renderCityEntries();
+  syncCityMins();
+}
+
+function setLegType(fromId, toId, idx, type) {
+  const legKey = fromId + '_' + toId;
+  if (transitLegs[legKey] && transitLegs[legKey][idx]) {
+    transitLegs[legKey][idx].type = type;
+    renderCityEntries();
+    syncCityMins();
+  }
+}
+
+function updateLegField(fromId, toId, idx, field, value) {
+  const legKey = fromId + '_' + toId;
+  if (transitLegs[legKey] && transitLegs[legKey][idx]) {
+    transitLegs[legKey][idx][field] = value;
+  }
+}
+
+function removeCityEntry(id) {
+  if (cityEntries.length <= 1) { showToast('⚠️ Necesitás al menos una ciudad'); return; }
+  cityEntries = cityEntries.filter(c => c !== id);
+  renderCityEntries();
 }
 
 function renderCityEntries() {
-  // Sync DOM values into store before re-rendering
-  cityWizard.syncFromDOM();
-  
-  const state = cityWizard.getState();
-  
-  document.getElementById('cities-list').innerHTML = state.cityEntries.map((id, i) => {
+  document.getElementById('cities-list').innerHTML = cityEntries.map((id, i) => {
     // Transit connector before each city (except the first)
     let connectorHtml = '';
     if (i > 0) {
-      const prevId = state.cityEntries[i - 1];
+      const prevId = cityEntries[i - 1];
       const legKey = prevId + '_' + id;
-      const legs = state.transitLegs[legKey] || [];
+      const legs = transitLegs[legKey] || [];
       const hasLegs = legs.length > 0;
       connectorHtml = `
         <div class="transit-connector">
@@ -529,112 +453,31 @@ function renderCityEntries() {
         ${hasLegs ? renderTransitLegsSection(prevId, id, legs) : ''}
       `;
     }
-    const entry = state.cityEntryState[id] || { name: '', hotel: '', addr: '', start: '', end: '' };
     return connectorHtml + `
     <div class="city-entry" id="ce-entry-${id}">
       <div class="city-entry-header">
         <span class="city-entry-num">Ciudad ${i + 1}</span>
-        ${state.cityEntries.length > 1 ? `<button class="btn-remove-city" onclick="removeCityEntry('${id}')">
+        ${cityEntries.length > 1 ? `<button class="btn-remove-city" onclick="removeCityEntry('${id}')">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
         </button>` : ''}
       </div>
-      <input type="text" id="cn-${id}" placeholder="Nombre de la ciudad (ej: Bruselas)" maxlength="60" value="${esc(entry.name)}" />
+      <input type="text" id="cn-${id}" placeholder="Nombre de la ciudad (ej: Bruselas)" maxlength="60" />
+      <input type="text" id="chn-${id}" placeholder="Hotel / alojamiento" style="margin-top:8px" maxlength="80" />
+      <input type="text" id="cha-${id}" placeholder="Dirección del hotel" style="margin-top:8px" maxlength="150" />
       <div class="city-date-row" style="margin-top:10px">
         <div class="city-date-col">
           <label>Llegada</label>
-          <input type="date" id="cs-${id}" onchange="onCityStartChange('${id}')" value="${entry.start}" />
+          <input type="date" id="cs-${id}" onchange="onCityStartChange('${id}')" />
           <div class="error-msg" id="cs-err-${id}"></div>
         </div>
         <div class="city-date-col">
           <label>Salida</label>
-          <input type="date" id="ce-${id}" onchange="onCityEndChange('${id}')" value="${entry.end}" />
+          <input type="date" id="ce-${id}" onchange="onCityEndChange('${id}')" />
           <div class="error-msg" id="ce-err-${id}"></div>
         </div>
       </div>
     </div>`;
-  }).join('') + `<button class="btn-add-city-inline full" onclick="addCityEntry()">+ Ciudad</button>`;
-}
-
-function toggleTransitLegs(fromId, toId) {
-  const legKey = fromId + '_' + toId;
-  const state = cityWizard.getState();
-  if (state.transitLegs[legKey] && state.transitLegs[legKey].length > 0) {
-    // Ask to remove via custom modal instead of native confirm()
-    _pendingTransitLegKey = legKey;
-    openModal('modal-confirm-delete-transit');
-  } else {
-    // Add first leg
-    cityWizard.setState(s => {
-      const newLegs = { ...s.transitLegs };
-      if (!newLegs[legKey]) newLegs[legKey] = [];
-      newLegs[legKey].push({ type: 'flight', fromTerminal: '', toTerminal: '', depTime: '', arrTime: '', viaCity: '' });
-      return { transitLegs: newLegs };
-    });
-    renderCityEntries();
-    syncCityMins();
-  }
-}
-
-function addTransitLeg(fromId, toId) {
-  const legKey = fromId + '_' + toId;
-  cityWizard.setState(s => {
-    const newLegs = { ...s.transitLegs };
-    if (!newLegs[legKey]) newLegs[legKey] = [];
-    newLegs[legKey].push({ type: 'flight', fromTerminal: '', toTerminal: '', depTime: '', arrTime: '', viaCity: '' });
-    return { transitLegs: newLegs };
-  });
-  renderCityEntries();
-  syncCityMins();
-}
-
-let _pendingTransitLegRemove = null;
-
-function removeTransitLeg(fromId, toId, idx) {
-  _pendingTransitLegRemove = { fromId, toId, idx };
-  const legKey = fromId + '_' + toId;
-  const state = cityWizard.getState();
-  const leg = state.transitLegs[legKey]?.[idx];
-  const legType = leg?.type || 'tramo';
-  document.getElementById('confirm-delete-transit-leg-title').textContent = `¿Eliminar ${legType}?`;
-  document.getElementById('confirm-delete-transit-leg-body').textContent = 'Se eliminará este tramo de viaje. Esta acción no se puede deshacer.';
-  openModal('modal-confirm-delete-transit-leg');
-}
-
-function confirmRemoveTransitLeg() {
-  if (!_pendingTransitLegRemove) return;
-  const { fromId, toId, idx } = _pendingTransitLegRemove;
-  _pendingTransitLegRemove = null;
-  const legKey = fromId + '_' + toId;
-  cityWizard.setState(s => {
-    if (!s.transitLegs[legKey]) return s;
-    const newLegs = { ...s.transitLegs };
-    newLegs[legKey].splice(idx, 1);
-    if (newLegs[legKey].length === 0) delete newLegs[legKey];
-    return { transitLegs: newLegs };
-  });
-  closeModal('modal-confirm-delete-transit-leg');
-  renderCityEntries();
-  syncCityMins();
-}
-
-function setLegType(fromId, toId, idx, type) {
-  const legKey = fromId + '_' + toId;
-  cityWizard.setState(s => {
-    if (s.transitLegs[legKey] && s.transitLegs[legKey][idx]) {
-      s.transitLegs[legKey][idx].type = type;
-    }
-    return s;
-  });
-  renderCityEntries();
-  syncCityMins();
-}
-
-function updateLegField(fromId, toId, idx, field, value) {
-  const legKey = fromId + '_' + toId;
-  const state = cityWizard.getState();
-  if (state.transitLegs[legKey] && state.transitLegs[legKey][idx]) {
-    state.transitLegs[legKey][idx][field] = value;
-  }
+  }).join('');
 }
 
 function renderTransitLegsSection(fromId, toId, legs) {
@@ -669,6 +512,7 @@ function renderTransitLegsSection(fromId, toId, legs) {
   `).join('');
   return `<div class="transit-legs-section">
     ${legsHtml}
+    <button class="btn-add-leg" onclick="addTransitLeg('${fromId}','${toId}')">+ Agregar tramo</button>
   </div>`;
 }
 
@@ -727,10 +571,6 @@ function onCityEndChange(id) {
 // CREATE TRIP
 // ══════════════════════════════════════
 function createTrip() {
-  // Sync DOM values into store before reading
-  cityWizard.syncFromDOM();
-  const state = cityWizard.getState();
-  
   const name = document.getElementById('trip-name').value.trim();
   const start = document.getElementById('trip-start').value;
   const end = document.getElementById('trip-end').value;
@@ -740,14 +580,13 @@ function createTrip() {
   if (end < start) { showToast('⚠️ La fecha fin no puede ser anterior al inicio'); return; }
 
   const cities = [];
-  for (let i = 0; i < state.cityEntries.length; i++) {
-    const id = state.cityEntries[i];
-    const entry = state.cityEntryState[id] || {};
-    const cityName = (entry.name || '').trim();
-    const hotelName = (entry.hotel || '').trim();
-    const hotelAddr = (entry.addr || '').trim();
-    const cs = entry.start || '';
-    const ce = entry.end || '';
+  for (let i = 0; i < cityEntries.length; i++) {
+    const id = cityEntries[i];
+    const cityName = (document.getElementById('cn-' + id)?.value || '').trim();
+    const hotelName = (document.getElementById('chn-' + id)?.value || '').trim();
+    const hotelAddr = (document.getElementById('cha-' + id)?.value || '').trim();
+    const cs = document.getElementById('cs-' + id)?.value || '';
+    const ce = document.getElementById('ce-' + id)?.value || '';
 
     if (!cityName) { showToast(`⚠️ Ingresá el nombre de la ciudad ${i + 1}`); return; }
     if (!cs || !ce) { showToast(`⚠️ Completá las fechas de ${cityName}`); return; }
@@ -770,18 +609,16 @@ function createTrip() {
   const trip = { id: uid(), name, startDate: start, endDate: end, cities, tickets: [] };
 
   // Generate chained tickets from transitLegs
-  for (let i = 0; i < state.cityEntries.length - 1; i++) {
-    const fromId = state.cityEntries[i];
-    const toId = state.cityEntries[i + 1];
+  for (let i = 0; i < cityEntries.length - 1; i++) {
+    const fromId = cityEntries[i];
+    const toId = cityEntries[i + 1];
     const legKey = fromId + '_' + toId;
-    const legs = state.transitLegs[legKey];
+    const legs = transitLegs[legKey];
     if (legs && legs.length > 0) {
-      const fromEntry = state.cityEntryState[fromId] || {};
-      const toEntry = state.cityEntryState[toId] || {};
-      const fromCityName = (fromEntry.name || '').trim();
-      const toCityName = (toEntry.name || '').trim();
-      const fromCityEnd = fromEntry.end || '';
-      const toCityStart = toEntry.start || '';
+      const fromCityName = (document.getElementById('cn-' + fromId)?.value || '').trim();
+      const toCityName   = (document.getElementById('cn-' + toId)?.value   || '').trim();
+      const fromCityEnd  = document.getElementById('ce-' + fromId)?.value || '';
+      const toCityStart  = document.getElementById('cs-' + toId)?.value   || '';
       // All legs in this connector share a chainId
       const chainId = uid();
       legs.forEach((leg, li) => {
@@ -796,9 +633,9 @@ function createTrip() {
           depTerminal: leg.fromTerminal || '',
           arrTerminal: leg.toTerminal   || '',
           depGate: '', arrGate: '',
-          depDate: isFirst ? fromCityEnd  : fromCityEnd,
+          depDate: isFirst ? fromCityEnd  : (document.getElementById('ce-' + fromId)?.value || fromCityEnd),
           depTime: leg.depTime || '',
-          arrDate: isLast  ? toCityStart  : toCityStart,
+          arrDate: isLast  ? toCityStart  : (document.getElementById('cs-' + toId)?.value   || toCityStart),
           arrTime: leg.arrTime || '',
           chainId: legs.length > 1 ? chainId : null,
           stub: false,
@@ -841,7 +678,6 @@ function openTrip(id) {
   currentDayIdx = 0;
   currentDetailTab = 'itinerary';
   showScreen('detail');
-  switchDetailTab('itinerary');
   renderDetail();
   renderTickets();
 }
@@ -851,9 +687,9 @@ function switchDetailTab(tab) {
   document.getElementById('dtab-itinerary').classList.toggle('active', tab === 'itinerary');
   document.getElementById('dtab-overview').classList.toggle('active', tab === 'overview');
   document.getElementById('dtab-tickets').classList.toggle('active', tab === 'tickets');
-  document.getElementById('detail-content').style.display   = tab === 'itinerary' ? 'block' : 'none';
-  document.getElementById('overview-content').style.display = tab === 'overview'  ? 'block' : 'none';
-  document.getElementById('tickets-content').style.display  = tab === 'tickets'   ? 'block' : 'none';
+  document.getElementById('detail-content').style.display   = tab === 'itinerary' ? '' : 'none';
+  document.getElementById('overview-content').style.display = tab === 'overview'  ? '' : 'none';
+  document.getElementById('tickets-content').style.display  = tab === 'tickets'   ? '' : 'none';
   // FAB only visible on itinerary tab
   document.getElementById('btn-add-stop').style.display = tab === 'itinerary' ? '' : 'none';
   if (tab === 'tickets') renderTickets();
@@ -866,7 +702,7 @@ function switchDetailTab(tab) {
 // Palette for city dots — cycles through accent colors
 const _ovCityColors = ['#4A7BF7','#7fcfb8','#e8b86d','#e87d7d','#a78bfa','#38bdf8','#f472b6'];
 
-function renderOverview() {
+async function renderOverview() {
   const el = document.getElementById('overview-content');
   if (!el) return;
   const trip = trips.find(t => t.id === currentTripId);
@@ -920,28 +756,54 @@ function renderOverview() {
       <div class="ov-stat"><div class="ov-stat-n">${totalPassajes}</div><div class="ov-stat-l">Pasaje${totalPassajes !== 1 ? 's' : ''}</div></div>
     </div>`;
 
-  sortedCities.forEach((city, ci) => {
+  for (let ci = 0; ci < sortedCities.length; ci++) {
+    const city = sortedCities[ci];
     const color = _ovCityColors[ci % _ovCityColors.length];
     const transitDates = getTransitDates(city);
     const stopsByDate  = {};
     (city.days || []).forEach(d => { if (d.stops?.length) stopsByDate[d.date] = d.stops.length; });
 
-    // Day chips
-    const dayChips = (city.days || []).map(d => {
-      const isTransit  = transitDates.has(d.date);
-      const hasStops   = !!stopsByDate[d.date];
-      const wd = new Date(d.date + 'T00:00:00').toLocaleDateString('es-AR', { weekday: 'short' }).slice(0, 3).toLowerCase();
-      const dd = d.date.slice(8);
-      const cls = ['ov-day-chip', isTransit ? 'transit' : (hasStops ? 'has' : '')].filter(Boolean).join(' ');
-      // Clicking a chip switches to itinerary tab on that city+day
-      const cityIdx = trip.cities.findIndex(c => c.id === city.id);
-      const dayIdx  = (city.days || []).findIndex(d2 => d2.date === d.date);
-      return `<div class="${cls}" onclick="ovGoToDay(${cityIdx},${dayIdx})">
-        <span class="ov-dc-wd">${wd}</span>
-        <span class="ov-dc-dd">${dd}</span>
-        <span class="ov-dc-dot"></span>
-      </div>`;
-    }).join('');
+     // Day chips
+     const dayChips = (city.days || []).map(async (d, dayIdx) => {
+       const isTransit  = transitDates.has(d.date);
+       const hasStops   = !!stopsByDate[d.date];
+       const wd = new Date(d.date + 'T00:00:00').toLocaleDateString('es-AR', { weekday: 'short' }).slice(0, 3).toLowerCase();
+       const dd = d.date.slice(8);
+       const cls = ['ov-day-chip', isTransit ? 'transit' : (hasStops ? 'has' : '')].filter(Boolean).join(' ');
+       
+       // Get weather data for this day
+       let weatherHtml = '';
+       try {
+         const weatherData = await getWeatherForCity(city, trip);
+         if (weatherData && weatherData.daily && weatherData.daily.time.length > dayIdx) {
+           const weatherInfo = {
+             weather_code: weatherData.daily.weather_code[dayIdx],
+             temperature_2m_max: weatherData.daily.temperature_2m_max[dayIdx]
+           };
+           const weatherIcon = mapWmoCode(weatherInfo.weather_code).icon;
+           const tempMax = Math.round(weatherInfo.temperature_2m_max);
+           weatherHtml = `<div class="weather-info">
+             <div class="weather-icon">${weatherIcon}</div>
+             <div class="weather-temp">${tempMax}°</div>
+           </div>`;
+         }
+       } catch (err) {
+         console.error('wandr: error fetching weather for overview chip', err);
+         // Continue without weather data
+       }
+       
+        // Clicking a chip switches to itinerary tab on that city+day
+        const cityIdx = trip.cities.findIndex(c => c.id === city.id);
+        const chipDayIdx  = (city.days || []).findIndex(d2 => d2.date === d.date);
+        return `<div class="${cls}" onclick="ovGoToDay(${cityIdx},${chipDayIdx})">
+         <span class="ov-dc-wd">${wd}</span>
+         <span class="ov-dc-dd">${dd}</span>
+         <span class="ov-dc-dot"></span>
+         ${weatherHtml}
+       </div>`;
+     });
+     // Wait for all promises to resolve
+     const resolvedDayChips = (await Promise.all(dayChips)).join('');
 
     // Nights count
     const nightCount = Math.round((new Date(city.endDate + 'T00:00:00') - new Date(city.startDate + 'T00:00:00')) / 86400000);
@@ -980,7 +842,7 @@ function renderOverview() {
       </div>
       <div class="ov-city-dates">${formatDate(city.startDate)} → ${formatDate(city.endDate)}</div>
       <div class="ov-city-details">
-        <div class="ov-day-strip">${dayChips}</div>
+        <div class="ov-day-strip">${resolvedDayChips}</div>
         ${hotelHtml}
       </div>
     </div>`;
@@ -1009,7 +871,7 @@ function renderOverview() {
         <div class="ov-tr-line"></div>
       </div>`;
     }
-  });
+  }
 
   // Legend
   html += `
@@ -1054,9 +916,32 @@ function renderDetail() {
       city.days = correctDays;
     }
 
-    if (currentDayIdx >= city.days.length) currentDayIdx = 0;
-    const day = city.days[currentDayIdx];
-    if (!day) { document.getElementById('detail-content').innerHTML = '<p style="color:var(--danger);padding:20px">Error: día no encontrado.</p>'; return; }
+     if (currentDayIdx >= city.days.length) currentDayIdx = 0;
+     const day = city.days[currentDayIdx];
+     if (!day) { document.getElementById('detail-content').innerHTML = '<p style="color:var(--danger);padding:20px">Error: día no encontrado.</p>'; return; }
+     
+     // Get weather data for this day
+     day.weatherData = null;
+     getWeatherForCity(city, trip).then(weatherData => {
+       if (weatherData) {
+         // Find the weather data for this specific day
+         const dateIndex = weatherData.daily?.time?.findIndex(date => date === day.date) || -1;
+         if (dateIndex >= 0) {
+           day.weatherData = {
+             weather_code: weatherData.daily.weather_code[dateIndex],
+             temperature_2m_max: weatherData.daily.temperature_2m_max[dateIndex],
+             temperature_2m_min: weatherData.daily.temperature_2m_min[dateIndex],
+             precipitation_probability_max: weatherData.daily.precipitation_probability_max[dateIndex],
+             wind_speed_10m_max: weatherData.daily.wind_speed_10m_max[dateIndex]
+           };
+         }
+       }
+       // Re-render detail to show weather data
+       renderDetail();
+     }).catch(err => {
+       console.error('wandr: error fetching weather for detail', err);
+       // Continue without weather data
+     });
 
     const stops = day.stops || [];
 
@@ -1093,6 +978,54 @@ function renderDetail() {
       </div>`;
     }).join('');
 
+    // Build transit banner for current day if applicable
+    const dayTickets = trip_tickets.filter(tk => tk.depDate === day.date || tk.arrDate === day.date);
+    let transitBannerHtml = '';
+    if (dayTickets.length) {
+      const segs = dayTickets.map(tk => {
+        const icon = ticketTypeIcon(tk.type);
+        const isDep = tk.depDate === day.date;
+        const isArr = tk.arrDate === day.date;
+        const termDep = tk.depTerminal || tk.fromTerminal || '';
+        const termArr = tk.arrTerminal || tk.toTerminal || '';
+        const gateDep = tk.depGate || '';
+        const gateArr = tk.arrGate || '';
+
+        // Route label: always show origin → destination
+        const routeLabel = `${esc(tk.fromCity)} → ${esc(tk.toCity)}`;
+        const companyLabel = tk.company ? `<span class="transit-seg-company">${esc(tk.company)}</span>` : '';
+
+        // Times row
+        let timesHtml = '';
+        if (tk.depTime || tk.arrTime) {
+          const depBlock = `<div class="transit-time-block">
+            <span class="transit-time-label">Salida</span>
+            <span class="transit-time-value">${tk.depTime || '–'}</span>
+            ${termDep ? `<span class="transit-time-sub">${esc(termDep)}${gateDep ? ' · ' + esc(gateDep) : ''}</span>` : ''}
+          </div>`;
+          const arrBlock = `<div class="transit-time-block transit-time-block-right">
+            <span class="transit-time-label">Llegada</span>
+            <span class="transit-time-value">${tk.arrTime || '–'}</span>
+            ${termArr ? `<span class="transit-time-sub">${esc(termArr)}${gateArr ? ' · ' + esc(gateArr) : ''}</span>` : ''}
+          </div>`;
+          timesHtml = `<div class="transit-times-row">${depBlock}<div class="transit-times-arrow">${icon}</div>${arrBlock}</div>`;
+        }
+
+        return `<div class="transit-segment">
+          <div class="transit-seg-header">
+            <div class="transit-seg-icon">${icon}</div>
+            <div class="transit-seg-route">${routeLabel}</div>
+          </div>
+          ${companyLabel}
+          ${timesHtml}
+        </div>`;
+      }).join('');
+      transitBannerHtml = `<div class="transit-banner">
+        <div class="transit-banner-header"><strong>🎫 Día con pasaje</strong></div>
+        ${segs}
+      </div>`;
+    }
+
     // Stops rendering
     let stopsHtml = '';
 
@@ -1113,26 +1046,23 @@ function renderDetail() {
     // Si hay vuelo de llegada, mostrar: 1) Terminal 2) Hotel 3) Paradas
     if (todayArrival && (todayArrival.type || todayArrival.arrTerminal || todayArrival.toTerminal)) {
       // 1. Mostrar terminal de llegada
-      const terminalName = todayArrival.arrTerminalFull || todayArrival.arrTerminal || todayArrival.toTerminal || null;
+      const terminalName = todayArrival.arrTerminal || todayArrival.toTerminal || null;
       const terminalLabel = terminalName || ticketTypeLabel(todayArrival.type) + ' llegada';
       const arrTimeStr = todayArrival.arrTime ? ` · ${todayArrival.arrTime}` : '';
       const dest = city.hotelAddr || city.hotelName;
       const routeTerminalToHotel = terminalName && dest
         ? `https://www.google.com/maps/dir/?api=1&origin=${encodeURIComponent(terminalName)}&destination=${encodeURIComponent(dest)}&travelmode=transit`
         : null;
-      stopsHtml += `<div class="transit-separator">
-        <div class="transit-separator-label">Llegada a la ciudad</div>
-      </div>
-      <div class="stop-item stop-transit">
+      stopsHtml += `<div class="stop-item">
         <div class="stop-connector">
-          <div class="stop-dot transit-dot" style="background:rgba(127,207,184,0.2);border:2px solid var(--accent2);font-size:0.82rem">${ticketTypeIcon(todayArrival.type)}</div>
+          <div class="stop-dot" style="background:rgba(127,207,184,0.2);border:2px solid var(--accent3);font-size:0.82rem">${ticketTypeIcon(todayArrival.type)}</div>
           ${(stops.length || dayHasArrival) ? '<div class="stop-line"></div>' : ''}
         </div>
         <div class="stop-body">
           <span class="transport-badge ${ticketTransportClass(todayArrival.type)}">${ticketTypeIcon(todayArrival.type)} ${ticketTypeLabel(todayArrival.type)}</span>
           <div class="stop-name" style="margin-top:6px">${esc(terminalLabel)}</div>
           <div class="stop-meta">
-            <span style="color:var(--accent2)">Punto de llegada${arrTimeStr}</span>
+            <span style="color:var(--accent3)">Punto de llegada${arrTimeStr}</span>
             ${todayArrival.company ? `<span>${esc(todayArrival.company)}</span>` : ''}
           </div>
           <div class="stop-actions">
@@ -1229,37 +1159,6 @@ function renderDetail() {
       const prevStop = idx === 0 ? null : stops[idx - 1];
       const hotelOrigin = city.hotelAddr || city.hotelName || city.name;
       
-      // Calcular distancia desde el origen (hotel o parada anterior)
-      let distText = '';
-      if (idx === 0 && city.hotelLat && city.hotelLon && stop.lat && stop.lon) {
-        distText = formatDistance(haversine(city.hotelLat, city.hotelLon, stop.lat, stop.lon));
-      } else if (prevStop && prevStop.lat && prevStop.lon && stop.lat && stop.lon) {
-        distText = formatDistance(haversine(prevStop.lat, prevStop.lon, stop.lat, stop.lon));
-      }
-      
-      // Transport label for the separator
-      const tpLabel = transportLabel(stop.transport);
-      const tpIconStr = transportIcon(stop.transport);
-      
-      // Distance separator bar (between cards)
-      let distSeparator = '';
-      if (distText) {
-        const timeText = estimateTravelTime(
-          idx === 0 && city.hotelLat && city.hotelLon && stop.lat && stop.lon
-            ? haversine(city.hotelLat, city.hotelLon, stop.lat, stop.lon)
-            : (prevStop && prevStop.lat && prevStop.lon && stop.lat && stop.lon
-              ? haversine(prevStop.lat, prevStop.lon, stop.lat, stop.lon)
-              : 0),
-          stop.transport
-        );
-        const icon = idx === 0 ? '🏨' : tpIconStr;
-        distSeparator = `<div class="stop-dist-separator">
-          <div class="stop-dist-separator-line"></div>
-          <span class="stop-dist-separator-text">${icon} ${distText} · ~${timeText} · ${tpLabel}</span>
-          <div class="stop-dist-separator-line"></div>
-        </div>`;
-      }
-      
       // Determinar origen: hotel para primera parada, parada anterior para las demás
       let originCoords = null;
       let originName = null;
@@ -1303,7 +1202,6 @@ function renderDetail() {
         }
       }
       
-      stopsHtml += distSeparator;
       stopsHtml += `<div class="stop-item ${isVisuallyLast ? 'stop-last' : ''}" data-stopid="${stop.id}">
         <div class="drag-handle" title="Arrastrar para reordenar">
           <svg width="14" height="20" viewBox="0 0 14 20" fill="currentColor"><circle cx="4" cy="4" r="1.8"/><circle cx="10" cy="4" r="1.8"/><circle cx="4" cy="10" r="1.8"/><circle cx="10" cy="10" r="1.8"/><circle cx="4" cy="16" r="1.8"/><circle cx="10" cy="16" r="1.8"/></svg>
@@ -1339,24 +1237,23 @@ function renderDetail() {
     let departureTerminalHtml = '';
     // Only show if ticket has at least type or terminal defined (not a blank stub)
     if (todayDeparture && (todayDeparture.type || todayDeparture.depTerminal || todayDeparture.fromTerminal)) {
-      const terminalName = todayDeparture.depTerminalFull || todayDeparture.depTerminal || todayDeparture.fromTerminal || null;
+      const terminalName = todayDeparture.depTerminal || todayDeparture.fromTerminal || null;
       const terminalLabel = terminalName || ticketTypeLabel(todayDeparture.type) + ' salida';
       const depTimeStr = todayDeparture.depTime ? ` · ${todayDeparture.depTime}` : '';
       const gateStr = todayDeparture.depGate ? ` · Puerta ${todayDeparture.depGate}` : '';
-      // Origin: always the hotel (not the last stop)
-      const hotelOrigin = city.hotelAddr || city.hotelName || null;
+      // Origin: last user stop if any, otherwise the hotel
+      const lastStopAddr = stops.length > 0
+        ? (stops[stops.length-1].address || stops[stops.length-1].name)
+        : (city.hotelAddr || city.hotelName || null);
       const dest = terminalName || null;
-      const routeToTerminal = hotelOrigin && dest
-        ? `https://www.google.com/maps/dir/?api=1&origin=${encodeURIComponent(hotelOrigin)}&destination=${encodeURIComponent(dest)}&travelmode=transit`
+      const routeToTerminal = lastStopAddr && dest
+        ? `https://www.google.com/maps/dir/?api=1&origin=${encodeURIComponent(lastStopAddr)}&destination=${encodeURIComponent(dest)}&travelmode=transit`
         : dest ? mapsUrl(dest) : '';
 
-      departureTerminalHtml = `<div class="transit-separator">
-        <div class="transit-separator-label">Salida de la ciudad</div>
-      </div>
-      <div class="stop-item stop-transit">
+      departureTerminalHtml = `<div class="stop-item stop-last arrival-hotel-stop">
         <div class="stop-connector">
           <div class="stop-line" style="min-height:14px"></div>
-          <div class="stop-dot transit-dot" style="background:rgba(232,184,109,0.2);border:2px solid var(--accent3);font-size:0.82rem">${ticketTypeIcon(todayDeparture.type)}</div>
+          <div class="stop-dot" style="background:rgba(232,184,109,0.2);border:2px solid var(--accent);font-size:0.82rem">${ticketTypeIcon(todayDeparture.type)}</div>
         </div>
         <div class="stop-body" style="padding-top:4px">
           <span class="transport-badge ${ticketTransportClass(todayDeparture.type)}">${ticketTypeIcon(todayDeparture.type)} ${ticketTypeLabel(todayDeparture.type)}</span>
@@ -1420,11 +1317,7 @@ function renderDetail() {
       const mode = googleMapsMode(stops[0].transport);
       const fullUrl = `https://www.google.com/maps/dir/?api=1&origin=${encodeURIComponent(city.hotelAddr)}&destination=${encodeURIComponent(lastStop.address || lastStop.name)}${wps ? `&waypoints=${wps}` : ''}&travelmode=${mode}`;
       const retUrl = `https://www.google.com/maps/dir/?api=1&origin=${encodeURIComponent(stops[stops.length-1].address || stops[stops.length-1].name)}&destination=${encodeURIComponent(city.hotelAddr)}&travelmode=transit`;
-      const isOptimized = _originalStopOrder !== null;
       routeActionsHtml = `<div class="route-actions">
-        <button class="btn-optimize" onclick="${isOptimized ? 'restoreStopOrder()' : 'optimizeCurrentStops()'}">
-          ${isOptimized ? '↩️ Restaurar orden original' : '✨ Optimizar ruta'}
-        </button>
         <a class="btn-full-route" href="${fullUrl}" target="_blank">🗺️ Ruta completa del día en Maps</a>
         <a class="btn-return-hotel" href="${retUrl}" target="_blank">🏨 Volver al hotel</a>
       </div>`;
@@ -1510,15 +1403,35 @@ function renderDetail() {
       <div class="section-label" style="margin-bottom:8px">Día</div>
       <div class="days-scroll">${dayTabs}</div>
 
-      <div class="day-info-bar">
-        <div>
-          <div class="day-label">${getWeekdayFull(day.date)}</div>
-          <div class="day-date">${formatDate(day.date)}</div>
+        ${day.weatherData ? `
+        <div class="day-info-bar-weather">
+          <div class="day-info-line">
+            <span class="day-label">${getWeekdayFull(day.date)}</span>
+            <span class="day-date">${formatDate(day.date)}</span>
+            <span class="stops-count">${stops.length} parada${stops.length !== 1 ? 's' : ''}</span>
+          </div>
+           <div class="weather-line">
+             <span class="weather-icon">${mapWmoCode(day.weatherData.weather_code).icon}</span>
+             <span class="weather-desc">${mapWmoCode(day.weatherData.weather_code).description}</span>
+             <span class="weather-temp">🌡️ ${Math.round(day.weatherData.temperature_2m_max)}°/${Math.round(day.weatherData.temperature_2m_min)}°</span>
+             <span class="weather-precip">🌧️ ${day.weatherData.precipitation_probability_max}%</span>
+             <span class="weather-wind">💨 ${Math.round(day.weatherData.wind_speed_10m_max)}km/h</span>
+             <button class="weather-packing-btn" onclick="openPackingModal(${JSON.stringify(currentTripId)}, ${currentCityIdx})">🎒 Qué llevar</button>
+           </div>
         </div>
-        <div class="stops-count">${stops.length} parada${stops.length !== 1 ? 's' : ''}</div>
-      </div>
+        ` : `
+        <div class="day-info-bar">
+          <div>
+            <div class="day-label">${getWeekdayFull(day.date)}</div>
+            <div class="day-date">${formatDate(day.date)}</div>
+          </div>
+          <div class="stops-count">${stops.length} parada${stops.length !== 1 ? 's' : ''}</div>
+        </div>
+        `}
 
-      <div class="stops-list" id="stops-list-el">${stopsHtml}${routeActionsHtml}${departureTerminalHtml}${arrivalHotelHtml}</div>
+      <div class="stops-list" id="stops-list-el">${stopsHtml}${departureTerminalHtml}${arrivalHotelHtml}</div>
+      ${transitBannerHtml}
+      ${routeActionsHtml}
     `;
 
     initDragDrop();
@@ -1796,8 +1709,8 @@ function renderTicketCard(tk) {
           <div class="ticket-time" style="${!tk.arrTime ? 'opacity:.35' : ''}">${tk.arrTime || '–'}</div>
           <div class="ticket-date-label">${tk.arrDate ? formatDate(tk.arrDate) : ''}</div>
           <div class="ticket-city-label" style="justify-content:flex-end">📍 ${esc(tk.toCity)}</div>
-          ${(tk.arrTerminal||tk.toTerminal) ? `<div class="ticket-terminal" style="align-self:flex-end">🏛️ ${esc(tk.arrTerminal||tk.toTerminal)}</div>` : ''}
-          ${tk.arrGate ? `<div class="ticket-terminal" style="align-self:flex-end">🚪 ${esc(tk.arrGate)}</div>` : ''}
+          ${(tk.arrTerminal||tk.toTerminal) ? `<div class="ticket-terminal" style="align-self:flex-start">🏛️ ${esc(tk.arrTerminal||tk.toTerminal)}</div>` : ''}
+          ${tk.arrGate ? `<div class="ticket-terminal" style="align-self:flex-start">🚪 ${esc(tk.arrGate)}</div>` : ''}
         </div>
       </div>
       <div class="ticket-actions">
@@ -1805,44 +1718,6 @@ function renderTicketCard(tk) {
           ${isStub ? '+ Completar datos' : '✏️ Editar'}
         </button>
         <button class="btn-ticket-delete" onclick="deleteTicket('${tk.id}')">🗑️</button>
-      </div>
-    </div>
-  </div>`;
-}
-
-function renderTransitCard(tk) {
-  const icon = ticketTypeIcon(tk.type);
-  const complete = ticketIsComplete(tk);
-  const isStub = tk.stub && !complete;
-  const duration = calcDuration(tk.depDate, tk.depTime, tk.arrDate, tk.arrTime);
-  return `<div class="ticket-card ${isStub ? 'ticket-stub' : ''}">
-    <div class="ticket-card-header">
-      <div class="ticket-type-icon">${icon}</div>
-      <div class="ticket-header-info">
-        <div class="ticket-route">${esc(tk.fromCity)} → ${esc(tk.toCity)}</div>
-        <div class="ticket-company">${ticketTypeLabel(tk.type)}${tk.company ? ' · ' + esc(tk.company) : ''}${duration ? ` · ⏱️ ${duration}` : ''}</div>
-      </div>
-      ${isStub
-        ? `<span class="ticket-status-badge pending">Pendiente</span>`
-        : `<span class="ticket-status-badge done">✓</span>`}
-    </div>
-    <div class="ticket-card-body">
-      <div class="ticket-times">
-        <div>
-          <div class="ticket-time" style="${!tk.depTime ? 'opacity:.35' : ''}">${tk.depTime || '–'}</div>
-          <div class="ticket-date-label">${tk.depDate ? formatDate(tk.depDate) : ''}</div>
-          <div class="ticket-city-label">📍 ${esc(tk.fromCity)}</div>
-          ${(tk.depTerminal||tk.fromTerminal) ? `<div class="ticket-terminal">🏛️ ${esc(tk.depTerminal||tk.fromTerminal)}</div>` : ''}
-          ${tk.depGate ? `<div class="ticket-terminal">🚪 ${esc(tk.depGate)}</div>` : ''}
-        </div>
-        <div class="ticket-arrow"><div class="ticket-arrow-line"></div><span style="font-size:0.65rem;color:var(--text2);margin-top:3px">${icon}</span></div>
-        <div style="display:flex;flex-direction:column;align-items:flex-end">
-          <div class="ticket-time" style="${!tk.arrTime ? 'opacity:.35' : ''}">${tk.arrTime || '–'}</div>
-          <div class="ticket-date-label">${tk.arrDate ? formatDate(tk.arrDate) : ''}</div>
-          <div class="ticket-city-label" style="justify-content:flex-end">📍 ${esc(tk.toCity)}</div>
-          ${(tk.arrTerminal||tk.toTerminal) ? `<div class="ticket-terminal" style="align-self:flex-end">🏛️ ${esc(tk.arrTerminal||tk.toTerminal)}</div>` : ''}
-          ${tk.arrGate ? `<div class="ticket-terminal" style="align-self:flex-end">🚪 ${esc(tk.arrGate)}</div>` : ''}
-        </div>
       </div>
     </div>
   </div>`;
@@ -1859,12 +1734,10 @@ function openAddTicketModal() {
   document.getElementById('ticket-dep-terminal').value = '';
   document.getElementById('ticket-dep-terminal-lat').value = '';
   document.getElementById('ticket-dep-terminal-lon').value = '';
-  document.getElementById('ticket-dep-terminal-full').value = '';
   document.getElementById('ticket-dep-gate').value = '';
   document.getElementById('ticket-arr-terminal').value = '';
   document.getElementById('ticket-arr-terminal-lat').value = '';
   document.getElementById('ticket-arr-terminal-lon').value = '';
-  document.getElementById('ticket-arr-terminal-full').value = '';
   document.getElementById('ticket-arr-gate').value = '';
   document.getElementById('ticket-dep-date').value = trip?.startDate || '';
   document.getElementById('ticket-arr-date').value = trip?.startDate || '';
@@ -1894,12 +1767,10 @@ function openEditTicketModal(ticketId) {
   document.getElementById('ticket-dep-terminal').value = tk.depTerminal || tk.fromTerminal || '';
   document.getElementById('ticket-dep-terminal-lat').value = tk.depTerminalLat || '';
   document.getElementById('ticket-dep-terminal-lon').value = tk.depTerminalLon || '';
-  document.getElementById('ticket-dep-terminal-full').value = tk.depTerminalFull || '';
   document.getElementById('ticket-dep-gate').value = tk.depGate || '';
   document.getElementById('ticket-arr-terminal').value = tk.arrTerminal || tk.toTerminal || '';
   document.getElementById('ticket-arr-terminal-lat').value = tk.arrTerminalLat || '';
   document.getElementById('ticket-arr-terminal-lon').value = tk.arrTerminalLon || '';
-  document.getElementById('ticket-arr-terminal-full').value = tk.arrTerminalFull || '';
   document.getElementById('ticket-arr-gate').value = tk.arrGate || '';
   document.getElementById('ticket-dep-date').value = tk.depDate || '';
   document.getElementById('ticket-arr-date').value = tk.arrDate || '';
@@ -2067,12 +1938,10 @@ function saveTicket() {
     depTerminal:  document.getElementById('ticket-dep-terminal').value.trim(),
     depTerminalLat: document.getElementById('ticket-dep-terminal-lat').value.trim(),
     depTerminalLon: document.getElementById('ticket-dep-terminal-lon').value.trim(),
-    depTerminalFull: document.getElementById('ticket-dep-terminal-full').value.trim(),
     depGate:      document.getElementById('ticket-dep-gate').value.trim(),
     arrTerminal:  document.getElementById('ticket-arr-terminal').value.trim(),
     arrTerminalLat: document.getElementById('ticket-arr-terminal-lat').value.trim(),
     arrTerminalLon: document.getElementById('ticket-arr-terminal-lon').value.trim(),
-    arrTerminalFull: document.getElementById('ticket-arr-terminal-full').value.trim(),
     arrGate:      document.getElementById('ticket-arr-gate').value.trim(),
     depDate, depTime: document.getElementById('ticket-dep-time').value,
     arrDate, arrTime: document.getElementById('ticket-arr-time').value,
@@ -2388,6 +2257,125 @@ function addDays(dateStr, n) {
 // ══════════════════════════════════════
 // EDIT HOTEL
 // ══════════════════════════════════════
+
+// ── Edit hotel name autocomplete ──────────────────────────────
+let _editHotelAcTimer = null;
+let _editHotelAcResults = [];
+
+function initEditHotelNameAutocomplete() {
+  const input = document.getElementById('edit-hotel-name');
+  const list = document.getElementById('edit-hotel-name-list');
+  const addrInput = document.getElementById('edit-hotel-addr');
+  if (!input || !list) return;
+
+  // Remove existing listener to avoid duplicates
+  const newInput = input.cloneNode(true);
+  input.parentNode.replaceChild(newInput, input);
+  const el = document.getElementById('edit-hotel-name');
+
+  el.addEventListener('input', (e) => {
+    clearTimeout(_editHotelAcTimer);
+    const q = e.target.value.trim();
+    if (q.length < 3) {
+      list.classList.remove('open');
+      list.innerHTML = '';
+      return;
+    }
+    _editHotelAcTimer = setTimeout(() => searchEditHotelName(q, list, el, addrInput), 300);
+  });
+
+  el.addEventListener('focus', (e) => {
+    if (e.target.value.trim().length >= 3) {
+      searchEditHotelName(e.target.value.trim(), list, el, addrInput);
+    }
+  });
+
+  document.addEventListener('click', (e) => {
+    if (!el.contains(e.target) && !list.contains(e.target)) {
+      list.classList.remove('open');
+    }
+  });
+}
+
+async function searchEditHotelName(query, list, nameInput, addrInput) {
+  _editHotelAcResults = [];
+  list.innerHTML = '<li class="ac-loading">Buscando...</li>';
+  list.classList.add('open');
+
+  try {
+    const url = `https://api.locationiq.com/v1/autocomplete.php?key=${LOCATIONIQ_TOKEN}&q=${encodeURIComponent(query)}&limit=5&countrycodes=*`;
+    const res = await fetch(url);
+    const data = await res.json();
+    if (data && Array.isArray(data) && data.length > 0) {
+      renderEditHotelResults(data, list, nameInput, addrInput);
+      return;
+    }
+  } catch (err) {
+    console.error('Edit hotel LocationIQ error:', err);
+  }
+
+  list.innerHTML = '<li class="ac-loading">Buscando en Photon...</li>';
+  try {
+    const data = await searchPhoton(query);
+    if (data && data.length > 0) {
+      renderEditHotelResults(data, list, nameInput, addrInput);
+      return;
+    }
+  } catch (err) {
+    console.error('Edit hotel Photon error:', err);
+  }
+
+  list.innerHTML = '<li class="ac-loading">Buscando en OpenStreetMap...</li>';
+  try {
+    const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&limit=5&addressdetails=1`, {
+      headers: { 'User-Agent': 'Wandr/1.0 (https://wandr.travel; contact@wandr.travel)' }
+    });
+    const data = await res.json();
+    if (data && Array.isArray(data) && data.length > 0) {
+      renderEditHotelResults(data, list, nameInput, addrInput);
+      return;
+    }
+  } catch (err) {
+    console.error('Edit hotel Nominatim error:', err);
+  }
+
+  list.innerHTML = '<li class="ac-loading">Sin resultados. Escribí el nombre manualmente y seguí.</li>';
+}
+
+function renderEditHotelResults(data, list, nameInput, addrInput) {
+  _editHotelAcResults = data.map(r => ({ display_name: r.display_name, lat: r.lat, lon: r.lon }));
+
+  list.innerHTML = data.map((r, i) => {
+    const parts = r.display_name.split(',');
+    return `<li data-edit-hotel-ac-index="${i}">
+      <div class="ac-main">${esc(parts[0].trim())}</div>
+      <div class="ac-sub">${esc(parts.slice(1, 4).join(',').trim())}</div>
+    </li>`;
+  }).join('');
+
+  list.querySelectorAll('li[data-edit-hotel-ac-index]').forEach(li => {
+    const handler = () => {
+      const idx = parseInt(li.dataset.editHotelAcIndex, 10);
+      pickEditHotelResult(idx, nameInput, addrInput);
+    };
+    li.addEventListener('mousedown', handler);
+    li.addEventListener('touchstart', (e) => { e.preventDefault(); handler(); }, { passive: false });
+  });
+}
+
+function pickEditHotelResult(index, nameInput, addrInput) {
+  const result = _editHotelAcResults[index];
+  if (!result) return;
+  const parts = result.display_name.split(',');
+  nameInput.value = parts[0].trim();
+  addrInput.value = parts.slice(1).join(',').trim();
+  const latField = document.getElementById('edit-hotel-lat');
+  const lonField = document.getElementById('edit-hotel-lon');
+  if (latField) latField.value = result.lat || '';
+  if (lonField) lonField.value = result.lon || '';
+  document.getElementById('edit-hotel-name-list').classList.remove('open');
+}
+
 function openEditHotelModal() {
   const trip = trips.find(t => t.id === currentTripId);
   if (!trip) return;
@@ -2400,6 +2388,7 @@ function openEditHotelModal() {
   document.getElementById('edit-hotel-checkin').value = city.checkInTime || '';
   document.getElementById('edit-hotel-checkout').value = city.checkOutTime || '';
   openModal('modal-edit-hotel');
+  initEditHotelNameAutocomplete();
 }
 
 function saveEditHotel() {
@@ -2408,8 +2397,8 @@ function saveEditHotel() {
   const city = trip.cities[currentCityIdx];
   city.hotelName = document.getElementById('edit-hotel-name').value.trim();
   city.hotelAddr = document.getElementById('edit-hotel-addr').value.trim();
-  city.hotelLat = document.getElementById('edit-hotel-lat').value.trim();
-  city.hotelLon = document.getElementById('edit-hotel-lon').value.trim();
+  city.hotelLat = parseFloat(document.getElementById('edit-hotel-lat').value) || null;
+  city.hotelLon = parseFloat(document.getElementById('edit-hotel-lon').value) || null;
   city.checkInTime = document.getElementById('edit-hotel-checkin').value;
   city.checkOutTime = document.getElementById('edit-hotel-checkout').value;
   save();
@@ -2448,6 +2437,169 @@ function selectDayTripTransport(el, mode) {
   selectedDayTripTransport = mode;
   document.querySelectorAll('[data-dt]').forEach(o => o.classList.remove('selected'));
   el.classList.add('selected');
+}
+
+// ── Photon helper (supports Spanish via lang=es) ─────────────
+async function searchPhoton(query) {
+  const res = await fetch(`https://photon.komoot.io/api/?q=${encodeURIComponent(query)}&limit=5&lang=es`);
+  const data = await res.json();
+  if (!data || !Array.isArray(data.features)) return [];
+  return data.features.map(f => {
+    const p = f.properties;
+    const name = p.name || '';
+    const street = p.street || '';
+    const city = p.city || '';
+    const state = p.state || '';
+    const country = p.country || '';
+    const parts = [name, street, city, state, country].filter(Boolean);
+    const display_name = parts.join(', ');
+    const coords = f.geometry && f.geometry.coordinates;
+    return {
+      display_name,
+      lat: coords ? coords[1] : null,
+      lon: coords ? coords[0] : null
+    };
+  }).filter(r => r.display_name);
+}
+
+// ── Hotel name autocomplete (modal-add-city) ──────────────────
+let _hotelAcTimer = null;
+let _hotelAcAbort = null;
+let _hotelAcResults = [];
+
+function initHotelNameAutocomplete() {
+  const input = document.getElementById('new-city-hotel-name');
+  const list = document.getElementById('new-hotel-name-list');
+  const addrInput = document.getElementById('new-city-hotel-addr');
+  if (!input || !list) return;
+
+  // Remove existing listener to avoid duplicates
+  const newInput = input.cloneNode(true);
+  input.parentNode.replaceChild(newInput, input);
+  const el = document.getElementById('new-city-hotel-name');
+
+  el.addEventListener('input', (e) => {
+    clearTimeout(_hotelAcTimer);
+    const q = e.target.value.trim();
+    if (q.length < 3) {
+      list.classList.remove('open');
+      list.innerHTML = '';
+      return;
+    }
+    _hotelAcTimer = setTimeout(() => searchHotelName(q, list, el, addrInput), 300);
+  });
+
+  el.addEventListener('focus', (e) => {
+    if (e.target.value.trim().length >= 3) {
+      searchHotelName(e.target.value.trim(), list, el, addrInput);
+    }
+  });
+
+  document.addEventListener('click', (e) => {
+    if (!el.contains(e.target) && !list.contains(e.target)) {
+      list.classList.remove('open');
+    }
+  });
+}
+
+async function searchHotelName(query, list, nameInput, addrInput) {
+  _hotelAcResults = [];
+  list.innerHTML = '<li class="ac-loading">Buscando...</li>';
+  list.classList.add('open');
+
+  // Try LocationIQ first
+  try {
+    const url = `https://api.locationiq.com/v1/autocomplete.php?key=${LOCATIONIQ_TOKEN}&q=${encodeURIComponent(query)}&limit=5&countrycodes=*`;
+    const res = await fetch(url);
+    const data = await res.json();
+
+    if (data && Array.isArray(data) && data.length > 0) {
+      renderHotelResults(data, list, nameInput, addrInput);
+      return;
+    }
+  } catch (err) {
+    console.error('Hotel name LocationIQ error:', err);
+  }
+
+  // Fallback to Photon (supports Spanish)
+  list.innerHTML = '<li class="ac-loading">Buscando en Photon...</li>';
+  try {
+    const data = await searchPhoton(query);
+    if (data && data.length > 0) {
+      renderHotelResults(data, list, nameInput, addrInput);
+      return;
+    }
+  } catch (err) {
+    console.error('Hotel name Photon error:', err);
+  }
+
+  // Last fallback to Nominatim
+  list.innerHTML = '<li class="ac-loading">Buscando en OpenStreetMap...</li>';
+  try {
+    const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&limit=5&addressdetails=1`, {
+      headers: { 'User-Agent': 'Wandr/1.0 (https://wandr.travel; contact@wandr.travel)' }
+    });
+    const data = await res.json();
+
+    if (data && Array.isArray(data) && data.length > 0) {
+      renderHotelResults(data, list, nameInput, addrInput);
+      return;
+    }
+  } catch (err) {
+    console.error('Hotel name Nominatim error:', err);
+  }
+
+  list.innerHTML = '<li class="ac-loading">Sin resultados. Escribí el nombre manualmente y seguí.</li>';
+}
+
+function renderHotelResults(data, list, nameInput, addrInput) {
+  _hotelAcResults = data.map(r => ({
+    display_name: r.display_name,
+    lat: r.lat,
+    lon: r.lon
+  }));
+
+  list.innerHTML = data.map((r, i) => {
+    const parts = r.display_name.split(',');
+    const main = parts[0].trim();
+    const sub = parts.slice(1, 4).join(',').trim();
+    return `<li data-hotel-ac-index="${i}">
+      <div class="ac-main">${esc(main)}</div>
+      <div class="ac-sub">${esc(sub)}</div>
+    </li>`;
+  }).join('');
+
+  list.querySelectorAll('li[data-hotel-ac-index]').forEach(li => {
+    li.addEventListener('mousedown', () => {
+      const idx = parseInt(li.dataset.hotelAcIndex, 10);
+      pickHotelResult(idx, nameInput, addrInput);
+    });
+    li.addEventListener('touchstart', (e) => {
+      e.preventDefault();
+      const idx = parseInt(li.dataset.hotelAcIndex, 10);
+      pickHotelResult(idx, nameInput, addrInput);
+    }, { passive: false });
+  });
+}
+
+function pickHotelResult(index, nameInput, addrInput) {
+  const result = _hotelAcResults[index];
+  if (!result) return;
+
+  const parts = result.display_name.split(',');
+  const name = parts[0].trim();
+  const address = parts.slice(1).join(',').trim();
+
+  nameInput.value = name;
+  addrInput.value = address;
+
+  const latField = document.getElementById('new-city-hotel-lat');
+  const lonField = document.getElementById('new-city-hotel-lon');
+  if (latField) latField.value = result.lat || '';
+  if (lonField) lonField.value = result.lon || '';
+
+  const list = document.getElementById('new-hotel-name-list');
+  list.classList.remove('open');
 }
 
 function openAddCityModal() {
@@ -2505,7 +2657,9 @@ function openAddCityModal() {
     ? `El viaje cubre del ${formatDate(trip.startDate)} al ${formatDate(trip.endDate)}. Faltan cubrir ${gaps.length} día${gaps.length!==1?'s':''}.`
     : `El viaje cubre del ${formatDate(trip.startDate)} al ${formatDate(trip.endDate)}.`;
 
-  openModal('modal-add-city');
+   openModal('modal-add-city');
+   // Initialize hotel name autocomplete when modal opens
+   initHotelNameAutocomplete();
 }
 
 function onNewCityStartChange() {
@@ -2578,8 +2732,8 @@ function saveNewCity() {
 
   const newCity = {
     id: uid(), name, hotelName, hotelAddr,
-    hotelLat: isDayTrip ? '' : document.getElementById('new-city-hotel-lat').value.trim(),
-    hotelLon: isDayTrip ? '' : document.getElementById('new-city-hotel-lon').value.trim(),
+    hotelLat: isDayTrip ? null : parseFloat(document.getElementById('new-city-hotel-lat').value) || null,
+    hotelLon: isDayTrip ? null : parseFloat(document.getElementById('new-city-hotel-lon').value) || null,
     startDate: cs, endDate: ce,
     days: buildDays(cs, ce),
     ...(isDayTrip ? {
@@ -2607,7 +2761,136 @@ let stopSelectedLat = null;
 let stopSelectedLon = null;
 let stopAutocompleteTimeout = null;
 
-const LOCATIONIQ_TOKEN = 'pk.f2bfecca9e17523deafccb3c8cd5d043';
+// ── Stop name autocomplete (step 1 of add-stop wizard) ────────
+let _stopNameAcTimer = null;
+let _stopNameAcResults = [];
+
+function initStopNameAutocomplete() {
+  const input = document.getElementById('stop-name');
+  const list = document.getElementById('stop-name-results');
+  const addrInput = document.getElementById('stop-addr');
+  if (!input || !list) return;
+
+  // Remove existing listener to avoid duplicates
+  const newInput = input.cloneNode(true);
+  input.parentNode.replaceChild(newInput, input);
+  const el = document.getElementById('stop-name');
+
+  el.addEventListener('input', (e) => {
+    clearTimeout(_stopNameAcTimer);
+    const q = e.target.value.trim();
+    if (q.length < 3) {
+      list.style.display = 'none';
+      list.innerHTML = '';
+      return;
+    }
+    _stopNameAcTimer = setTimeout(() => searchStopName(q, list, el, addrInput), 300);
+  });
+
+  el.addEventListener('focus', (e) => {
+    if (e.target.value.trim().length >= 3) {
+      searchStopName(e.target.value.trim(), list, el, addrInput);
+    }
+  });
+
+  document.addEventListener('click', (e) => {
+    if (!el.contains(e.target) && !list.contains(e.target)) {
+      list.style.display = 'none';
+    }
+  });
+}
+
+async function searchStopName(query, list, nameInput, addrInput) {
+  _stopNameAcResults = [];
+  list.innerHTML = '<li class="loading">Buscando...</li>';
+  list.style.display = 'block';
+
+  // Try LocationIQ first
+  try {
+    const res = await fetch(`https://api.locationiq.com/v1/autocomplete.php?key=${LOCATIONIQ_TOKEN}&q=${encodeURIComponent(query)}&limit=5&countrycodes=*`);
+    const data = await res.json();
+    if (data && Array.isArray(data) && data.length > 0) {
+      renderStopNameResults(data, list, nameInput, addrInput);
+      return;
+    }
+  } catch (err) {
+    console.error('Stop name LocationIQ error:', err);
+  }
+
+  // Fallback to Photon (supports Spanish via lang=es)
+  list.innerHTML = '<li class="loading">Buscando en Photon...</li>';
+  try {
+    const data = await searchPhoton(query);
+    if (data && data.length > 0) {
+      renderStopNameResults(data, list, nameInput, addrInput);
+      return;
+    }
+  } catch (err) {
+    console.error('Stop name Photon error:', err);
+  }
+
+  // Last fallback to Nominatim
+  list.innerHTML = '<li class="loading">Buscando en OpenStreetMap...</li>';
+  try {
+    const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&limit=5&addressdetails=1`, {
+      headers: { 'User-Agent': 'Wandr/1.0 (https://wandr.travel; contact@wandr.travel)' }
+    });
+    const data = await res.json();
+    if (data && Array.isArray(data) && data.length > 0) {
+      renderStopNameResults(data, list, nameInput, addrInput);
+      return;
+    }
+  } catch (err) {
+    console.error('Stop name Nominatim error:', err);
+  }
+
+  list.innerHTML = '<li class="no-results">Sin resultados. Escribí el nombre manualmente y seguí.</li>';
+}
+
+function renderStopNameResults(data, list, nameInput, addrInput) {
+  _stopNameAcResults = data.map(r => ({ display_name: r.display_name, lat: r.lat, lon: r.lon }));
+
+  list.innerHTML = data.map((r, i) => {
+    const parts = r.display_name.split(',');
+    return `<li data-stop-name-ac-index="${i}">
+      <strong>${esc(parts[0].trim())}</strong><br>
+      <small>${esc(parts.slice(1, 4).join(',').trim())}</small>
+    </li>`;
+  }).join('');
+
+  list.querySelectorAll('li[data-stop-name-ac-index]').forEach(li => {
+    li.addEventListener('mousedown', () => {
+      const idx = parseInt(li.dataset.stopNameAcIndex, 10);
+      pickStopNameResult(idx, nameInput, addrInput);
+    });
+    li.addEventListener('touchstart', (e) => {
+      e.preventDefault();
+      const idx = parseInt(li.dataset.stopNameAcIndex, 10);
+      pickStopNameResult(idx, nameInput, addrInput);
+    }, { passive: false });
+  });
+}
+
+function pickStopNameResult(index, nameInput, addrInput) {
+  const result = _stopNameAcResults[index];
+  if (!result) return;
+
+  const parts = result.display_name.split(',');
+  const name = parts[0].trim();
+  const address = parts.slice(1).join(',').trim();
+
+  nameInput.value = name;
+  addrInput.value = address;
+  stopSelectedLat = result.lat;
+  stopSelectedLon = result.lon;
+
+  // Show the selected address display
+  const display = document.getElementById('selected-address-display');
+  if (display) display.style.display = 'block';
+
+  const list = document.getElementById('stop-name-results');
+  list.style.display = 'none';
+}
 
 function openAddStopModal() {
   editingStopId = null;
@@ -2626,8 +2909,11 @@ function openAddStopModal() {
   document.getElementById('selected-address-display').style.display = 'none';
   document.getElementById('stop-addr-results').innerHTML = '';
   document.getElementById('stop-addr-results').style.display = 'none';
+  document.getElementById('stop-name-results').innerHTML = '';
+  document.getElementById('stop-name-results').style.display = 'none';
   stopWizardGoToStep(1);
   openModal('modal-add-stop');
+  setTimeout(() => initStopNameAutocomplete(), 100);
 }
 
 function openEditStopModal(stopId) {
@@ -2728,7 +3014,7 @@ function initStopAddressAutocomplete() {
   });
 }
 
-function searchLocationIQ(query, resultsEl) {
+async function searchLocationIQ(query, resultsEl) {
   if (!query || query.length < 3) {
     resultsEl.innerHTML = '';
     resultsEl.style.display = 'none';
@@ -2738,26 +3024,61 @@ function searchLocationIQ(query, resultsEl) {
   resultsEl.innerHTML = '<li class="loading">Buscando...</li>';
   resultsEl.style.display = 'block';
 
-  fetch(`https://api.locationiq.com/v1/autocomplete.php?key=${LOCATIONIQ_TOKEN}&q=${encodeURIComponent(query)}&limit=5&countrycodes=*`)
-    .then(r => r.json())
-    .then(data => {
-      if (data && Array.isArray(data) && data.length > 0) {
-        resultsEl.innerHTML = data.map(place => 
-          `<li onclick="selectStopAddress('${place.display_name.replace(/'/g, "\\'")}', '${place.lat}', '${place.lon}')">
-            <strong>${place.display_name.split(',')[0]}</strong><br>
-            <small>${place.display_name.split(',').slice(1, 4).join(',')}</small>
-          </li>`
-        ).join('');
-      } else if (data && data.error) {
-        resultsEl.innerHTML = '<li class="error">Error: ' + data.error + '</li>';
-      } else {
-        resultsEl.innerHTML = '<li class="no-results">Sin resultados</li>';
-      }
-    })
-    .catch(err => {
-      console.error('LocationIQ error:', err);
-      resultsEl.innerHTML = '<li class="error">Error de conexión</li>';
+  // Try LocationIQ first
+  try {
+    const res = await fetch(`https://api.locationiq.com/v1/autocomplete.php?key=${LOCATIONIQ_TOKEN}&q=${encodeURIComponent(query)}&limit=5&countrycodes=*`);
+    const data = await res.json();
+    if (data && Array.isArray(data) && data.length > 0) {
+      resultsEl.innerHTML = data.map(place => 
+        `<li onclick="selectStopAddress('${place.display_name.replace(/'/g, "\\'")}', '${place.lat}', '${place.lon}')">
+          <strong>${place.display_name.split(',')[0]}</strong><br>
+          <small>${place.display_name.split(',').slice(1, 4).join(',')}</small>
+        </li>`
+      ).join('');
+      return;
+    }
+  } catch (err) {
+    console.error('LocationIQ error:', err);
+  }
+
+  // Fallback to Photon (supports Spanish)
+  resultsEl.innerHTML = '<li class="loading">Buscando en Photon...</li>';
+  try {
+    const data = await searchPhoton(query);
+    if (data && data.length > 0) {
+      resultsEl.innerHTML = data.map(place => 
+        `<li onclick="selectStopAddress('${place.display_name.replace(/'/g, "\\'")}', '${place.lat}', '${place.lon}')">
+          <strong>${place.display_name.split(',')[0]}</strong><br>
+          <small>${place.display_name.split(',').slice(1, 4).join(',')}</small>
+        </li>`
+      ).join('');
+      return;
+    }
+  } catch (err) {
+    console.error('Photon error:', err);
+  }
+
+  // Last fallback to Nominatim
+  resultsEl.innerHTML = '<li class="loading">Buscando en OpenStreetMap...</li>';
+  try {
+    const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&limit=5&addressdetails=1`, {
+      headers: { 'User-Agent': 'Wandr/1.0 (https://wandr.travel; contact@wandr.travel)' }
     });
+    const data = await res.json();
+    if (data && Array.isArray(data) && data.length > 0) {
+      resultsEl.innerHTML = data.map(place => 
+        `<li onclick="selectStopAddress('${place.display_name.replace(/'/g, "\\'")}', '${place.lat}', '${place.lon}')">
+          <strong>${place.display_name.split(',')[0]}</strong><br>
+          <small>${place.display_name.split(',').slice(1, 4).join(',')}</small>
+        </li>`
+      ).join('');
+      return;
+    }
+  } catch (err) {
+    console.error('Nominatim error:', err);
+  }
+
+  resultsEl.innerHTML = '<li class="no-results">Sin resultados. Escribí la dirección manualmente.</li>';
 }
 
 function selectStopAddress(displayName, lat, lon) {
@@ -2794,7 +3115,7 @@ function testTerminalAutocomplete(query, resultsId, inputId) {
   }, 800);
 }
 
-function searchTerminalLocationIQ(query, resultsEl, inputId) {
+async function searchTerminalLocationIQ(query, resultsEl, inputId) {
   if (!query || query.length < 3) {
     resultsEl.innerHTML = '';
     resultsEl.style.display = 'none';
@@ -2804,45 +3125,61 @@ function searchTerminalLocationIQ(query, resultsEl, inputId) {
   resultsEl.innerHTML = '<li class="loading">Buscando...</li>';
   resultsEl.style.display = 'block';
 
-  fetch('https://api.locationiq.com/v1/autocomplete.php?key=' + LOCATIONIQ_TOKEN + '&q=' + encodeURIComponent(query) + '&limit=5&countrycodes=*')
-    .then(function(r) { return r.json(); })
-    .then(function(data) {
-      if (data && Array.isArray(data) && data.length > 0) {
-        resultsEl.innerHTML = data.map(function(place) { 
-          return '<li onclick="selectTerminalAddress(\'' + place.display_name.replace(/'/g, "\\'") + '\', \'' + place.lat + '\', \'' + place.lon + '\', \'' + inputId + '\', \'' + inputId + '-results\')">' +
-            '<strong>' + place.display_name.split(',')[0] + '</strong><br>' +
-            '<small>' + place.display_name.split(',').slice(1, 4).join(',') + '</small>' +
-          '</li>';
-        }).join('');
-      } else {
-        searchTerminalLocationIQFallback(query, resultsEl, inputId);
-      }
-    })
-    .catch(function(err) {
-      resultsEl.innerHTML = '<li class="error">Error de conexión</li>';
-    });
-}
+  // Try LocationIQ first
+  try {
+    const res = await fetch('https://api.locationiq.com/v1/autocomplete.php?key=' + LOCATIONIQ_TOKEN + '&q=' + encodeURIComponent(query) + '&limit=5&countrycodes=*');
+    const data = await res.json();
+    if (data && Array.isArray(data) && data.length > 0) {
+      resultsEl.innerHTML = data.map(function(place) { 
+        return '<li onclick="selectTerminalAddress(\'' + place.display_name.replace(/'/g, "\\'") + '\', \'' + place.lat + '\', \'' + place.lon + '\', \'' + inputId + '\', \'' + inputId + '-results\')">' +
+          '<strong>' + place.display_name.split(',')[0] + '</strong><br>' +
+          '<small>' + place.display_name.split(',').slice(1, 4).join(',') + '</small>' +
+        '</li>';
+      }).join('');
+      return;
+    }
+  } catch (err) {
+    console.error('Terminal LocationIQ error:', err);
+  }
 
-function searchTerminalLocationIQFallback(query, resultsEl, inputId) {
-  fetch(`https://api.locationiq.com/v1/autocomplete.php?key=${LOCATIONIQ_TOKEN}&q=${encodeURIComponent(query)}&limit=5&countrycodes=*`)
-    .then(r => r.json())
-    .then(data => {
-      if (data && Array.isArray(data) && data.length > 0) {
-        resultsEl.innerHTML = data.map(place => 
-          `<li onclick="selectTerminalAddress('${place.display_name.replace(/'/g, "\\'")}', '${place.lat}', '${place.lon}', '${inputId}', '${inputId}-results')">
-            <strong>${place.display_name.split(',')[0]}</strong><br>
-            <small>${place.display_name.split(',').slice(1, 4).join(',')}</small>
-          </li>`
-        ).join('');
-      } else if (data && data.error) {
-        resultsEl.innerHTML = '<li class="error">Error: ' + data.error + '</li>';
-      } else {
-        resultsEl.innerHTML = '<li class="no-results">Sin resultados</li>';
-      }
-    })
-    .catch(err => {
-      resultsEl.innerHTML = '<li class="error">Error de conexión</li>';
+  // Fallback to Photon
+  resultsEl.innerHTML = '<li class="loading">Buscando en Photon...</li>';
+  try {
+    const data = await searchPhoton(query);
+    if (data && data.length > 0) {
+      resultsEl.innerHTML = data.map(function(place) { 
+        return '<li onclick="selectTerminalAddress(\'' + place.display_name.replace(/'/g, "\\'") + '\', \'' + place.lat + '\', \'' + place.lon + '\', \'' + inputId + '\', \'' + inputId + '-results\')">' +
+          '<strong>' + place.display_name.split(',')[0] + '</strong><br>' +
+          '<small>' + place.display_name.split(',').slice(1, 4).join(',') + '</small>' +
+        '</li>';
+      }).join('');
+      return;
+    }
+  } catch (err) {
+    console.error('Terminal Photon error:', err);
+  }
+
+  // Last fallback to Nominatim
+  resultsEl.innerHTML = '<li class="loading">Buscando en OpenStreetMap...</li>';
+  try {
+    const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&limit=5&addressdetails=1`, {
+      headers: { 'User-Agent': 'Wandr/1.0 (https://wandr.travel; contact@wandr.travel)' }
     });
+    const data = await res.json();
+    if (data && Array.isArray(data) && data.length > 0) {
+      resultsEl.innerHTML = data.map(function(place) { 
+        return '<li onclick="selectTerminalAddress(\'' + place.display_name.replace(/'/g, "\\'") + '\', \'' + place.lat + '\', \'' + place.lon + '\', \'' + inputId + '\', \'' + inputId + '-results\')">' +
+          '<strong>' + place.display_name.split(',')[0] + '</strong><br>' +
+          '<small>' + place.display_name.split(',').slice(1, 4).join(',') + '</small>' +
+        '</li>';
+      }).join('');
+      return;
+    }
+  } catch (err) {
+    console.error('Terminal Nominatim error:', err);
+  }
+
+  resultsEl.innerHTML = '<li class="no-results">Sin resultados. Escribí la dirección manualmente.</li>';
 }
 
 function selectTerminalAddress(displayName, lat, lon, inputId, resultsId) {
@@ -2850,20 +3187,11 @@ function selectTerminalAddress(displayName, lat, lon, inputId, resultsId) {
   const results = document.getElementById(resultsId);
   const latInput = document.getElementById(inputId + '-lat');
   const lonInput = document.getElementById(inputId + '-lon');
-  const fullInput = document.getElementById(inputId + '-full');
 
-  // Truncar: mostrar solo lo antes de la primera coma
-  const shortName = displayName.split(',')[0].trim();
-  if (input) input.value = shortName;
+  if (input) input.value = displayName;
   if (latInput) latInput.value = lat;
   if (lonInput) lonInput.value = lon;
-  if (fullInput) fullInput.value = displayName;
 
-  if (results) results.style.display = 'none';
-}
-
-function hideResults(resultsId) {
-  const results = document.getElementById(resultsId);
   if (results) results.style.display = 'none';
 }
 
@@ -2902,30 +3230,11 @@ function saveStop() {
   stopSelectedLon = null;
 }
 
-let _pendingDeleteStopId = null;
-let _originalStopOrder = null; // For stop optimization undo
-
 function deleteStop(stopId) {
-  const trip = trips.find(t => t.id === currentTripId);
-  const stop = trip.cities[currentCityIdx].days[currentDayIdx].stops.find(s => s.id === stopId);
-  const stopName = stop?.name || 'esta parada';
-  _pendingDeleteStopId = stopId;
-  document.getElementById('confirm-delete-stop-title').textContent = `¿Eliminar "${stopName}"?`;
-  document.getElementById('confirm-delete-stop-body').textContent = 'Esta acción no se puede deshacer.';
-  openModal('modal-confirm-delete-stop');
-}
-
-function confirmDeleteStop() {
-  const stopId = _pendingDeleteStopId;
-  _pendingDeleteStopId = null;
-  if (!stopId) return;
   const trip = trips.find(t => t.id === currentTripId);
   const days = trip.cities[currentCityIdx].days;
   days[currentDayIdx].stops = days[currentDayIdx].stops.filter(s => s.id !== stopId);
-  save();
-  closeModal('modal-confirm-delete-stop');
-  renderDetail();
-  showToast('Parada eliminada');
+  save(); renderDetail(); showToast('Parada eliminada');
 }
 
 function selectType(el, t) { selectedType = t; document.querySelectorAll('.type-option').forEach(e => e.classList.remove('selected')); el.classList.add('selected'); }
@@ -3150,186 +3459,6 @@ function _showSaveIndicator(type, text) {
   _saveIndicatorTimer = setTimeout(() => { el.className = ''; }, type === 'error' ? 3500 : 2000);
 }
 function mapsUrl(q) { return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(q)}`; }
-
-// Haversine formula for distance between two lat/lon points (returns km)
-function haversine(lat1, lon1, lat2, lon2) {
-  const R = 6371; // Earth radius in km
-  const dLat = (lat2 - lat1) * Math.PI / 180;
-  const dLon = (lon2 - lon1) * Math.PI / 180;
-  const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
-            Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
-            Math.sin(dLon/2) * Math.sin(dLon/2);
-  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-  return R * c;
-}
-
-function formatDistance(km) {
-  if (km < 1) return `${Math.round(km * 1000)}m`;
-  if (km < 10) return `${km.toFixed(1)}km`;
-  return `${Math.round(km)}km`;
-}
-
-function estimateTravelTime(km, transport) {
-  // Average speeds in km/h
-  const speeds = { walking: 5, transit: 20, taxi: 30, driving: 40 };
-  const speed = speeds[transport] || 5;
-  const minutes = Math.round((km / speed) * 60);
-  if (minutes < 1) return '<1min';
-  if (minutes < 60) return `${minutes}min`;
-  const hrs = Math.floor(minutes / 60);
-  const mins = minutes % 60;
-  return mins > 0 ? `${hrs}h ${mins}min` : `${hrs}h`;
-}
-
-// ── Stop optimization algorithms ──────────────────────────
-function stopDistance(a, b) {
-  if (!a.lat || !a.lon || !b.lat || !b.lon) return Infinity;
-  return haversine(a.lat, a.lon, b.lat, b.lon);
-}
-
-function totalRouteDistance(stops, hotelLat, hotelLon) {
-  let total = 0;
-  let prev = { lat: hotelLat, lon: hotelLon };
-  for (const stop of stops) {
-    total += stopDistance(prev, stop);
-    prev = stop;
-  }
-  return total;
-}
-
-// Brute force: try all permutations (for ≤8 stops)
-function bruteForceOptimal(stops, hotelLat, hotelLon) {
-  if (stops.length <= 1) return [...stops];
-  
-  // Generate all permutations
-  const indices = stops.map((_, i) => i);
-  const perms = permute(indices);
-  
-  let bestPerm = null;
-  let bestDist = Infinity;
-  
-  for (const perm of perms) {
-    const ordered = perm.map(i => stops[i]);
-    const dist = totalRouteDistance(ordered, hotelLat, hotelLon);
-    if (dist < bestDist) {
-      bestDist = dist;
-      bestPerm = ordered;
-    }
-  }
-  
-  return bestPerm || [...stops];
-}
-
-function permute(arr) {
-  if (arr.length <= 1) return [arr];
-  const result = [];
-  for (let i = 0; i < arr.length; i++) {
-    const rest = [...arr.slice(0, i), ...arr.slice(i + 1)];
-    for (const p of permute(rest)) {
-      result.push([arr[i], ...p]);
-    }
-  }
-  return result;
-}
-
-// Nearest neighbor: greedy approach (for >8 stops)
-function nearestNeighborOrder(stops, hotelLat, hotelLon) {
-  if (stops.length <= 1) return [...stops];
-  
-  const remaining = [...stops];
-  const ordered = [];
-  let current = { lat: hotelLat, lon: hotelLon };
-  
-  while (remaining.length > 0) {
-    let nearestIdx = 0;
-    let nearestDist = Infinity;
-    for (let i = 0; i < remaining.length; i++) {
-      const d = stopDistance(current, remaining[i]);
-      if (d < nearestDist) {
-        nearestDist = d;
-        nearestIdx = i;
-      }
-    }
-    const next = remaining.splice(nearestIdx, 1)[0];
-    ordered.push(next);
-    current = next;
-  }
-  
-  return ordered;
-}
-
-// 2-opt improvement: swap pairs to reduce total distance
-function twoOptImprove(stops, hotelLat, hotelLon) {
-  if (stops.length <= 2) return [...stops];
-  
-  let improved = [...stops];
-  let improvedDist = totalRouteDistance(improved, hotelLat, hotelLon);
-  let changed = true;
-  
-  while (changed) {
-    changed = false;
-    for (let i = 0; i < improved.length - 1; i++) {
-      for (let j = i + 1; j < improved.length; j++) {
-        // Swap stops[i] and stops[j]
-        const candidate = [...improved];
-        [candidate[i], candidate[j]] = [candidate[j], candidate[i]];
-        const candidateDist = totalRouteDistance(candidate, hotelLat, hotelLon);
-        if (candidateDist < improvedDist) {
-          improved = candidate;
-          improvedDist = candidateDist;
-          changed = true;
-        }
-      }
-    }
-  }
-  
-  return improved;
-}
-
-function optimizeCurrentStops() {
-  const trip = trips.find(t => t.id === currentTripId);
-  if (!trip) return;
-  const city = trip.cities[currentCityIdx];
-  if (!city) return;
-  const day = city.days[currentDayIdx];
-  if (!day || !day.stops || day.stops.length < 2) return;
-  
-  // Save original order if not already saved
-  if (_originalStopOrder === null) {
-    _originalStopOrder = JSON.parse(JSON.stringify(day.stops));
-  }
-  
-  const hotelLat = city.hotelLat || 0;
-  const hotelLon = city.hotelLon || 0;
-  
-  // Choose algorithm based on number of stops
-  let optimized;
-  if (day.stops.length <= 8) {
-    optimized = bruteForceOptimal(day.stops, hotelLat, hotelLon);
-  } else {
-    optimized = nearestNeighborOrder(day.stops, hotelLat, hotelLon);
-    optimized = twoOptImprove(optimized, hotelLat, hotelLon);
-  }
-  
-  day.stops = optimized;
-  save();
-  renderDetail();
-}
-
-function restoreStopOrder() {
-  if (_originalStopOrder === null) return;
-  const trip = trips.find(t => t.id === currentTripId);
-  if (!trip) return;
-  const city = trip.cities[currentCityIdx];
-  if (!city) return;
-  const day = city.days[currentDayIdx];
-  if (!day) return;
-  
-  day.stops = _originalStopOrder;
-  _originalStopOrder = null;
-  save();
-  renderDetail();
-}
 function googleMapsMode(t) { return ({walking:'walking',transit:'transit',taxi:'driving',driving:'driving'})[t]||'transit'; }
 function typeIcon(t) { return ({attraction:'🏛️',restaurant:'🍽️',museum:'🖼️',park:'🌿',hotel:'🏨'})[t]||'📍'; }
 function typeDotClass(t) { return ({attraction:'attraction',restaurant:'restaurant',museum:'attraction',park:'restaurant'})[t]||'attraction'; }
@@ -3466,58 +3595,6 @@ function toggleHelpSection(el) {
     section.classList.add('open');
   }
 }
-
-// Help cards content
-const helpContent = {
-  'Crear viaje': 'Tocá "Nuevo viaje". Ingresá el nombre y las fechas globales. Podés arrancar con una sola ciudad y agregar las demás después — no hace falta tener todo definido desde el principio.',
-  'Ciudades': 'Usá los chips de ciudad para cambiar entre destinos. El botón <strong style="color:var(--accent)">+ Ciudad</strong> (al lado de "Destino") agrega una ciudad nueva en cualquier momento. Si quedan días sin ciudad asignada, aparece un aviso en dorado con un botón para cubrirlos. Podés editar las fechas de cada ciudad tocando el ícono 📅 junto al hotel.',
-  'Excursiones': 'Si visitás una ciudad solo por el día sin pernoctar, elegí "Excursión" al agregar la ciudad. Podés indicar el medio de transporte y los horarios de salida/regreso. Las excursiones aparecen con el ícono 🗺️ y no cuentan noches de hotel.',
-  'Hotel': 'Tocá el ícono ✏️ en el banner del hotel para editar nombre y dirección. Si una ciudad no tiene hotel asignado, aparece un banner punteado con "＋ Agregar hotel".',
-  'Paradas': 'Tocá el botón <strong style="color:var(--accent)">+</strong> para agregar atracciones, restaurantes, museos o parques. Elegí el medio de transporte desde la parada anterior. Podés reordenar las paradas arrastrando el ícono ⠿ de la izquierda.',
-  'Google Maps': 'Cada parada tiene "Cómo llegar" (ruta desde la parada anterior) y "Ver lugar". Al final del día podés ver la ruta completa o cómo volver al hotel.',
-  'Pasajes': 'En la pestaña <strong style="color:var(--accent)">🎫 Pasajes</strong> encontrás los tramos entre ciudades generados automáticamente. Tocá "＋ Completar datos" para cargar vuelo, bus, tren o barco con compañía, horarios, terminal y puerta de embarque. Una vez cargado, el día de salida y el de llegada muestran automáticamente la terminal y el botón "Cómo llegar al hotel".',
-  'Días tránsito': 'Si un día es compartido entre dos ciudades (salís a las 10hs de ciudad A y llegás a las 17hs a ciudad B), ese día aparece en ambas ciudades con un marcador ✈ en el tab. En ciudad A ves la terminal de salida al final del itinerario; en ciudad B ves la terminal de llegada al principio y el hotel al final.',
-  'Resumen': 'En la pestaña <strong style="color:var(--accent)">🗺️ Resumen</strong> encontrás estadísticas del viaje: cantidad de días, ciudades, noches y pasajes. También podés ver cada ciudad con sus fechas, hotel y cómo llegar.',
-  'Respaldo': 'En la pestaña "Respaldo" podés exportar todos tus viajes a un archivo .json para hacer copia de seguridad o pasarlos a otro dispositivo. También podés importar y elegir si reemplazar todo o agregar a los existentes.',
-  'Tema': 'Tocá el botón de sol/luna en la barra inferior para alternar entre modo claro y modo oscuro. La preference se guarda en tu dispositivo.',
-  'Instalar': 'En Chrome Android: menú (⋮) → "Añadir a pantalla de inicio". Los datos se guardan en el dispositivo — no hace falta conexión a internet para usar la app.'
-};
-
-function toggleHelpCard(el, title) {
-  const content = helpContent[title] || '';
-  
-  // Find which group (row) we're in
-  const group = el.closest('.help-group');
-  const textEl = group.querySelector('.help-text');
-  
-  // Check if this card is already active in this group
-  const isCurrentlyActive = el.classList.contains('active');
-  
-  // Close ALL help texts first
-  document.querySelectorAll('.help-text').forEach(t => {
-    t.classList.remove('open');
-    t.innerHTML = '';
-  });
-  
-  // Remove active from ALL cards
-  document.querySelectorAll('.help-card').forEach(c => c.classList.remove('active'));
-  
-  // If it wasn't active before, activate it now
-  if (!isCurrentlyActive) {
-    el.classList.add('active');
-    textEl.innerHTML = content;
-    textEl.classList.add('open');
-  }
-}
-
-window.toggleHelpCard = toggleHelpCard;
-window.addCityEntry = addCityEntry;
-window.removeCityEntry = removeCityEntry;
-window.confirmRemoveCityEntry = confirmRemoveCityEntry;
-window.confirmDeleteStop = confirmDeleteStop;
-window.confirmRemoveTransitLeg = confirmRemoveTransitLeg;
-window.optimizeCurrentStops = optimizeCurrentStops;
-window.restoreStopOrder = restoreStopOrder;
 function closeModal(id) {
   document.getElementById(id).classList.remove('open');
   if (id === 'modal-backup') {
@@ -3602,9 +3679,6 @@ function sanitizeTrips(raw) {
               timeTo:    typeof s.timeTo    === 'string' ? s.timeTo    : '',
               type:      ['attraction','restaurant','museum','park','hotel'].includes(s.type) ? s.type : 'attraction',
               transport: ['walking','transit','taxi','driving'].includes(s.transport) ? s.transport : 'walking',
-              lat:       typeof s.lat === 'number' ? s.lat : null,
-              lon:       typeof s.lon === 'number' ? s.lon : null,
-              order:     typeof s.order === 'number' ? s.order : 0,
             }));
           if (cleanStops.length) stopsMap[d.date] = cleanStops;
         }
@@ -3612,9 +3686,6 @@ function sanitizeTrips(raw) {
       ci.days = buildDays(ci.startDate, ci.endDate).map(d => ({
         date: d.date, stops: stopsMap[d.date] || []
       }));
-      // Preserve hotel coordinates
-      if (typeof ci.hotelLat === 'number') ci.hotelLat = ci.hotelLat;
-      if (typeof ci.hotelLon === 'number') ci.hotelLon = ci.hotelLon;
       return ci;
     });
     if (!Array.isArray(t.tickets)) t.tickets = [];
@@ -3673,50 +3744,114 @@ function addrAutocomplete(input, listId) {
     try {
       if (_acAbort) _acAbort.abort();
       _acAbort = new AbortController();
-      // Usar LocationIQ en lugar de Nominatim para mejores resultados
+      // Try LocationIQ first
       const url = `https://api.locationiq.com/v1/autocomplete.php?key=${LOCATIONIQ_TOKEN}&q=${encodeURIComponent(q)}&limit=5&countrycodes=*`;
       const res = await fetch(url, { signal: _acAbort.signal });
       const data = await res.json();
       
-      if (!data || !Array.isArray(data) || data.length === 0) {
-        list.innerHTML = '<li class="ac-loading">Sin resultados</li>';
+      if (data && Array.isArray(data) && data.length > 0) {
+        _acResults[listId] = data.map(r => ({
+          display_name: r.display_name,
+          lat: r.lat,
+          lon: r.lon
+        }));
+        renderAddrList(data, listId);
         return;
       }
-      
-      // Guardar resultados completos incluyendo lat/lon
-      _acResults[listId] = data.map(r => ({
-        display_name: r.display_name,
-        lat: r.lat,
-        lon: r.lon
-      }));
-      
-      list.innerHTML = data.map((r, i) => {
-        const parts = r.display_name.split(',');
-        const main = parts[0].trim();
-        const sub = parts.slice(1, 4).join(',').trim();
-        return `<li data-ac-index="${i}" data-ac-list="${esc(listId)}">
-          <div class="ac-main">${esc(main)}</div>
-          <div class="ac-sub">${esc(sub)}</div>
-        </li>`;
-      }).join('');
-      // Attach events via JS, not inline handlers
-      list.querySelectorAll('li[data-ac-index]').forEach(li => {
-        li.addEventListener('mousedown', () => {
-          const idx = parseInt(li.dataset.acIndex, 10);
-          const lId = li.dataset.acList;
-          pickAddr(lId, idx);
-        });
-        li.addEventListener('touchstart', (e) => {
-          e.preventDefault();
-          const idx = parseInt(li.dataset.acIndex, 10);
-          const lId = li.dataset.acList;
-          pickAddr(lId, idx);
-        }, { passive: false });
-      });
     } catch(e) {
-      if (e.name !== 'AbortError') list.innerHTML = '<li class="ac-loading">Error al buscar</li>';
+      if (e.name === 'AbortError') return;
+      console.error('addrAutocomplete LocationIQ error:', e);
     }
+
+    // Fallback to Photon
+    list.innerHTML = '<li class="ac-loading">Buscando en Photon...</li>';
+    try {
+      const data = await searchPhoton(q);
+      if (data && data.length > 0) {
+        _acResults[listId] = data;
+        renderAddrListFromPhoton(data, listId);
+        return;
+      }
+    } catch(e) {
+      console.error('addrAutocomplete Photon error:', e);
+    }
+
+    // Last fallback to Nominatim
+    list.innerHTML = '<li class="ac-loading">Buscando en OpenStreetMap...</li>';
+    try {
+      const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(q)}&limit=5&addressdetails=1`, {
+        headers: { 'User-Agent': 'Wandr/1.0 (https://wandr.travel; contact@wandr.travel)' }
+      });
+      const data = await res.json();
+      if (data && Array.isArray(data) && data.length > 0) {
+        _acResults[listId] = data.map(r => ({
+          display_name: r.display_name,
+          lat: r.lat,
+          lon: r.lon
+        }));
+        renderAddrList(data, listId);
+        return;
+      }
+    } catch(e) {
+      console.error('addrAutocomplete Nominatim error:', e);
+    }
+
+    list.innerHTML = '<li class="ac-loading">Sin resultados</li>';
   }, 350);
+}
+
+function renderAddrList(data, listId) {
+  const list = document.getElementById(listId);
+  if (!list) return;
+  list.innerHTML = data.map((r, i) => {
+    const parts = r.display_name.split(',');
+    const main = parts[0].trim();
+    const sub = parts.slice(1, 4).join(',').trim();
+    return `<li data-ac-index="${i}" data-ac-list="${esc(listId)}">
+      <div class="ac-main">${esc(main)}</div>
+      <div class="ac-sub">${esc(sub)}</div>
+    </li>`;
+  }).join('');
+  list.querySelectorAll('li[data-ac-index]').forEach(li => {
+    li.addEventListener('mousedown', () => {
+      const idx = parseInt(li.dataset.acIndex, 10);
+      const lId = li.dataset.acList;
+      pickAddr(lId, idx);
+    });
+    li.addEventListener('touchstart', (e) => {
+      e.preventDefault();
+      const idx = parseInt(li.dataset.acIndex, 10);
+      const lId = li.dataset.acList;
+      pickAddr(lId, idx);
+    }, { passive: false });
+  });
+}
+
+function renderAddrListFromPhoton(data, listId) {
+  const list = document.getElementById(listId);
+  if (!list) return;
+  list.innerHTML = data.map((r, i) => {
+    const parts = r.display_name.split(',');
+    const main = parts[0].trim();
+    const sub = parts.slice(1, 4).join(',').trim();
+    return `<li data-ac-index="${i}" data-ac-list="${esc(listId)}">
+      <div class="ac-main">${esc(main)}</div>
+      <div class="ac-sub">${esc(sub)}</div>
+    </li>`;
+  }).join('');
+  list.querySelectorAll('li[data-ac-index]').forEach(li => {
+    li.addEventListener('mousedown', () => {
+      const idx = parseInt(li.dataset.acIndex, 10);
+      const lId = li.dataset.acList;
+      pickAddr(lId, idx);
+    });
+    li.addEventListener('touchstart', (e) => {
+      e.preventDefault();
+      const idx = parseInt(li.dataset.acIndex, 10);
+      const lId = li.dataset.acList;
+      pickAddr(lId, idx);
+    }, { passive: false });
+  });
 }
 
 function pickAddr(listId, index) {
@@ -3745,4 +3880,181 @@ function hideList(listId) {
     const list = document.getElementById(listId);
     if (list) list.classList.remove('open');
   }, 150);
+}
+
+// ══════════════════════════════════════
+// WEATHER SERVICE
+// ══════════════════════════════════════
+
+function saveToWeatherCache(cityId, data) {
+  try {
+    localStorage.setItem(`wandr_weather_cache_${cityId}`, JSON.stringify({ data, timestamp: Date.now() }));
+  } catch(e) { console.error('Weather cache save error:', e); }
+}
+
+function loadFromWeatherCache(cityId) {
+  try {
+    const raw = localStorage.getItem(`wandr_weather_cache_${cityId}`);
+    if (!raw) return null;
+    const { data, timestamp } = JSON.parse(raw);
+    if (Date.now() - timestamp > 30 * 60 * 1000) return null;
+    return data;
+  } catch(e) { return null; }
+}
+
+function mapWmoCode(code) {
+  const map = {
+    0: { description: 'Despejado', icon: '☀️' },
+    1: { description: 'Mayormente despejado', icon: '🌤️' },
+    2: { description: 'Mayormente despejado', icon: '🌤️' },
+    3: { description: 'Nublado', icon: '☁️' },
+    45: { description: 'Niebla', icon: '🌫️' },
+    48: { description: 'Niebla', icon: '🌫️' },
+    51: { description: 'Llovizna', icon: '🌦️' },
+    53: { description: 'Llovizna', icon: '🌦️' },
+    55: { description: 'Llovizna', icon: '🌦️' },
+    56: { description: 'Llovizna helada', icon: '🌧️' },
+    57: { description: 'Llovizna helada', icon: '🌧️' },
+    61: { description: 'Lluvia', icon: '🌧️' },
+    63: { description: 'Lluvia', icon: '🌧️' },
+    65: { description: 'Lluvia', icon: '🌧️' },
+    66: { description: 'Lluvia helada', icon: '🌨️' },
+    67: { description: 'Lluvia helada', icon: '🌨️' },
+    71: { description: 'Nieve', icon: '❄️' },
+    73: { description: 'Nieve', icon: '❄️' },
+    75: { description: 'Nieve', icon: '❄️' },
+    77: { description: 'Granos de nieve', icon: '🌨️' },
+    80: { description: 'Chubascos', icon: '🌦️' },
+    81: { description: 'Chubascos', icon: '🌦️' },
+    82: { description: 'Chubascos', icon: '🌦️' },
+    85: { description: 'Chubascos de nieve', icon: '🌨️' },
+    86: { description: 'Chubascos de nieve', icon: '🌨️' },
+    95: { description: 'Tormenta', icon: '⛈️' },
+    96: { description: 'Tormenta con granizo', icon: '⛈️' },
+    99: { description: 'Tormenta con granizo', icon: '⛈️' }
+  };
+  return map[code] || { description: 'Desconocido', icon: '🌡️' };
+}
+
+async function getCoordinatesForCity(city, trip) {
+  if (city.hotelLat && city.hotelLon) {
+    return { lat: city.hotelLat, lon: city.hotelLon };
+  }
+  const days = city.days || [];
+  for (const day of days) {
+    const stops = day.stops || [];
+    for (const stop of stops) {
+      if (stop.lat && stop.lon) {
+        return { lat: stop.lat, lon: stop.lon };
+      }
+    }
+  }
+  if (city.name) {
+    try {
+      const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(city.name)}&limit=1`, {
+        headers: { 'User-Agent': 'Wandr/1.0' }
+      });
+      const data = await res.json();
+      if (data && data.length > 0) {
+        return { lat: parseFloat(data[0].lat), lon: parseFloat(data[0].lon) };
+      }
+    } catch(e) { console.error('Nominatim geocoding error:', e); }
+  }
+  return null;
+}
+
+async function getWeatherForCity(city, trip) {
+  const cityId = `${trip.id}_${city.name || ''}`.replace(/[^a-zA-Z0-9]/g, '_');
+  const cached = loadFromWeatherCache(cityId);
+  if (cached) return cached;
+  const coords = await getCoordinatesForCity(city, trip);
+  if (!coords) return null;
+  try {
+    const url = `https://api.open-meteo.com/v1/forecast?latitude=${coords.lat}&longitude=${coords.lon}&daily=weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max,wind_speed_10m_max&timezone=auto`;
+    const res = await fetch(url);
+    if (!res.ok) return null;
+    const data = await res.json();
+    if (data && data.daily) {
+      saveToWeatherCache(cityId, data);
+      return data;
+    }
+  } catch(e) { console.error('Weather fetch error:', e); }
+  return null;
+}
+
+// ══════════════════════════════════════
+// PACKING SUGGESTIONS
+// ══════════════════════════════════════
+
+function getPackingSuggestions(weatherDay) {
+  const suggestions = [];
+  const wmo = weatherDay.weather_code;
+  const maxTemp = weatherDay.temperature_2m_max;
+  const precip = weatherDay.precipitation_probability_max || 0;
+  const wind = weatherDay.wind_speed_10m_max || 0;
+  if (maxTemp < 10) {
+    suggestions.push({ icon: '🧥', text: 'Abrigo pesado' });
+    suggestions.push({ icon: '🧤', text: 'Guantes' });
+    suggestions.push({ icon: '🧣', text: 'Bufanda' });
+    suggestions.push({ icon: '🧢', text: 'Gorro' });
+  } else if (maxTemp < 20) {
+    suggestions.push({ icon: '🧥', text: 'Campera liviana' });
+    suggestions.push({ icon: '🧶', text: 'Sweater' });
+  } else {
+    suggestions.push({ icon: '🧴', text: 'Protector solar' });
+    suggestions.push({ icon: '🕶️', text: 'Gafas de sol' });
+    suggestions.push({ icon: '👒', text: 'Sombrero' });
+  }
+  if (precip > 30) {
+    suggestions.push({ icon: '☂️', text: 'Paraguas' });
+    suggestions.push({ icon: '🧥', text: 'Impermeable' });
+  }
+  if (wind > 30) {
+    suggestions.push({ icon: '🧥', text: 'Cortavientos' });
+  }
+  if ([71,73,75,77,85,86].includes(wmo)) {
+    suggestions.push({ icon: '🥾', text: 'Botas impermeables' });
+    suggestions.push({ icon: '🧣', text: 'Ropa térmica' });
+  }
+  suggestions.push({ icon: '🔌', text: 'Cargador de celular' });
+  suggestions.push({ icon: '💧', text: 'Botella de agua' });
+  suggestions.push({ icon: '📄', text: 'Documentos' });
+  return suggestions;
+}
+
+async function openPackingModal(tripId, cityIdx) {
+  const trip = trips.find(t => t.id === tripId);
+  if (!trip || !trip.cities || !trip.cities[cityIdx]) return;
+  const city = trip.cities[cityIdx];
+  const weather = await getWeatherForCity(city, trip);
+  let html = '';
+  if (weather && weather.daily) {
+    const days = city.days || [];
+    days.forEach((day, i) => {
+      const wDay = weather.daily;
+      if (i < wDay.time.length) {
+        const wmo = wDay.weather_code[i];
+        const mapped = mapWmoCode(wmo);
+        const suggestions = getPackingSuggestions({
+          weather_code: wmo,
+          temperature_2m_max: wDay.temperature_2m_max[i],
+          temperature_2m_min: wDay.temperature_2m_min[i],
+          precipitation_probability_max: wDay.precipitation_probability_max[i],
+          wind_speed_10m_max: wDay.wind_speed_10m_max[i]
+        });
+        const dateStr = day.date ? new Date(day.date + 'T00:00:00').toLocaleDateString('es-AR', { weekday: 'short', day: 'numeric', month: 'short' }) : `Día ${i+1}`;
+        html += `<div class="packing-day-group">
+          <div class="packing-day-header">${mapped.icon} ${dateStr} — ${mapped.description} (${Math.round(wDay.temperature_2m_max[i])}°/${Math.round(wDay.temperature_2m_min[i])}°)</div>
+          <div class="packing-list">
+            ${suggestions.map(s => `<div class="packing-item"><span class="packing-icon">${s.icon}</span><span class="packing-text">${s.text}</span></div>`).join('')}
+          </div>
+        </div>`;
+      }
+    });
+  } else {
+    html = '<p class="packing-summary-item">No hay datos de clima disponibles para generar sugerencias.</p>';
+  }
+  const content = document.getElementById('packing-content');
+  if (content) content.innerHTML = html;
+  openModal('modal-packing');
 }
