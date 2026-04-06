@@ -2489,11 +2489,30 @@ function addDays(dateStr, n) {
 }
 
 // ══════════════════════════════════════
-// UNIVERSAL GEOCODER — 2 APIs en cadena (Nominatim + Photon)
+// UNIVERSAL GEOCODER — 3 APIs en cadena (Mapbox → Nominatim → Photon)
 // ══════════════════════════════════════
 
+// ⚠️ Reemplazá este token con el tuyo en https://account.mapbox.com/
+// Mapbox ofrece 100k requests gratis/mes
+const MAPBOX_TOKEN = 'pk.eyJ1IjoiZGVtby1tYXBib3giLCJhIjoiY2xhdWRlLWRlbW8ifQ.demo';
+
 async function searchAllGeocoders(query) {
-  // 1. Nominatim (entiende español, muy completo)
+  // 1. Mapbox (mejor autocomplete, muy rápido)
+  if (MAPBOX_TOKEN && MAPBOX_TOKEN.startsWith('pk.')) {
+    try {
+      const res = await fetch(`https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(query)}.json?access_token=${MAPBOX_TOKEN}&limit=8&language=es`);
+      const json = await res.json();
+      if (json && Array.isArray(json.features) && json.features.length > 0) {
+        return json.features.map(f => ({
+          display_name: f.place_name_es || f.place_name,
+          lat: f.center[1],
+          lon: f.center[0]
+        }));
+      }
+    } catch(e) { /* continue */ }
+  }
+
+  // 2. Nominatim (entiende español, muy completo)
   try {
     const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&limit=8&addressdetails=1`, {
       headers: { 'User-Agent': 'Wandr/1.0 (https://wandr.travel; contact@wandr.travel)' }
