@@ -186,7 +186,11 @@
       </div>
       <div class="form-group">
         <label>Nombre del lugar</label>
-        <input type="text" id="stop-name" placeholder="Ej: Manneken Pis" maxlength="80" />
+        <div class="autocomplete-wrap" style="position:relative">
+          <input type="text" id="stop-name" placeholder="Ej: Manneken Pis, Torre Eiffel..." maxlength="80" autocomplete="off" />
+          <ul class="autocomplete-results" id="stop-name-results"></ul>
+        </div>
+        <small style="color:var(--text2);font-size:0.75rem;margin-top:6px;display:block">Escribí al menos 3 caracteres. Si no encuentra, podés escribir el nombre a mano y seguir.</small>
       </div>
       <button class="btn-primary" onclick="stopWizardNextStep(1)">Siguiente</button>
     </div>
@@ -216,11 +220,11 @@
         <label>Horario <span class="label-optional">opcional</span></label>
         <div class="date-row">
           <div>
-            <input type="time" id="stop-time-from" />
+            <div class="time-btn" id="stop-time-from" data-value="" onclick="openTimePicker('stop-time-from')">--:--</div>
             <div style="font-size:0.7rem;color:var(--text2);margin-top:4px">Apertura</div>
           </div>
           <div>
-            <input type="time" id="stop-time-to" />
+            <div class="time-btn" id="stop-time-to" data-value="" onclick="openTimePicker('stop-time-to')">--:--</div>
             <div style="font-size:0.7rem;color:var(--text2);margin-top:4px">Cierre</div>
           </div>
         </div>
@@ -279,12 +283,15 @@
     <div id="new-city-stay-fields">
       <div class="form-group">
         <label>Hotel / alojamiento</label>
-        <input type="text" id="new-city-hotel-name" placeholder="Nombre del hotel" />
+        <div class="autocomplete-wrap">
+          <input type="text" id="new-city-hotel-name" placeholder="Buscá el hotel..." autocomplete="off" />
+          <ul class="autocomplete-list" id="new-hotel-name-list"></ul>
+        </div>
       </div>
       <div class="form-group">
         <label>Dirección del hotel</label>
         <div class="autocomplete-wrap">
-          <input type="text" id="new-city-hotel-addr" placeholder="Dirección completa" autocomplete="off" oninput="addrAutocomplete(this,'new-hotel-addr-list')" onblur="hideList('new-hotel-addr-list')" />
+          <input type="text" id="new-city-hotel-addr" placeholder="Se completa automáticamente" autocomplete="off" />
           <input type="hidden" id="new-city-hotel-lat" />
           <input type="hidden" id="new-city-hotel-lon" />
           <ul class="autocomplete-list" id="new-hotel-addr-list"></ul>
@@ -307,11 +314,11 @@
         <label>Horario estimado <span class="label-optional">opcional</span></label>
         <div class="date-row">
           <div>
-            <input type="time" id="new-city-depart-time" />
+            <div class="time-btn" id="new-city-depart-time" data-value="" onclick="openTimePicker('new-city-depart-time')">--:--</div>
             <div style="font-size:0.7rem;color:var(--text2);margin-top:4px">Salida</div>
           </div>
           <div>
-            <input type="time" id="new-city-return-time" />
+            <div class="time-btn" id="new-city-return-time" data-value="" onclick="openTimePicker('new-city-return-time')">--:--</div>
             <div style="font-size:0.7rem;color:var(--text2);margin-top:4px">Regreso</div>
           </div>
         </div>
@@ -429,12 +436,15 @@
     <h2>🏨 Hotel en <span id="edit-hotel-city-name"></span></h2>
     <div class="form-group">
       <label>Nombre del hotel</label>
-      <input type="text" id="edit-hotel-name" placeholder="Ej: Hotel Amigo" />
+      <div class="autocomplete-wrap">
+        <input type="text" id="edit-hotel-name" placeholder="Buscá el hotel..." autocomplete="off" />
+        <ul class="autocomplete-list" id="edit-hotel-name-list"></ul>
+      </div>
     </div>
     <div class="form-group">
       <label>Dirección</label>
       <div class="autocomplete-wrap">
-        <input type="text" id="edit-hotel-addr" placeholder="Ej: Grand Place 1, Bruselas" autocomplete="off" oninput="addrAutocomplete(this,'edit-hotel-addr-list')" onblur="hideList('edit-hotel-addr-list')" />
+        <input type="text" id="edit-hotel-addr" placeholder="Se completa automáticamente" autocomplete="off" />
         <input type="hidden" id="edit-hotel-lat" />
         <input type="hidden" id="edit-hotel-lon" />
         <ul class="autocomplete-list" id="edit-hotel-addr-list"></ul>
@@ -444,17 +454,40 @@
       <label>Horarios <span class="label-optional">opcional</span></label>
       <div class="date-row">
         <div>
-          <input type="time" id="edit-hotel-checkin" />
-          <div style="font-size:0.7rem;color:var(--text2);margin-top:4px">✅ Check-in</div>
-        </div>
-        <div>
-          <input type="time" id="edit-hotel-checkout" />
-          <div style="font-size:0.7rem;color:var(--text2);margin-top:4px">🚪 Check-out</div>
+            <div class="time-btn" id="edit-hotel-checkin" data-value="15:00" onclick="openTimePicker('edit-hotel-checkin')">15:00</div>
+            <div style="font-size:0.7rem;color:var(--text2);margin-top:4px">✅ Check-in</div>
+          </div>
+          <div>
+            <div class="time-btn" id="edit-hotel-checkout" data-value="10:00" onclick="openTimePicker('edit-hotel-checkout')">10:00</div>
+            <div style="font-size:0.7rem;color:var(--text2);margin-top:4px">🚪 Check-out</div>
         </div>
       </div>
     </div>
     <button class="btn-primary" onclick="saveEditHotel()">Guardar cambios</button>
     <button class="btn-secondary" onclick="closeModal('modal-edit-hotel')">Cancelar</button>
+  </div>
+</div>
+
+<!-- ══ MODAL: TIME PICKER ══ -->
+<div class="modal-overlay" id="modal-time-picker">
+  <div class="modal time-picker-modal">
+    <div class="modal-handle"></div>
+    <h2 style="text-align:center;margin-bottom:16px">Hora</h2>
+    <div class="time-picker-body">
+      <div class="time-picker-wheel-wrap">
+        <div class="time-picker-col">
+          <div class="time-picker-scroll" id="tp-hour"></div>
+        </div>
+        <div class="time-picker-sep">:</div>
+        <div class="time-picker-col">
+          <div class="time-picker-scroll" id="tp-min"></div>
+        </div>
+      </div>
+    </div>
+    <div class="time-picker-actions">
+      <button class="btn-secondary" onclick="closeTimePicker()" style="flex:1">Cancelar</button>
+      <button class="btn-primary" onclick="confirmTimePicker()" style="flex:1;margin-left:10px">Aceptar</button>
+    </div>
   </div>
 </div>
 
@@ -570,10 +603,10 @@
 
       <div class="form-group">
         <label>Fecha y hora de salida</label>
-        <div class="date-row">
-          <input type="date" id="ticket-dep-date" />
-          <input type="time" id="ticket-dep-time" />
-        </div>
+          <div class="date-row">
+            <input type="date" id="ticket-dep-date" />
+            <div class="time-btn" id="ticket-dep-time" data-value="" onclick="openTimePicker('ticket-dep-time')">--:--</div>
+          </div>
       </div>
 
       <div class="wizard-nav">
@@ -604,10 +637,10 @@
 
       <div class="form-group">
         <label>Fecha y hora de llegada</label>
-        <div class="date-row">
-          <input type="date" id="ticket-arr-date" />
-          <input type="time" id="ticket-arr-time" />
-        </div>
+          <div class="date-row">
+            <input type="date" id="ticket-arr-date" />
+            <div class="time-btn" id="ticket-arr-time" data-value="" onclick="openTimePicker('ticket-arr-time')">--:--</div>
+          </div>
       </div>
 
       <button class="btn-primary" onclick="saveTicket()">Guardar pasaje</button>

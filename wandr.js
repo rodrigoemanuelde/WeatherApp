@@ -1938,8 +1938,8 @@ function openAddTicketModal() {
   document.getElementById('ticket-arr-gate').value = '';
   document.getElementById('ticket-dep-date').value = trip?.startDate || '';
   document.getElementById('ticket-arr-date').value = trip?.startDate || '';
-  document.getElementById('ticket-dep-time').value = '';
-  document.getElementById('ticket-arr-time').value = '';
+  setWheelTime('ticket-dep-time', '');
+  setWheelTime('ticket-arr-time', '');
   document.querySelectorAll('#ticket-type-grid .transport-option').forEach(el => el.classList.remove('selected'));
   updateTicketFields(null);
   ticketWizardGoToStep(1);
@@ -1973,8 +1973,8 @@ function openEditTicketModal(ticketId) {
   document.getElementById('ticket-arr-gate').value = tk.arrGate || '';
   document.getElementById('ticket-dep-date').value = tk.depDate || '';
   document.getElementById('ticket-arr-date').value = tk.arrDate || '';
-  document.getElementById('ticket-dep-time').value = tk.depTime || '';
-  document.getElementById('ticket-arr-time').value = tk.arrTime || '';
+  setWheelTime('ticket-dep-time', tk.depTime || '');
+  setWheelTime('ticket-arr-time', tk.arrTime || '');
   if (selectedTicketType) {
     updateTicketFields(selectedTicketType);
   }
@@ -2144,8 +2144,8 @@ function saveTicket() {
     arrTerminalLon: document.getElementById('ticket-arr-terminal-lon').value.trim(),
     arrTerminalFull: document.getElementById('ticket-arr-terminal-full').value.trim(),
     arrGate:      document.getElementById('ticket-arr-gate').value.trim(),
-    depDate, depTime: document.getElementById('ticket-dep-time').value,
-    arrDate, arrTime: document.getElementById('ticket-arr-time').value,
+    depDate, depTime: getWheelTime('ticket-dep-time'),
+    arrDate, arrTime: getWheelTime('ticket-arr-time'),
   };
 
   if (!trip.tickets) trip.tickets = [];
@@ -2489,8 +2489,264 @@ function addDays(dateStr, n) {
 }
 
 // ══════════════════════════════════════
+// UNIVERSAL GEOCODER — 3 APIs en cadena
+// ══════════════════════════════════════
+
+async function searchAllGeocoders(query) {
+  // 1. LocationIQ (mejor autocomplete)
+  try {
+    const res = await fetch(`https://api.locationiq.com/v1/autocomplete.php?key=${LOCATIONIQ_TOKEN}&q=${encodeURIComponent(query)}&limit=8&countrycodes=*`);
+    const data = await res.json();
+    if (data && Array.isArray(data) && data.length > 0) {
+      return data.map(r => ({ display_name: r.display_name, lat: r.lat, lon: r.lon }));
+    }
+  } catch(e) { /* continue */ }
+
+  // 2. Nominatim (entiende español básico)
+  try {
+    const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&limit=8&addressdetails=1`, {
+      headers: { 'User-Agent': 'Wandr/1.0 (https://wandr.travel; contact@wandr.travel)' }
+    });
+    const data = await res.json();
+    if (data && Array.isArray(data) && data.length > 0) {
+      return data.map(r => ({ display_name: r.display_name, lat: r.lat, lon: r.lon }));
+    }
+  } catch(e) { /* continue */ }
+
+  // 3. Photon (nombre local, sin key)
+  try {
+    const res = await fetch(`https://photon.komoot.io/api/?q=${encodeURIComponent(query)}&limit=8`);
+    const json = await res.json();
+    if (json && Array.isArray(json.features) && json.features.length > 0) {
+      return json.features.map(f => {
+        const p = f.properties;
+        const name = p.name || '';
+        const street = p.street || '';
+        const city = p.city || '';
+        const state = p.state || '';
+        const country = p.country || '';
+        const parts = [name, street, city, state, country].filter(Boolean);
+        const coords = f.geometry && f.geometry.coordinates;
+        return {
+          display_name: parts.join(', '),
+          lat: coords ? coords[1] : null,
+          lon: coords ? coords[0] : null
+        };
+      }).filter(r => r.display_name);
+    }
+  } catch(e) { /* continue */ }
+
+  return [];
+}
+
+// ── Stop name autocomplete (Agregar parada, Paso 1) ──────────
+let _stopNameAcTimer = null;
+let _stopNameAcResults = [];
+
+function initStopNameAutocomplete() {
+  const input = document.getElementById('stop-name');
+  const list = document.getElementById('stop-name-results');
+  const addrInput = document.getElementById('stop-addr');
+  if (!input || !list) return;
+
+  const newInput = input.cloneNode(true);
+  input.parentNode.replaceChild(newInput, input);
+  const el = document.getElementById('stop-name');
+
+  el.addEventListener('input', () => {
+    clearTimeout(_stopNameAcTimer);
+    const q = el.value.trim();
+    if (q.length < 3) { list.style.display = 'none'; list.innerHTML = ''; return; }
+    _stopNameAcTimer = setTimeout(() => runStopNameSearch(q, list, el, addrInput), 350);
+  });
+
+  el.addEventListener('focus', () => {
+    if (el.value.trim().length >= 3) runStopNameSearch(el.value.trim(), list, el, addrInput);
+  });
+
+  document.addEventListener('click', (e) => {
+    if (!el.contains(e.target) && !list.contains(e.target)) { list.style.display = 'none'; }
+  });
+}
+
+async function runStopNameSearch(query, list, nameInput, addrInput) {
+  _stopNameAcResults = [];
+  list.innerHTML = '<li class="loading">Buscando...</li>';
+  list.style.display = 'block';
+
+  const data = await searchAllGeocoders(query);
+  if (data.length > 0) {
+    _stopNameAcResults = data;
+    list.innerHTML = data.map((r, i) => {
+      const parts = r.display_name.split(',');
+      return `<li data-sni="${i}">
+        <strong>${esc(parts[0].trim())}</strong><br>
+        <small>${esc(parts.slice(1, 4).join(',').trim())}</small>
+      </li>`;
+    }).join('');
+    list.querySelectorAll('li[data-sni]').forEach(li => {
+      const handler = () => pickStopNameResult(parseInt(li.dataset.sni, 10), nameInput, addrInput);
+      li.addEventListener('mousedown', handler);
+      li.addEventListener('touchstart', (e) => { e.preventDefault(); handler(); }, { passive: false });
+    });
+  } else {
+    list.innerHTML = '<li class="no-results">Sin resultados. Escribí el nombre a mano y seguí.</li>';
+  }
+}
+
+function pickStopNameResult(index, nameInput, addrInput) {
+  const result = _stopNameAcResults[index];
+  if (!result) return;
+  const parts = result.display_name.split(',');
+  nameInput.value = parts[0].trim();
+  addrInput.value = parts.slice(1).join(',').trim();
+  stopSelectedLat = result.lat;
+  stopSelectedLon = result.lon;
+  const display = document.getElementById('selected-address-display');
+  if (display) display.style.display = 'block';
+  document.getElementById('stop-name-results').style.display = 'none';
+}
+
+// ── Hotel name autocomplete (Agregar ciudad) ─────────────────
+let _hotelAcTimer = null;
+let _hotelAcResults = [];
+
+function initHotelNameAutocomplete() {
+  const input = document.getElementById('new-city-hotel-name');
+  const list = document.getElementById('new-hotel-name-list');
+  const addrInput = document.getElementById('new-city-hotel-addr');
+  if (!input || !list) return;
+
+  const newInput = input.cloneNode(true);
+  input.parentNode.replaceChild(newInput, input);
+  const el = document.getElementById('new-city-hotel-name');
+
+  el.addEventListener('input', () => {
+    clearTimeout(_hotelAcTimer);
+    const q = el.value.trim();
+    if (q.length < 3) { list.classList.remove('open'); list.innerHTML = ''; return; }
+    _hotelAcTimer = setTimeout(() => runHotelSearch(q, list, el, addrInput), 350);
+  });
+
+  el.addEventListener('focus', () => {
+    if (el.value.trim().length >= 3) runHotelSearch(el.value.trim(), list, el, addrInput);
+  });
+
+  document.addEventListener('click', (e) => {
+    if (!el.contains(e.target) && !list.contains(e.target)) { list.classList.remove('open'); }
+  });
+}
+
+async function runHotelSearch(query, list, nameInput, addrInput) {
+  _hotelAcResults = [];
+  list.innerHTML = '<li class="ac-loading">Buscando...</li>';
+  list.classList.add('open');
+
+  const data = await searchAllGeocoders(query);
+  if (data.length > 0) {
+    _hotelAcResults = data;
+    list.innerHTML = data.map((r, i) => {
+      const parts = r.display_name.split(',');
+      return `<li data-hni="${i}">
+        <div class="ac-main">${esc(parts[0].trim())}</div>
+        <div class="ac-sub">${esc(parts.slice(1, 4).join(',').trim())}</div>
+      </li>`;
+    }).join('');
+    list.querySelectorAll('li[data-hni]').forEach(li => {
+      const handler = () => pickHotelResult(parseInt(li.dataset.hni, 10), nameInput, addrInput);
+      li.addEventListener('mousedown', handler);
+      li.addEventListener('touchstart', (e) => { e.preventDefault(); handler(); }, { passive: false });
+    });
+  } else {
+    list.innerHTML = '<li class="ac-loading">Sin resultados. Escribí el nombre a mano y seguí.</li>';
+  }
+}
+
+function pickHotelResult(index, nameInput, addrInput) {
+  const result = _hotelAcResults[index];
+  if (!result) return;
+  const parts = result.display_name.split(',');
+  nameInput.value = parts[0].trim();
+  addrInput.value = parts.slice(1).join(',').trim();
+  const latField = document.getElementById('new-city-hotel-lat');
+  const lonField = document.getElementById('new-city-hotel-lon');
+  if (latField) latField.value = result.lat || '';
+  if (lonField) lonField.value = result.lon || '';
+  document.getElementById('new-hotel-name-list').classList.remove('open');
+}
+
+// ── Hotel name autocomplete (Editar hotel) ───────────────────
+let _editHotelAcTimer = null;
+let _editHotelAcResults = [];
+
+function initEditHotelNameAutocomplete() {
+  const input = document.getElementById('edit-hotel-name');
+  const list = document.getElementById('edit-hotel-name-list');
+  const addrInput = document.getElementById('edit-hotel-addr');
+  if (!input || !list) return;
+
+  const newInput = input.cloneNode(true);
+  input.parentNode.replaceChild(newInput, input);
+  const el = document.getElementById('edit-hotel-name');
+
+  el.addEventListener('input', () => {
+    clearTimeout(_editHotelAcTimer);
+    const q = el.value.trim();
+    if (q.length < 3) { list.classList.remove('open'); list.innerHTML = ''; return; }
+    _editHotelAcTimer = setTimeout(() => runEditHotelSearch(q, list, el, addrInput), 350);
+  });
+
+  el.addEventListener('focus', () => {
+    if (el.value.trim().length >= 3) runEditHotelSearch(el.value.trim(), list, el, addrInput);
+  });
+
+  document.addEventListener('click', (e) => {
+    if (!el.contains(e.target) && !list.contains(e.target)) { list.classList.remove('open'); }
+  });
+}
+
+async function runEditHotelSearch(query, list, nameInput, addrInput) {
+  _editHotelAcResults = [];
+  list.innerHTML = '<li class="ac-loading">Buscando...</li>';
+  list.classList.add('open');
+
+  const data = await searchAllGeocoders(query);
+  if (data.length > 0) {
+    _editHotelAcResults = data;
+    list.innerHTML = data.map((r, i) => {
+      const parts = r.display_name.split(',');
+      return `<li data-ehi="${i}">
+        <div class="ac-main">${esc(parts[0].trim())}</div>
+        <div class="ac-sub">${esc(parts.slice(1, 4).join(',').trim())}</div>
+      </li>`;
+    }).join('');
+    list.querySelectorAll('li[data-ehi]').forEach(li => {
+      const handler = () => pickEditHotelResult(parseInt(li.dataset.ehi, 10), nameInput, addrInput);
+      li.addEventListener('mousedown', handler);
+      li.addEventListener('touchstart', (e) => { e.preventDefault(); handler(); }, { passive: false });
+    });
+  } else {
+    list.innerHTML = '<li class="ac-loading">Sin resultados. Escribí el nombre a mano y seguí.</li>';
+  }
+}
+
+function pickEditHotelResult(index, nameInput, addrInput) {
+  const result = _editHotelAcResults[index];
+  if (!result) return;
+  const parts = result.display_name.split(',');
+  nameInput.value = parts[0].trim();
+  addrInput.value = parts.slice(1).join(',').trim();
+  const latField = document.getElementById('edit-hotel-lat');
+  const lonField = document.getElementById('edit-hotel-lon');
+  if (latField) latField.value = result.lat || '';
+  if (lonField) lonField.value = result.lon || '';
+  document.getElementById('edit-hotel-name-list').classList.remove('open');
+}
+
+// ══════════════════════════════════════
 // EDIT HOTEL
 // ══════════════════════════════════════
+
 function openEditHotelModal() {
   const trip = trips.find(t => t.id === currentTripId);
   if (!trip) return;
@@ -2500,9 +2756,10 @@ function openEditHotelModal() {
   document.getElementById('edit-hotel-addr').value = city.hotelAddr || '';
   document.getElementById('edit-hotel-lat').value = city.hotelLat || '';
   document.getElementById('edit-hotel-lon').value = city.hotelLon || '';
-  document.getElementById('edit-hotel-checkin').value = city.checkInTime || '';
-  document.getElementById('edit-hotel-checkout').value = city.checkOutTime || '';
+  setWheelTime('edit-hotel-checkin', city.checkInTime || '15:00');
+  setWheelTime('edit-hotel-checkout', city.checkOutTime || '10:00');
   openModal('modal-edit-hotel');
+  setTimeout(() => { initEditHotelNameAutocomplete(); }, 150);
 }
 
 function saveEditHotel() {
@@ -2511,10 +2768,10 @@ function saveEditHotel() {
   const city = trip.cities[currentCityIdx];
   city.hotelName = document.getElementById('edit-hotel-name').value.trim();
   city.hotelAddr = document.getElementById('edit-hotel-addr').value.trim();
-  city.hotelLat = document.getElementById('edit-hotel-lat').value.trim();
-  city.hotelLon = document.getElementById('edit-hotel-lon').value.trim();
-  city.checkInTime = document.getElementById('edit-hotel-checkin').value;
-  city.checkOutTime = document.getElementById('edit-hotel-checkout').value;
+  city.hotelLat = parseFloat(document.getElementById('edit-hotel-lat').value) || null;
+  city.hotelLon = parseFloat(document.getElementById('edit-hotel-lon').value) || null;
+  city.checkInTime = getWheelTime('edit-hotel-checkin');
+  city.checkOutTime = getWheelTime('edit-hotel-checkout');
   save();
   closeModal('modal-edit-hotel');
   renderDetail();
@@ -2584,8 +2841,8 @@ function openAddCityModal() {
   document.getElementById('new-city-name').value = '';
   document.getElementById('new-city-hotel-name').value = '';
   document.getElementById('new-city-hotel-addr').value = '';
-  document.getElementById('new-city-depart-time').value = '';
-  document.getElementById('new-city-return-time').value = '';
+  setWheelTime('new-city-depart-time', '');
+  setWheelTime('new-city-return-time', '');
   ['new-city-start','new-city-end'].forEach(id => {
     const el = document.getElementById(id);
     el.value = ''; el.classList.remove('error');
@@ -2609,6 +2866,7 @@ function openAddCityModal() {
     : `El viaje cubre del ${formatDate(trip.startDate)} al ${formatDate(trip.endDate)}.`;
 
   openModal('modal-add-city');
+  setTimeout(() => { initHotelNameAutocomplete(); }, 150);
 }
 
 function onNewCityStartChange() {
@@ -2681,15 +2939,15 @@ function saveNewCity() {
 
   const newCity = {
     id: uid(), name, hotelName, hotelAddr,
-    hotelLat: isDayTrip ? '' : document.getElementById('new-city-hotel-lat').value.trim(),
-    hotelLon: isDayTrip ? '' : document.getElementById('new-city-hotel-lon').value.trim(),
+    hotelLat: isDayTrip ? null : parseFloat(document.getElementById('new-city-hotel-lat').value) || null,
+    hotelLon: isDayTrip ? null : parseFloat(document.getElementById('new-city-hotel-lon').value) || null,
     startDate: cs, endDate: ce,
     days: buildDays(cs, ce),
     ...(isDayTrip ? {
       dayTrip: true,
       dayTripTransport: selectedDayTripTransport,
-      dayTripDepartTime: document.getElementById('new-city-depart-time').value,
-      dayTripReturnTime: document.getElementById('new-city-return-time').value,
+      dayTripDepartTime: getWheelTime('new-city-depart-time'),
+      dayTripReturnTime: getWheelTime('new-city-return-time'),
     } : {})
   };
   trip.cities.push(newCity);
@@ -2720,8 +2978,8 @@ function openAddStopModal() {
   document.getElementById('stop-modal-title').textContent = '📍 Agregar parada';
   document.getElementById('stop-save-btn').textContent = 'Agregar parada';
   ['stop-name','stop-addr','stop-note'].forEach(id => document.getElementById(id).value = '');
-  document.getElementById('stop-time-from').value = '';
-  document.getElementById('stop-time-to').value = '';
+  setWheelTime('stop-time-from', '');
+  setWheelTime('stop-time-to', '');
   document.querySelectorAll('.type-option').forEach(e => e.classList.remove('selected'));
   document.querySelector('[data-type="attraction"]').classList.add('selected');
   document.querySelectorAll('.transport-option').forEach(e => e.classList.remove('selected'));
@@ -2729,8 +2987,11 @@ function openAddStopModal() {
   document.getElementById('selected-address-display').style.display = 'none';
   document.getElementById('stop-addr-results').innerHTML = '';
   document.getElementById('stop-addr-results').style.display = 'none';
+  document.getElementById('stop-name-results').innerHTML = '';
+  document.getElementById('stop-name-results').style.display = 'none';
   stopWizardGoToStep(1);
   openModal('modal-add-stop');
+  setTimeout(() => { initStopNameAutocomplete(); }, 150);
 }
 
 function openEditStopModal(stopId) {
@@ -2749,8 +3010,8 @@ function openEditStopModal(stopId) {
   document.getElementById('stop-name').value = stop.name || '';
   document.getElementById('stop-addr').value = stop.address || '';
   document.getElementById('stop-note').value = stop.note || '';
-  document.getElementById('stop-time-from').value = stop.timeFrom || '';
-  document.getElementById('stop-time-to').value = stop.timeTo || '';
+  setWheelTime('stop-time-from', stop.timeFrom || '');
+  setWheelTime('stop-time-to', stop.timeTo || '');
 
   document.querySelectorAll('.type-option').forEach(e => e.classList.remove('selected'));
   const typeEl = document.querySelector(`[data-type="${selectedType}"]`);
@@ -2831,7 +3092,7 @@ function initStopAddressAutocomplete() {
   });
 }
 
-function searchLocationIQ(query, resultsEl) {
+async function searchLocationIQ(query, resultsEl) {
   if (!query || query.length < 3) {
     resultsEl.innerHTML = '';
     resultsEl.style.display = 'none';
@@ -2841,26 +3102,17 @@ function searchLocationIQ(query, resultsEl) {
   resultsEl.innerHTML = '<li class="loading">Buscando...</li>';
   resultsEl.style.display = 'block';
 
-  fetch(`https://api.locationiq.com/v1/autocomplete.php?key=${LOCATIONIQ_TOKEN}&q=${encodeURIComponent(query)}&limit=5&countrycodes=*`)
-    .then(r => r.json())
-    .then(data => {
-      if (data && Array.isArray(data) && data.length > 0) {
-        resultsEl.innerHTML = data.map(place => 
-          `<li onclick="selectStopAddress('${place.display_name.replace(/'/g, "\\'")}', '${place.lat}', '${place.lon}')">
-            <strong>${place.display_name.split(',')[0]}</strong><br>
-            <small>${place.display_name.split(',').slice(1, 4).join(',')}</small>
-          </li>`
-        ).join('');
-      } else if (data && data.error) {
-        resultsEl.innerHTML = '<li class="error">Error: ' + data.error + '</li>';
-      } else {
-        resultsEl.innerHTML = '<li class="no-results">Sin resultados</li>';
-      }
-    })
-    .catch(err => {
-      console.error('LocationIQ error:', err);
-      resultsEl.innerHTML = '<li class="error">Error de conexión</li>';
-    });
+  const data = await searchAllGeocoders(query);
+  if (data.length > 0) {
+    resultsEl.innerHTML = data.map(place => 
+      `<li onclick="selectStopAddress('${place.display_name.replace(/'/g, "\\'")}', '${place.lat}', '${place.lon}')">
+        <strong>${esc(place.display_name.split(',')[0])}</strong><br>
+        <small>${esc(place.display_name.split(',').slice(1, 4).join(','))}</small>
+      </li>`
+    ).join('');
+  } else {
+    resultsEl.innerHTML = '<li class="no-results">Sin resultados. Escribí la dirección a mano y seguí.</li>';
+  }
 }
 
 function selectStopAddress(displayName, lat, lon) {
@@ -2897,7 +3149,7 @@ function testTerminalAutocomplete(query, resultsId, inputId) {
   }, 800);
 }
 
-function searchTerminalLocationIQ(query, resultsEl, inputId) {
+async function searchTerminalLocationIQ(query, resultsEl, inputId) {
   if (!query || query.length < 3) {
     resultsEl.innerHTML = '';
     resultsEl.style.display = 'none';
@@ -2907,45 +3159,17 @@ function searchTerminalLocationIQ(query, resultsEl, inputId) {
   resultsEl.innerHTML = '<li class="loading">Buscando...</li>';
   resultsEl.style.display = 'block';
 
-  fetch('https://api.locationiq.com/v1/autocomplete.php?key=' + LOCATIONIQ_TOKEN + '&q=' + encodeURIComponent(query) + '&limit=5&countrycodes=*')
-    .then(function(r) { return r.json(); })
-    .then(function(data) {
-      if (data && Array.isArray(data) && data.length > 0) {
-        resultsEl.innerHTML = data.map(function(place) { 
-          return '<li onclick="selectTerminalAddress(\'' + place.display_name.replace(/'/g, "\\'") + '\', \'' + place.lat + '\', \'' + place.lon + '\', \'' + inputId + '\', \'' + inputId + '-results\')">' +
-            '<strong>' + place.display_name.split(',')[0] + '</strong><br>' +
-            '<small>' + place.display_name.split(',').slice(1, 4).join(',') + '</small>' +
-          '</li>';
-        }).join('');
-      } else {
-        searchTerminalLocationIQFallback(query, resultsEl, inputId);
-      }
-    })
-    .catch(function(err) {
-      resultsEl.innerHTML = '<li class="error">Error de conexión</li>';
-    });
-}
-
-function searchTerminalLocationIQFallback(query, resultsEl, inputId) {
-  fetch(`https://api.locationiq.com/v1/autocomplete.php?key=${LOCATIONIQ_TOKEN}&q=${encodeURIComponent(query)}&limit=5&countrycodes=*`)
-    .then(r => r.json())
-    .then(data => {
-      if (data && Array.isArray(data) && data.length > 0) {
-        resultsEl.innerHTML = data.map(place => 
-          `<li onclick="selectTerminalAddress('${place.display_name.replace(/'/g, "\\'")}', '${place.lat}', '${place.lon}', '${inputId}', '${inputId}-results')">
-            <strong>${place.display_name.split(',')[0]}</strong><br>
-            <small>${place.display_name.split(',').slice(1, 4).join(',')}</small>
-          </li>`
-        ).join('');
-      } else if (data && data.error) {
-        resultsEl.innerHTML = '<li class="error">Error: ' + data.error + '</li>';
-      } else {
-        resultsEl.innerHTML = '<li class="no-results">Sin resultados</li>';
-      }
-    })
-    .catch(err => {
-      resultsEl.innerHTML = '<li class="error">Error de conexión</li>';
-    });
+  const data = await searchAllGeocoders(query);
+  if (data.length > 0) {
+    resultsEl.innerHTML = data.map(function(place) { 
+      return '<li onclick="selectTerminalAddress(\'' + place.display_name.replace(/'/g, "\\'") + '\', \'' + place.lat + '\', \'' + place.lon + '\', \'' + inputId + '\', \'' + inputId + '-results\')">' +
+        '<strong>' + esc(place.display_name.split(',')[0]) + '</strong><br>' +
+        '<small>' + esc(place.display_name.split(',').slice(1, 4).join(',')) + '</small>' +
+      '</li>';
+    }).join('');
+  } else {
+    resultsEl.innerHTML = '<li class="no-results">Sin resultados. Escribí la dirección a mano.</li>';
+  }
 }
 
 function selectTerminalAddress(displayName, lat, lon, inputId, resultsId) {
@@ -2974,8 +3198,8 @@ function saveStop() {
   const name = document.getElementById('stop-name').value.trim();
   const address = document.getElementById('stop-addr').value.trim();
   const note = document.getElementById('stop-note').value.trim();
-  const timeFrom = document.getElementById('stop-time-from').value;
-  const timeTo = document.getElementById('stop-time-to').value;
+  const timeFrom = getWheelTime('stop-time-from');
+  const timeTo = getWheelTime('stop-time-to');
   if (!name) { showToast('⚠️ Ingresá el nombre del lugar'); return; }
 
   const trip = trips.find(t => t.id === currentTripId);
@@ -4049,32 +4273,25 @@ async function resolveCoordinates(city, trip) {
 
 async function getWeatherForCity(city, trip) {
   if (!city || !city.id) return null;
-  console.log('[weather] getWeatherForCity:', city.name, 'id:', city.id);
   const cached = getWeatherCache(city.id);
-  if (cached) { console.log('[weather] cache hit for', city.name); return cached; }
+  if (cached) { return cached; }
   const today = new Date(); today.setHours(0, 0, 0, 0);
   const maxForecastDate = new Date(today); maxForecastDate.setDate(maxForecastDate.getDate() + 15);
   const cityStartDate = new Date(city.startDate + 'T00:00:00');
   const coords = await resolveCoordinates(city, trip);
-  if (!coords) { console.log('[weather] no coords for', city.name); return null; }
-  console.log('[weather] coords for', city.name, ':', coords, 'startDate:', city.startDate, 'maxForecast:', maxForecastDate.toISOString().slice(0,10));
+  if (!coords) { return null; }
   if (cityStartDate > maxForecastDate) {
-    console.log('[weather] historical for', city.name);
     const historicalData = await fetchHistoricalWeather(coords.lat, coords.lon, city.startDate, city.endDate);
     if (historicalData) {
       const result = buildHistoricalAverages(historicalData, city.startDate, city.endDate);
       if (result) {
-        console.log('[weather] historical result for', city.name, ':', JSON.stringify(result).slice(0, 100));
         setWeatherCache(city.id, result);
-        console.log('[weather] _weatherCache before assign:', _weatherCache ? 'exists' : 'null');
         if (_weatherCache) _weatherCache[city.id] = result;
-        console.log('[weather] _weatherCache after assign:', JSON.stringify(_weatherCache).slice(0, 100));
         return result;
       }
     }
     return null;
   }
-  console.log('[weather] forecast for', city.name);
   const data = await fetchOpenMeteo(coords.lat, coords.lon);
   if (!data || !data.daily) return null;
   const daily = data.daily;
@@ -4093,9 +4310,7 @@ async function getWeatherForCity(city, trip) {
     result.cityAvg = { avgMax: Math.round(validTemps.reduce((a, b) => a + b, 0) / validTemps.length), avgMin: Math.round(validTempsMin.reduce((a, b) => a + b, 0) / validTempsMin.length) };
   }
   setWeatherCache(city.id, result);
-  console.log('[weather] _weatherCache before assign:', _weatherCache ? 'exists' : 'null');
   if (_weatherCache) _weatherCache[city.id] = result;
-  console.log('[weather] _weatherCache after assign:', JSON.stringify(_weatherCache).slice(0, 100));
   return result;
 }
 
@@ -4103,13 +4318,10 @@ async function prefetchWeather(trip) {
   if (!navigator.onLine) return;
   if (!_weatherCache) _weatherCache = {};
   const cities = (trip.cities || []).filter(c => c.id);
-  console.log('[weather] prefetching for', cities.length, 'cities');
   const results = await Promise.allSettled(cities.map(city => getWeatherForCity(city, trip)));
   results.forEach((r, i) => {
     if (r.status === 'rejected') console.warn('[weather] city', cities[i]?.name, 'failed:', r.reason);
-    else console.log('[weather] city', cities[i]?.name, ':', r.value ? 'OK' : 'null');
   });
-  console.log('[weather] cache after prefetch:', JSON.stringify(_weatherCache).slice(0, 200));
   if (currentDetailTab === 'itinerary') renderDetail();
   if (currentDetailTab === 'overview') renderOverview();
 }
@@ -4568,22 +4780,15 @@ function addrAutocomplete(input, listId) {
     try {
       if (_acAbort) _acAbort.abort();
       _acAbort = new AbortController();
-      // Usar LocationIQ en lugar de Nominatim para mejores resultados
-      const url = `https://api.locationiq.com/v1/autocomplete.php?key=${LOCATIONIQ_TOKEN}&q=${encodeURIComponent(q)}&limit=5&countrycodes=*`;
-      const res = await fetch(url, { signal: _acAbort.signal });
-      const data = await res.json();
+      const data = await searchAllGeocoders(q);
       
-      if (!data || !Array.isArray(data) || data.length === 0) {
+      if (!data || data.length === 0) {
         list.innerHTML = '<li class="ac-loading">Sin resultados</li>';
         return;
       }
       
       // Guardar resultados completos incluyendo lat/lon
-      _acResults[listId] = data.map(r => ({
-        display_name: r.display_name,
-        lat: r.lat,
-        lon: r.lon
-      }));
+      _acResults[listId] = data;
       
       list.innerHTML = data.map((r, i) => {
         const parts = r.display_name.split(',');
@@ -4640,4 +4845,252 @@ function hideList(listId) {
     const list = document.getElementById(listId);
     if (list) list.classList.remove('open');
   }, 150);
+}
+
+// ══════════════════════════════════════
+// TIME PICKER MODAL (drag + transform, works)
+// ══════════════════════════════════════
+const _TP_ITEM_H = 40;
+let _tpTargetId = null;
+
+class TpColumn {
+  constructor(elId, count) {
+    this.el = document.getElementById(elId);
+    this.count = count;
+    this.value = 0;
+    this.offset = 0;
+    this.dragging = false;
+    this.startY = 0;
+    this.startOffset = 0;
+    this._onMove = this._move.bind(this);
+    this._onEnd = this._end.bind(this);
+  }
+
+  build(startVal) {
+    this.el.innerHTML = '';
+    // 7 cycles: -3 to +3
+    for (let c = -3; c <= 3; c++) {
+      for (let i = 0; i < this.count; i++) {
+        const item = document.createElement('div');
+        item.className = 'tp-item';
+        item.textContent = String(i).padStart(2, '0');
+        item.dataset.value = i;
+        this.el.appendChild(item);
+      }
+    }
+    this.setPosition(startVal);
+    this.el.addEventListener('mousedown', (e) => this._start(e));
+    this.el.addEventListener('touchstart', (e) => this._start(e), { passive: true });
+    document.addEventListener('mousemove', this._onMove);
+    document.addEventListener('touchmove', this._onMove, { passive: false });
+    document.addEventListener('mouseup', this._onEnd);
+    document.addEventListener('touchend', this._onEnd);
+    this.el.addEventListener('wheel', (e) => this._wheel(e), { passive: false });
+  }
+
+  setPosition(val) {
+    const itemIndex = 3 * this.count + val;
+    // Center the item: offset = itemPos - (containerHalf - itemHalf)
+    this.offset = itemIndex * _TP_ITEM_H - 80;
+    this.value = val;
+    this.el.style.transform = `translateY(-${this.offset}px)`;
+    this.el.style.transition = 'none';
+  }
+
+  _start(e) {
+    this.dragging = true;
+    this.startY = e.type.includes('touch') ? e.touches[0].clientY : e.clientY;
+    this.startOffset = this.offset;
+    this.el.style.transition = 'none';
+  }
+
+  _move(e) {
+    if (!this.dragging) return;
+    if (e.type === 'touchmove') e.preventDefault();
+    const y = e.type.includes('touch') ? e.touches[0].clientY : e.clientY;
+    const diff = y - this.startY;
+    this.offset = this.startOffset - diff;
+    this.el.style.transform = `translateY(-${this.offset}px)`;
+  }
+
+  _end() {
+    if (!this.dragging) return;
+    this.dragging = false;
+    this._snap();
+  }
+
+  _wheel(e) {
+    e.preventDefault();
+    this.offset += e.deltaY > 0 ? _TP_ITEM_H : -_TP_ITEM_H;
+    this.el.style.transition = 'none';
+    this.el.style.transform = `translateY(-${this.offset}px)`;
+    setTimeout(() => this._snap(), 150);
+  }
+
+  _snap() {
+    // Reverse the offset calculation: itemIndex = (offset + 80) / 40
+    const closestIdx = Math.round((this.offset + 80) / _TP_ITEM_H);
+    const cycleIdx = Math.floor(closestIdx / this.count);
+    let valIdx = closestIdx % this.count;
+    if (valIdx < 0) valIdx = this.count + valIdx;
+
+    this.value = valIdx;
+    this.offset = closestIdx * _TP_ITEM_H - 80;
+
+    this.el.style.transition = 'transform 0.3s cubic-bezier(0.34,1.56,0.64,1)';
+    this.el.style.transform = `translateY(-${this.offset}px)`;
+
+    // Reset to center cycle if drifted too far
+    setTimeout(() => {
+      if (cycleIdx < 1 || cycleIdx > 5) {
+        this.setPosition(this.value);
+      }
+    }, 300);
+  }
+
+  getValue() { return this.value; }
+}
+
+let _tpHour, _tpMin;
+
+function openTimePicker(targetId) {
+  _tpTargetId = targetId;
+  const el = document.getElementById(targetId);
+  const currentVal = el ? (el.dataset.value || '') : '';
+
+  const h = currentVal ? parseInt(currentVal.split(':')[0], 10) : 0;
+  const m = currentVal ? parseInt(currentVal.split(':')[1], 10) : 0;
+  const hIdx = isNaN(h) ? 0 : h;
+  const mIdx = isNaN(m) ? 0 : m;
+
+  _tpHour = new TpColumn('tp-hour', 24);
+  _tpMin = new TpColumn('tp-min', 60);
+  _tpHour.build(hIdx);
+  _tpMin.build(mIdx);
+
+  openModal('modal-time-picker');
+}
+
+function closeTimePicker() {
+  closeModal('modal-time-picker');
+  _tpTargetId = null;
+}
+
+function confirmTimePicker() {
+  if (!_tpTargetId || !_tpHour || !_tpMin) return;
+  const h = String(_tpHour.getValue()).padStart(2, '0');
+  const m = String(_tpMin.getValue()).padStart(2, '0');
+  const val = `${h}:${m}`;
+  const el = document.getElementById(_tpTargetId);
+  if (el) {
+    el.dataset.value = val;
+    el.textContent = val;
+    el.classList.add('has-value');
+  }
+  closeModal('modal-time-picker');
+  _tpTargetId = null;
+}
+
+// Public API
+function getWheelTime(id) {
+  const el = document.getElementById(id);
+  return el ? (el.dataset.value || '') : '';
+}
+
+function setWheelTime(id, value) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  el.dataset.value = value || '';
+  el.textContent = value || '--:--';
+  el.classList.toggle('has-value', !!value);
+}
+
+function _buildTpItems(count, fmt, copies, startVal) {
+  // Build copies starting from startVal so it appears first
+  // Structure: pad + pad + [startVal, startVal+1, ..., count-1, 0, 1, ..., startVal-1] × copies + pad + pad
+  let html = '<div class="tp-item" style="visibility:hidden;pointer-events:none">&nbsp;</div>';
+  html += '<div class="tp-item" style="visibility:hidden;pointer-events:none">&nbsp;</div>';
+  for (let c = 0; c < copies; c++) {
+    for (let i = 0; i < count; i++) {
+      const val = (startVal + i) % count;
+      html += `<div class="tp-item" data-val="${val}">${fmt(val)}</div>`;
+    }
+  }
+  html += '<div class="tp-item" style="visibility:hidden;pointer-events:none">&nbsp;</div>';
+  html += '<div class="tp-item" style="visibility:hidden;pointer-events:none">&nbsp;</div>';
+  return html;
+}
+
+function _tpGetActiveIndex(col, count) {
+  const viewportCenter = col.scrollTop + col.clientHeight / 2;
+  const items = col.querySelectorAll('.tp-item[data-val]');
+  let best = 0;
+  let bestDist = Infinity;
+  items.forEach(item => {
+    const itemCenter = item.offsetTop + item.offsetHeight / 2;
+    const dist = Math.abs(viewportCenter - itemCenter);
+    if (dist < bestDist) {
+      bestDist = dist;
+      best = parseInt(item.dataset.val, 10);
+    }
+  });
+  return best;
+}
+
+function _tpEnforceBound(col, count) {
+  // No-op: with 5 copies there's enough room
+}
+
+function _tpUpdateActiveStates() {
+  const hourCol = document.getElementById('tp-hour');
+  const minCol  = document.getElementById('tp-min');
+  if (!hourCol || !minCol) return;
+  
+  const h = _tpHour ? _tpHour.getValue() : 0;
+  const m = _tpMin ? _tpMin.getValue() : 0;
+
+  hourCol.querySelectorAll('.tp-item').forEach(item => {
+    item.classList.toggle('tp-active', parseInt(item.dataset.value, 10) === h);
+  });
+  minCol.querySelectorAll('.tp-item').forEach(item => {
+    item.classList.toggle('tp-active', parseInt(item.dataset.value, 10) === m);
+  });
+}
+
+function closeTimePicker() {
+  closeModal('modal-time-picker');
+  _tpTargetId = null;
+  _tpHour = null;
+  _tpMin = null;
+}
+
+function confirmTimePicker() {
+  if (!_tpTargetId || !_tpHour || !_tpMin) return;
+  
+  const h = String(_tpHour.getValue()).padStart(2, '0');
+  const m = String(_tpMin.getValue()).padStart(2, '0');
+  const val = `${h}:${m}`;
+
+  const el = document.getElementById(_tpTargetId);
+  if (el) {
+    el.dataset.value = val;
+    el.textContent = val;
+    el.classList.add('has-value');
+  }
+  closeTimePicker();
+  showToast(`Hora seleccionada: ${val}`);
+}
+
+// Public API: get/set time
+function getWheelTime(id) {
+  const el = document.getElementById(id);
+  return el ? (el.dataset.value || '') : '';
+}
+
+function setWheelTime(id, value) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  el.dataset.value = value || '';
+  el.textContent = value || '--:--';
+  el.classList.toggle('has-value', !!value);
 }
