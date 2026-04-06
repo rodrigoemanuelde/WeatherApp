@@ -2489,20 +2489,11 @@ function addDays(dateStr, n) {
 }
 
 // ══════════════════════════════════════
-// UNIVERSAL GEOCODER — 3 APIs en cadena
+// UNIVERSAL GEOCODER — 2 APIs en cadena (Nominatim + Photon)
 // ══════════════════════════════════════
 
 async function searchAllGeocoders(query) {
-  // 1. LocationIQ (mejor autocomplete)
-  try {
-    const res = await fetch(`https://api.locationiq.com/v1/autocomplete.php?key=${LOCATIONIQ_TOKEN}&q=${encodeURIComponent(query)}&limit=8&countrycodes=*`);
-    const data = await res.json();
-    if (data && Array.isArray(data) && data.length > 0) {
-      return data.map(r => ({ display_name: r.display_name, lat: r.lat, lon: r.lon }));
-    }
-  } catch(e) { /* continue */ }
-
-  // 2. Nominatim (entiende español básico)
+  // 1. Nominatim (entiende español, muy completo)
   try {
     const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&limit=8&addressdetails=1`, {
       headers: { 'User-Agent': 'Wandr/1.0 (https://wandr.travel; contact@wandr.travel)' }
@@ -2513,7 +2504,7 @@ async function searchAllGeocoders(query) {
     }
   } catch(e) { /* continue */ }
 
-  // 3. Photon (nombre local, sin key)
+  // 2. Photon (nombre local, sin key, buena cobertura)
   try {
     const res = await fetch(`https://photon.komoot.io/api/?q=${encodeURIComponent(query)}&limit=8`);
     const json = await res.json();
@@ -2967,8 +2958,6 @@ function saveNewCity() {
 let stopSelectedLat = null;
 let stopSelectedLon = null;
 let stopAutocompleteTimeout = null;
-
-const LOCATIONIQ_TOKEN = 'pk.f2bfecca9e17523deafccb3c8cd5d043';
 
 function openAddStopModal() {
   editingStopId = null;
