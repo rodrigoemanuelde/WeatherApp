@@ -140,7 +140,7 @@
       <button class="btn-secondary" onclick="wizardPrevStep(3)">Atrás</button>
     </div>
 
-    <button class="btn-cancel-wizard" onclick="closeModal('modal-new-trip')">Cancelar</button>
+    <button class="btn-cancel-wizard" onclick="closeModal('modal-new-trip')">Volver</button>
   </div>
 </div>
 
@@ -254,7 +254,7 @@
       <button class="btn-secondary" onclick="stopWizardPrevStep(4)">Atrás</button>
     </div>
 
-    <button class="btn-cancel-wizard" onclick="closeModal('modal-add-stop')">Cancelar</button>
+    <button class="btn-cancel-wizard" onclick="closeModal('modal-add-stop')">Volver</button>
   </div>
 </div>
 
@@ -342,7 +342,7 @@
     </div>
 
     <button class="btn-primary" onclick="saveNewCity()">Agregar</button>
-    <button class="btn-secondary" onclick="closeModal('modal-add-city')">Cancelar</button>
+    <button class="btn-secondary" onclick="closeModal('modal-add-city')">Volver</button>
   </div>
 </div>
 
@@ -376,7 +376,7 @@
       </div>
     </div>
     <button class="btn-primary" onclick="saveEditTripDates()">Guardar cambios</button>
-    <button class="btn-secondary" onclick="closeModal('modal-edit-trip-dates')">Cancelar</button>
+    <button class="btn-secondary" onclick="closeModal('modal-edit-trip-dates')">Volver</button>
   </div>
 </div>
 
@@ -405,7 +405,7 @@
       Los días nuevos se agregan vacíos al inicio o fin. Los días que se eliminen perderán sus paradas cargadas.
     </p>
     <button class="btn-primary" onclick="saveEditCityDates()">Guardar cambios</button>
-    <button class="btn-secondary" onclick="closeModal('modal-edit-city-dates')">Cancelar</button>
+    <button class="btn-secondary" onclick="closeModal('modal-edit-city-dates')">Volver</button>
   </div>
 </div>
 
@@ -464,7 +464,7 @@
       </div>
     </div>
     <button class="btn-primary" onclick="saveEditHotel()">Guardar cambios</button>
-    <button class="btn-secondary" onclick="closeModal('modal-edit-hotel')">Cancelar</button>
+    <button class="btn-secondary" onclick="closeModal('modal-edit-hotel')">Volver</button>
   </div>
 </div>
 
@@ -485,7 +485,7 @@
       </div>
     </div>
     <div class="time-picker-actions">
-      <button class="btn-secondary" onclick="closeTimePicker()" style="flex:1">Cancelar</button>
+      <button class="btn-secondary" onclick="closeTimePicker()" style="flex:1">Volver</button>
       <button class="btn-primary" onclick="confirmTimePicker()" style="flex:1;margin-left:10px">Aceptar</button>
     </div>
   </div>
@@ -499,7 +499,7 @@
     <h2 id="confirm-delete-trip-title" style="text-align:center;margin-bottom:10px">¿Eliminar viaje?</h2>
     <p id="confirm-delete-trip-body" style="color:var(--text2);font-size:0.88rem;line-height:1.55;margin-bottom:24px;text-align:center"></p>
     <button class="btn-danger-full" onclick="confirmDeleteTrip()">Sí, eliminar</button>
-    <button class="btn-secondary" onclick="closeModal('modal-confirm-delete-trip')">Cancelar</button>
+    <button class="btn-secondary" onclick="closeModal('modal-confirm-delete-trip')">Volver</button>
   </div>
 </div>
 
@@ -511,7 +511,7 @@
     <h2 id="confirm-delete-city-title" style="text-align:center;margin-bottom:10px">¿Eliminar ciudad?</h2>
     <p id="confirm-delete-city-body" style="color:var(--text2);font-size:0.88rem;line-height:1.55;margin-bottom:24px;text-align:center"></p>
     <button class="btn-danger-full" onclick="confirmRemoveCityEntry()">Sí, eliminar</button>
-    <button class="btn-secondary" onclick="closeModal('modal-confirm-delete-city')">Cancelar</button>
+    <button class="btn-secondary" onclick="closeModal('modal-confirm-delete-city')">Volver</button>
   </div>
 </div>
 
@@ -525,7 +525,7 @@
       Esto eliminará tus viajes actuales y los reemplazará con los <strong id="confirm-import-count" style="color:var(--text)">0</strong> viaje(s) del archivo. Esta acción no se puede deshacer.
     </p>
     <button class="btn-danger-full" onclick="confirmImportReplace()">Sí, reemplazar todo</button>
-    <button class="btn-secondary" onclick="closeModal('modal-confirm-import')">Cancelar</button>
+    <button class="btn-secondary" onclick="closeModal('modal-confirm-import')">Volver</button>
   </div>
 </div>
 
@@ -647,7 +647,7 @@
       <button class="btn-secondary" onclick="ticketWizardPrevStep(3)">Atrás</button>
     </div>
 
-    <button class="btn-cancel-wizard" onclick="closeModal('modal-ticket')">Cancelar</button>
+    <button class="btn-cancel-wizard" onclick="closeModal('modal-ticket')">Volver</button>
   </div>
 </div>
 
@@ -659,7 +659,7 @@
     <h2 style="text-align:center;margin-bottom:10px">¿Eliminar pasaje?</h2>
     <p id="confirm-delete-ticket-body" style="color:var(--text2);font-size:0.88rem;line-height:1.55;margin-bottom:24px;text-align:center"></p>
     <button class="btn-danger-full" onclick="confirmDeleteTicket()">Sí, eliminar</button>
-    <button class="btn-secondary" onclick="closeModal('modal-confirm-delete-ticket')">Cancelar</button>
+    <button class="btn-secondary" onclick="closeModal('modal-confirm-delete-ticket')">Volver</button>
   </div>
 </div>
 
@@ -789,7 +789,7 @@
       </div>
     </div>
 
-    <button class="btn-secondary" onclick="closeModal('modal-info')">Cancelar</button>
+    <button class="btn-secondary" onclick="closeModal('modal-info')">Volver</button>
   </div>
 </div>
 
@@ -801,7 +801,7 @@
     <h2 style="text-align:center;margin-bottom:10px">¿Eliminar tramos?</h2>
     <p style="color:var(--text2);font-size:0.88rem;line-height:1.55;margin-bottom:24px;text-align:center">Se eliminarán los tramos de viaje cargados entre estas ciudades. Esta acción no se puede deshacer.</p>
     <button class="btn-danger-full" onclick="confirmDeleteTransitLegs()">Sí, eliminar</button>
-    <button class="btn-secondary" onclick="closeModal('modal-confirm-delete-transit')">Cancelar</button>
+    <button class="btn-secondary" onclick="closeModal('modal-confirm-delete-transit')">Volver</button>
   </div>
 </div>
 
@@ -812,7 +812,7 @@
     <h2 id="confirm-delete-stop-title" style="text-align:center;margin-bottom:10px">¿Eliminar parada?</h2>
     <p id="confirm-delete-stop-body" style="color:var(--text2);font-size:0.88rem;line-height:1.55;margin-bottom:24px;text-align:center"></p>
     <button class="btn-danger-full" onclick="confirmDeleteStop()">Sí, eliminar</button>
-    <button class="btn-secondary" onclick="closeModal('modal-confirm-delete-stop')">Cancelar</button>
+    <button class="btn-secondary" onclick="closeModal('modal-confirm-delete-stop')">Volver</button>
   </div>
 </div>
 
@@ -823,7 +823,7 @@
     <h2 id="confirm-delete-transit-leg-title" style="text-align:center;margin-bottom:10px">¿Eliminar tramo?</h2>
     <p id="confirm-delete-transit-leg-body" style="color:var(--text2);font-size:0.88rem;line-height:1.55;margin-bottom:24px;text-align:center"></p>
     <button class="btn-danger-full" onclick="confirmRemoveTransitLeg()">Sí, eliminar</button>
-    <button class="btn-secondary" onclick="closeModal('modal-confirm-delete-transit-leg')">Cancelar</button>
+    <button class="btn-secondary" onclick="closeModal('modal-confirm-delete-transit-leg')">Volver</button>
   </div>
 </div>
 
