@@ -2489,15 +2489,16 @@ function addDays(dateStr, n) {
 }
 
 // ══════════════════════════════════════
-// UNIVERSAL GEOCODER — 3 APIs en cadena (Mapbox → Nominatim → Photon)
+// UNIVERSAL GEOCODER — 4 APIs en cadena
+// Prioridad: Mapbox (si hay token) → geocode.xyz → Nominatim → Photon
 // ══════════════════════════════════════
 
-// ⚠️ Reemplazá este token con el tuyo en https://account.mapbox.com/
-// Mapbox ofrece 100k requests gratis/mes
-const MAPBOX_TOKEN = 'pk.eyJ1IjoiZGVtby1tYXBib3giLCJhIjoiY2xhdWRlLWRlbW8ifQ.demo';
+// ⚠️ Mapbox: Obtené tu token gratis en https://account.mapbox.com/ (requiere tarjeta para activación)
+// Si no tenés token, el código salta automáticamente a las otras APIs
+const MAPBOX_TOKEN = ''; // Dejá vacío si no tenés
 
 async function searchAllGeocoders(query) {
-  // 1. Mapbox (mejor autocomplete, muy rápido)
+  // 1. Mapbox (mejor autocomplete) - solo si hay token válido
   if (MAPBOX_TOKEN && MAPBOX_TOKEN.startsWith('pk.')) {
     try {
       const res = await fetch(`https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(query)}.json?access_token=${MAPBOX_TOKEN}&limit=8&language=es`);
@@ -2512,7 +2513,20 @@ async function searchAllGeocoders(query) {
     } catch(e) { /* continue */ }
   }
 
-  // 2. Nominatim (entiende español, muy completo)
+  // 2. geocode.xyz (100% gratis, sin signup, buena cobertura global)
+  try {
+    const res = await fetch(`https://geocode.xyz/?q=${encodeURIComponent(query)}&json=1&limit=8`);
+    const json = await res.json();
+    if (json && json.results && json.results.length > 0) {
+      return json.results.map(r => ({
+        display_name: r.formatted || r.display_name,
+        lat: r.lat,
+        lon: r.lon
+      }));
+    }
+  } catch(e) { /* continue */ }
+
+  // 3. Nominatim (OSM - gratuito, sin key)
   try {
     const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&limit=8&addressdetails=1`, {
       headers: { 'User-Agent': 'Wandr/1.0 (https://wandr.travel; contact@wandr.travel)' }
@@ -2523,7 +2537,7 @@ async function searchAllGeocoders(query) {
     }
   } catch(e) { /* continue */ }
 
-  // 2. Photon (nombre local, sin key, buena cobertura)
+  // 4. Photon (último recurso, sin key)
   try {
     const res = await fetch(`https://photon.komoot.io/api/?q=${encodeURIComponent(query)}&limit=8`);
     const json = await res.json();
