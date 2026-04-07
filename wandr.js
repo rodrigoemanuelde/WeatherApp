@@ -3321,12 +3321,22 @@ async function searchLocationIQ(query, resultsEl) {
 
   const data = await searchAllGeocoders(query);
   if (data.length > 0) {
-    resultsEl.innerHTML = data.map(place => 
-      `<li onclick="selectStopAddress('${place.display_name.replace(/'/g, "\\'")}', '${place.lat}', '${place.lon}')">
+    resultsEl.innerHTML = data.map((place, index) => 
+      `<li data-place-index="${index}">
         <strong>${esc(place.display_name.split(',')[0])}</strong><br>
         <small>${esc(place.display_name.split(',').slice(1, 4).join(','))}</small>
       </li>`
     ).join('');
+    
+    // Attach click event listeners to the list items
+    const listItems = resultsEl.querySelectorAll('li[data-place-index]');
+    listItems.forEach(item => {
+      item.addEventListener('click', () => {
+        const index = parseInt(item.getAttribute('data-place-index'));
+        const place = data[index];
+        selectStopAddress(place.display_name, place.lat, place.lon);
+      });
+    });
   } else {
     resultsEl.innerHTML = '<li class="no-results">Sin resultados. Escribí la dirección a mano y seguí.</li>';
   }
@@ -3372,18 +3382,29 @@ async function searchTerminalLocationIQ(query, resultsEl, inputId) {
     resultsEl.style.display = 'none';
     return;
   }
-
+  
   resultsEl.innerHTML = '<li class="loading">Buscando...</li>';
   resultsEl.style.display = 'block';
-
+  
   const data = await searchAllGeocoders(query);
   if (data.length > 0) {
-    resultsEl.innerHTML = data.map(function(place) { 
-      return '<li onclick="selectTerminalAddress(\'' + place.display_name.replace(/'/g, "\\'") + '\', \'' + place.lat + '\', \'' + place.lon + '\', \'' + inputId + '\', \'' + inputId + '-results\')">' +
-        '<strong>' + esc(place.display_name.split(',')[0]) + '</strong><br>' +
-        '<small>' + esc(place.display_name.split(',').slice(1, 4).join(',')) + '</small>' +
-      '</li>';
-    }).join('');
+    resultsEl.innerHTML = data.map((place, index) => 
+      `<li data-place-index="${index}" data-input-id="${inputId}">
+        <strong>${esc(place.display_name.split(',')[0])}</strong><br>
+        <small>${esc(place.display_name.split(',').slice(1, 4).join(','))}</small>
+      </li>`
+    ).join('');
+    
+    // Attach click event listeners to the list items
+    const listItems = resultsEl.querySelectorAll('li[data-place-index]');
+    listItems.forEach(item => {
+      item.addEventListener('click', () => {
+        const index = parseInt(item.getAttribute('data-place-index'));
+        const inputId = item.getAttribute('data-input-id');
+        const place = data[index];
+        selectTerminalAddress(place.display_name, place.lat, place.lon, inputId, inputId + '-results');
+      });
+    });
   } else {
     resultsEl.innerHTML = '<li class="no-results">Sin resultados. Escribí la dirección a mano.</li>';
   }
@@ -4188,6 +4209,14 @@ function onFileSelected(e) {
       if (!data._wandr || !Array.isArray(data.trips)) {
         showToast('⚠️ Archivo inválido o no es un respaldo de Wandr'); return;
       }
+      
+      // Validate import JSON schema
+      const validationErrors = validateImportTrips(data.trips);
+      if (validationErrors.length > 0) {
+        showToast('⚠️ Archivo contiene datos inválidos: ' + validationErrors.join(', ')); 
+        return;
+      }
+      
       pendingImportData = data.trips;
       // Show merge/replace options
       document.getElementById('import-warning').style.display = 'block';
@@ -4618,7 +4647,28 @@ async function fetchOpenMeteo(lat, lon) {
     const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&daily=weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max,wind_speed_10m_max&timezone=auto&forecast_days=16`;
     const res = await fetch(url);
     if (!res.ok) return null;
-    return await res.json();
+    const data = await res.json();
+    
+    // Basic validation of API response structure
+    if (!data || typeof data !== 'object') return null;
+    if (!data.daily || typeof data.daily !== 'object') return null;
+    if (!Array.isArray(data.daily.time) || !Array.isArray(data.daily.weather_code) || 
+        !Array.isArray(data.daily.temperature_2m_max) || !Array.isArray(data.daily.temperature_2m_min) ||
+        !Array.isArray(data.daily.precipitation_probability_max) || !Array.isArray(data.daily.wind_speed_10m_max)) {
+      return null;
+    }
+    
+    // Ensure all arrays have the same length
+    const length = data.daily.time.length;
+    if (data.daily.weather_code.length !== length || 
+        data.daily.temperature_2m_max.length !== length ||
+        data.daily.temperature_2m_min.length !== length ||
+        data.daily.precipitation_probability_max.length !== length ||
+        data.daily.wind_speed_10m_max.length !== length) {
+      return null;
+    }
+    
+    return data;
   } catch(e) { return null; }
 }
 
@@ -4876,7 +4926,7 @@ function openPackingModal() {
     const suggestions = buildPackingSuggestions(hottestMax, coldestMin, totalDays > 0 ? (rainDaysCount / totalDays) * 100 : 0, maxWind);
     document.getElementById('packing-temp').textContent = `${hottestMax}° / ${coldestMin}°`;
     document.getElementById('packing-rain').textContent = totalDays > 0 ? `~${rainDaysCount} de ${totalDays} días con lluvia (promedio histórico)` : 'Sin datos de lluvia';
-    document.getElementById('packing-list').innerHTML = suggestions.length > 0 ? suggestions.map(s => `<div class="packing-item"><span class="packing-icon">${s.icon}</span><span class="packing-text">${s.text}</span></div>`).join('') : '<p style="color:var(--text2);font-size:0.85rem">No hay sugerencias específicas.</p>';
+    document.getElementById('packing-list').innerHTML = suggestions.length > 0 ? suggestions.map(s => `<div class="packing-item"><span class="packing-icon">${esc(s.icon)}</span><span class="packing-text">${esc(s.text)}</span></div>`).join('') : '<p style="color:var(--text2);font-size:0.85rem">No hay sugerencias específicas.</p>';
   } else if (cityWeather.days) {
     const day = (city.days || [])[currentDayIdx];
     if (!day) return;
@@ -4896,7 +4946,7 @@ function openPackingModal() {
     const suggestions = buildPackingSuggestions(dayData.tempMax, dayData.tempMin, rainPct, dayData.windSpeed || 0);
     document.getElementById('packing-temp').textContent = `${weekday} · ${wmo.icon} ${tempMax} / ${tempMin}`;
     document.getElementById('packing-rain').textContent = dayData.precipProb !== null ? `Probabilidad de lluvia: ${dayData.precipProb}%` : '';
-    document.getElementById('packing-list').innerHTML = suggestions.length > 0 ? suggestions.map(s => `<div class="packing-item"><span class="packing-icon">${s.icon}</span><span class="packing-text">${s.text}</span></div>`).join('') : '<p style="color:var(--text2);font-size:0.85rem">Clima agradable, sin recomendaciones especiales.</p>';
+    document.getElementById('packing-list').innerHTML = suggestions.length > 0 ? suggestions.map(s => `<div class="packing-item"><span class="packing-icon">${esc(s.icon)}</span><span class="packing-text">${esc(s.text)}</span></div>`).join('') : '<p style="color:var(--text2);font-size:0.85rem">Clima agradable, sin recomendaciones especiales.</p>';
   }
   openModal('modal-packing');
 }
@@ -4911,7 +4961,7 @@ function buildWeatherChipHtml(dayData) {
   if (dayData.wmoCode === null) return '';
   const wmo = mapWmoCode(dayData.wmoCode);
   const tempMax = dayData.tempMax !== null ? Math.round(dayData.tempMax) + '°' : '';
-  return `<span class="weather-chip" title="${wmo.desc}">${wmo.icon} ${tempMax}</span>`;
+    return `<span class="weather-chip" title="${esc(wmo.desc)}">${esc(wmo.icon)} ${tempMax}</span>`;
 }
 
 // ══════════════════════════════════════
