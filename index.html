@@ -8,13 +8,14 @@
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
   <meta name="apple-mobile-web-app-title" content="Wandr" />
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; connect-src 'self' https://api.mapbox.com https://geocode.xyz https://nominatim.openstreetmap.org https://photon.komoot.io https://api.open-meteo.com; img-src 'self' data: https://flagcdn.com blob:; manifest-src 'self'; worker-src 'self'; base-uri 'self'; form-action 'self';" />
   <title>Wandr — Planificador de Viajes</title>
   <link rel="manifest" href="manifest.json" />
   <link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png" />
   <link rel="icon" type="image/svg+xml" href="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA1MTIgNTEyIj48cmVjdCB3aWR0aD0iNTEyIiBoZWlnaHQ9IjUxMiIgcng9IjExMiIgZmlsbD0iIzBkMWYzOCIvPjx0ZXh0IHg9IjM2IiB5PSIzNzAiIGZvbnQtZmFtaWx5PSJBcmlhbCBCbGFjayxBcmlhbCxzYW5zLXNlcmlmIiBmb250LXNpemU9IjMwMCIgZm9udC13ZWlnaHQ9IjkwMCIgZmlsbD0iI2ZmZmZmZiI+VzwvdGV4dD48dGV4dCB4PSIyOTYiIHk9IjM3MCIgZm9udC1mYW1pbHk9Ikdlb3JnaWEsc2VyaWYiIGZvbnQtc2l6ZT0iMzEwIiBmb250LXdlaWdodD0iODAwIiBmb250LXN0eWxlPSJpdGFsaWMiIGZpbGw9IiM3REU4RkYiPmE8L3RleHQ+PC9zdmc+" />
   <link rel="icon" type="image/png" sizes="192x192" href="icon-192.png" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
-  <link href="https://fonts.googleapis.com/css2?family=Nunito+Sans:ital,wght@0,400;0,600;0,700;0,800;0,900;1,700;1,800&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Nunito+Sans:ital,wght@0,400;0,600;0,700;0,800;0,900;1,700;1,800&display=swap" rel="stylesheet" crossorigin="anonymous" />
   <link rel="stylesheet" href="wandr.css" />
 </head>
 <body>
@@ -103,18 +104,18 @@
     <div class="wizard-content" id="wizard-step-1">
       <h2>✈️ Nuevo Viaje</h2>
       <div class="form-group">
-        <label>Nombre del viaje</label>
-        <input type="text" id="trip-name" placeholder="Ej: Europa 2026" maxlength="60" />
+        <label for="trip-name">Nombre del viaje</label>
+        <input type="text" id="trip-name" placeholder="Ej: Europa 2026" maxlength="60" aria-label="Nombre del viaje" />
       </div>
       <div class="form-group">
         <label>Fechas del viaje</label>
         <div class="date-row">
           <div>
-            <input type="date" id="trip-start" placeholder="Inicio" onchange="onTripStartChange()" />
+            <input type="date" id="trip-start" placeholder="Inicio" onchange="onTripStartChange()" aria-label="Fecha de salida" />
             <div style="font-size:0.7rem;color:var(--text2);margin-top:4px">Salida</div>
           </div>
           <div>
-            <input type="date" id="trip-end" placeholder="Fin" onchange="onTripEndChange()" />
+            <input type="date" id="trip-end" placeholder="Fin" onchange="onTripEndChange()" aria-label="Fecha de regreso" />
             <div style="font-size:0.7rem;color:var(--text2);margin-top:4px">Regreso</div>
             <div class="error-msg" id="trip-end-error">⚠️ Debe ser igual o posterior al inicio</div>
           </div>
@@ -186,9 +187,9 @@
         </div>
       </div>
       <div class="form-group">
-        <label>Nombre del lugar</label>
+        <label for="stop-name">Nombre del lugar</label>
         <div class="autocomplete-wrap" style="position:relative">
-          <input type="text" id="stop-name" placeholder="Ej: Manneken Pis, Torre Eiffel..." maxlength="80" autocomplete="off" />
+          <input type="text" id="stop-name" placeholder="Ej: Manneken Pis, Torre Eiffel..." maxlength="80" autocomplete="off" aria-label="Nombre del lugar" />
           <ul class="autocomplete-results" id="stop-name-results"></ul>
         </div>
         <small style="color:var(--text2);font-size:0.75rem;margin-top:6px;display:block">Escribí al menos 3 caracteres. Si no encuentra, podés escribir el nombre a mano y seguir.</small>
@@ -199,9 +200,9 @@
     <!-- Step 2: Dirección -->
     <div class="wizard-content" id="stop-wizard-step-2" style="display:none">
       <div class="form-group">
-        <label>Dirección</label>
+        <label for="stop-addr">Dirección</label>
         <div class="autocomplete-wrap" style="position:relative">
-          <input type="text" id="stop-addr" placeholder="Escribí la dirección..." autocomplete="off" maxlength="150" />
+          <input type="text" id="stop-addr" placeholder="Escribí la dirección..." autocomplete="off" maxlength="150" aria-label="Dirección del lugar" />
           <ul class="autocomplete-results" id="stop-addr-results"></ul>
         </div>
         <small style="color:var(--text2);font-size:0.75rem;margin-top:6px;display:block">Escribí al menos 3 caracteres para buscar</small>
@@ -231,8 +232,8 @@
         </div>
       </div>
       <div class="form-group">
-        <label>Nota <span class="label-optional">opcional</span></label>
-        <input type="text" id="stop-note" placeholder="Ej: Entrada gratis, reservar con anticipación" maxlength="200" />
+        <label for="stop-note">Nota <span class="label-optional">opcional</span></label>
+        <input type="text" id="stop-note" placeholder="Ej: Entrada gratis, reservar con anticipación" maxlength="200" aria-label="Nota opcional" />
       </div>
       <div class="wizard-nav">
         <button class="btn-secondary" onclick="stopWizardPrevStep(3)" style="flex:1">Atrás</button>
@@ -278,7 +279,7 @@
     <div class="form-group">
       <label id="new-city-name-label">Ciudad</label>
       <div class="autocomplete-wrap">
-        <input type="text" id="new-city-name" placeholder="Ej: Praga" autocomplete="off" />
+        <input type="text" id="new-city-name" placeholder="Ej: Praga" autocomplete="off" aria-label="Nombre de la ciudad" />
         <ul class="autocomplete-list" id="new-city-name-list"></ul>
         <input type="hidden" id="new-city-country-code" />
       </div>
@@ -287,16 +288,16 @@
     <!-- Campos solo para estadía -->
     <div id="new-city-stay-fields">
       <div class="form-group">
-        <label>Hotel / alojamiento</label>
+        <label for="new-city-hotel-name">Hotel / alojamiento</label>
         <div class="autocomplete-wrap">
-          <input type="text" id="new-city-hotel-name" placeholder="Buscá el hotel..." autocomplete="off" />
+          <input type="text" id="new-city-hotel-name" placeholder="Buscá el hotel..." autocomplete="off" aria-label="Nombre del hotel" />
           <ul class="autocomplete-list" id="new-hotel-name-list"></ul>
         </div>
       </div>
       <div class="form-group">
-        <label>Dirección del hotel</label>
+        <label for="new-city-hotel-addr">Dirección del hotel</label>
         <div class="autocomplete-wrap">
-          <input type="text" id="new-city-hotel-addr" placeholder="Se completa automáticamente" autocomplete="off" />
+          <input type="text" id="new-city-hotel-addr" placeholder="Se completa automáticamente" autocomplete="off" aria-label="Dirección del hotel" />
           <input type="hidden" id="new-city-hotel-lat" />
           <input type="hidden" id="new-city-hotel-lon" />
           <ul class="autocomplete-list" id="new-hotel-addr-list"></ul>
@@ -334,12 +335,12 @@
       <label id="new-city-date-label">Fechas en esta ciudad</label>
       <div class="date-row" id="new-city-date-row">
         <div>
-          <input type="date" id="new-city-start" onchange="onNewCityStartChange()" />
+          <input type="date" id="new-city-start" onchange="onNewCityStartChange()" aria-label="Fecha de llegada a la ciudad" />
           <div style="font-size:0.7rem;color:var(--text2);margin-top:4px" id="new-city-start-label">Llegada</div>
           <div class="error-msg" id="new-city-start-err"></div>
         </div>
         <div id="new-city-end-col">
-          <input type="date" id="new-city-end" onchange="onNewCityEndChange()" />
+          <input type="date" id="new-city-end" onchange="onNewCityEndChange()" aria-label="Fecha de salida de la ciudad" />
           <div style="font-size:0.7rem;color:var(--text2);margin-top:4px" id="new-city-end-label">Salida</div>
           <div class="error-msg" id="new-city-end-err"></div>
         </div>
@@ -357,18 +358,18 @@
     <div class="modal-handle"></div>
     <h2>📅 Fechas del viaje</h2>
     <div class="form-group">
-      <label>Nombre</label>
-      <input type="text" id="edit-trip-name" />
+      <label for="edit-trip-name">Nombre</label>
+      <input type="text" id="edit-trip-name" aria-label="Nombre del viaje" />
     </div>
     <div class="form-group">
       <label>Fechas globales</label>
       <div class="date-row">
         <div>
-          <input type="date" id="edit-trip-start" oninput="onEditTripStartChange()" />
+          <input type="date" id="edit-trip-start" oninput="onEditTripStartChange()" aria-label="Fecha de inicio del viaje" />
           <div style="font-size:0.7rem;color:var(--text2);margin-top:4px">Inicio</div>
         </div>
         <div>
-          <input type="date" id="edit-trip-end" oninput="onEditTripEndChange()" />
+          <input type="date" id="edit-trip-end" oninput="onEditTripEndChange()" aria-label="Fecha de fin del viaje" />
           <div style="font-size:0.7rem;color:var(--text2);margin-top:4px">Fin</div>
           <div class="error-msg" id="edit-trip-end-err">⚠️ Debe ser posterior al inicio</div>
         </div>
@@ -395,12 +396,12 @@
       <label>Fechas en esta ciudad</label>
       <div class="date-row">
         <div>
-          <input type="date" id="edit-city-start" oninput="onEditCityStartChange()" />
+          <input type="date" id="edit-city-start" oninput="onEditCityStartChange()" aria-label="Fecha de llegada a la ciudad" />
           <div style="font-size:0.7rem;color:var(--text2);margin-top:4px">Llegada</div>
           <div class="error-msg" id="edit-city-start-err"></div>
         </div>
         <div id="edit-city-end-col">
-          <input type="date" id="edit-city-end" oninput="onEditCityEndChange()" />
+          <input type="date" id="edit-city-end" oninput="onEditCityEndChange()" aria-label="Fecha de salida de la ciudad" />
           <div style="font-size:0.7rem;color:var(--text2);margin-top:4px">Salida</div>
           <div class="error-msg" id="edit-city-end-err"></div>
         </div>
@@ -420,12 +421,12 @@
     <div class="modal-handle"></div>
     <h2>🏙️ Editar ciudad</h2>
     <div class="form-group">
-      <label>Nombre de la ciudad</label>
-      <input type="text" id="edit-city-name-input" placeholder="Ej: Dubrovnik" />
+      <label for="edit-city-name-input">Nombre de la ciudad</label>
+      <input type="text" id="edit-city-name-input" placeholder="Ej: Dubrovnik" aria-label="Nombre de la ciudad" />
     </div>
     <div class="form-group">
-      <label>País (código opcional)</label>
-      <input type="text" id="edit-city-country-input" placeholder="Ej: hr" maxlength="2" style="width:80px;text-transform:lowercase" />
+      <label for="edit-city-country-input">País (código opcional)</label>
+      <input type="text" id="edit-city-country-input" placeholder="Ej: hr" maxlength="2" style="width:80px;text-transform:lowercase" aria-label="Código de país" />
     </div>
     <button class="btn-primary" onclick="saveEditCityName()">Guardar</button>
     <div style="display:flex;gap:8px;margin-top:8px">
@@ -477,16 +478,16 @@
     <div class="modal-handle"></div>
     <h2>🏨 Hotel en <span id="edit-hotel-city-name"></span></h2>
     <div class="form-group">
-      <label>Nombre del hotel</label>
+      <label for="edit-hotel-name">Nombre del hotel</label>
       <div class="autocomplete-wrap">
-        <input type="text" id="edit-hotel-name" placeholder="Buscá el hotel..." autocomplete="off" />
+        <input type="text" id="edit-hotel-name" placeholder="Buscá el hotel..." autocomplete="off" aria-label="Nombre del hotel" />
         <ul class="autocomplete-list" id="edit-hotel-name-list"></ul>
       </div>
     </div>
     <div class="form-group">
       <label>Dirección</label>
       <div class="autocomplete-wrap">
-        <input type="text" id="edit-hotel-addr" placeholder="Se completa automáticamente" autocomplete="off" />
+        <input type="text" id="edit-hotel-addr" placeholder="Se completa automáticamente" autocomplete="off" aria-label="Dirección del hotel" />
         <input type="hidden" id="edit-hotel-lat" />
         <input type="hidden" id="edit-hotel-lon" />
         <ul class="autocomplete-list" id="edit-hotel-addr-list"></ul>
@@ -608,15 +609,15 @@
       </div>
 
       <div class="form-group">
-        <label>Compañía <span class="label-optional">opcional</span></label>
-        <input type="text" id="ticket-company" placeholder="Ej: Ryanair, FlixBus, Renfe, MSC" maxlength="60" />
+        <label for="ticket-company">Compañía <span class="label-optional">opcional</span></label>
+        <input type="text" id="ticket-company" placeholder="Ej: Ryanair, FlixBus, Renfe, MSC" maxlength="60" aria-label="Compañía de transporte" />
       </div>
 
       <div class="form-group">
         <label>Origen → Destino</label>
         <div class="date-row">
-          <input type="text" id="ticket-from-city" placeholder="Ciudad de salida" maxlength="60" />
-          <input type="text" id="ticket-to-city" placeholder="Ciudad de llegada" maxlength="60" />
+          <input type="text" id="ticket-from-city" placeholder="Ciudad de salida" maxlength="60" aria-label="Ciudad de salida" />
+          <input type="text" id="ticket-to-city" placeholder="Ciudad de llegada" maxlength="60" aria-label="Ciudad de llegada" />
         </div>
       </div>
 
@@ -628,9 +629,9 @@
       <div class="ticket-section-label" id="ticket-dep-section-label">🛫 Salida</div>
 
       <div class="form-group" id="ticket-dep-terminal-group">
-        <label id="ticket-dep-terminal-label">Estación / Terminal de salida</label>
+        <label for="ticket-dep-terminal" id="ticket-dep-terminal-label">Estación / Terminal de salida</label>
         <div class="autocomplete-wrap" style="position:relative">
-          <input type="text" id="ticket-dep-terminal" class="terminal-input" placeholder="Ej: Gare du Nord, París" maxlength="150" autocomplete="off" oninput="testTerminalAutocomplete(this.value, 'ticket-dep-terminal-results', 'ticket-dep-terminal')" onblur="setTimeout(()=>hideResults('ticket-dep-terminal-results'),200)" />
+          <input type="text" id="ticket-dep-terminal" class="terminal-input" placeholder="Ej: Gare du Nord, París" maxlength="150" autocomplete="off" oninput="testTerminalAutocomplete(this.value, 'ticket-dep-terminal-results', 'ticket-dep-terminal')" onblur="setTimeout(()=>hideResults('ticket-dep-terminal-results'),200)" aria-label="Estación o terminal de salida" />
           <ul class="autocomplete-results" id="ticket-dep-terminal-results"></ul>
         </div>
         <input type="hidden" id="ticket-dep-terminal-lat" />
@@ -639,14 +640,14 @@
       </div>
 
       <div class="form-group" id="ticket-dep-gate-group">
-        <label id="ticket-dep-gate-label">Andén / Wagon <span class="label-optional">opcional</span></label>
-        <input type="text" id="ticket-dep-gate" placeholder="Ej: Andén 3, Wagon 5" maxlength="30" />
+        <label for="ticket-dep-gate" id="ticket-dep-gate-label">Andén / Wagon <span class="label-optional">opcional</span></label>
+        <input type="text" id="ticket-dep-gate" placeholder="Ej: Andén 3, Wagon 5" maxlength="30" aria-label="Puerta o andén de salida" />
       </div>
 
       <div class="form-group">
         <label>Fecha y hora de salida</label>
           <div class="date-row">
-            <input type="date" id="ticket-dep-date" />
+            <input type="date" id="ticket-dep-date" aria-label="Fecha de salida" />
             <div class="time-btn" id="ticket-dep-time" data-value="" onclick="openTimePicker('ticket-dep-time')">--:--</div>
           </div>
       </div>
@@ -662,9 +663,9 @@
       <div class="ticket-section-label" id="ticket-arr-section-label">🛬 Llegada</div>
 
       <div class="form-group" id="ticket-arr-terminal-group">
-        <label id="ticket-arr-terminal-label">Estación / Terminal de llegada</label>
+        <label for="ticket-arr-terminal" id="ticket-arr-terminal-label">Estación / Terminal de llegada</label>
         <div class="autocomplete-wrap" style="position:relative">
-          <input type="text" id="ticket-arr-terminal" class="terminal-input" placeholder="Ej: Bruxelles-Midi" maxlength="150" autocomplete="off" oninput="testTerminalAutocomplete(this.value, 'ticket-arr-terminal-results', 'ticket-arr-terminal')" onblur="setTimeout(()=>hideResults('ticket-arr-terminal-results'),200)" />
+          <input type="text" id="ticket-arr-terminal" class="terminal-input" placeholder="Ej: Bruxelles-Midi" maxlength="150" autocomplete="off" oninput="testTerminalAutocomplete(this.value, 'ticket-arr-terminal-results', 'ticket-arr-terminal')" onblur="setTimeout(()=>hideResults('ticket-arr-terminal-results'),200)" aria-label="Estación o terminal de llegada" />
           <ul class="autocomplete-results" id="ticket-arr-terminal-results"></ul>
         </div>
         <input type="hidden" id="ticket-arr-terminal-lat" />
@@ -673,14 +674,14 @@
       </div>
 
       <div class="form-group" id="ticket-arr-gate-group">
-        <label id="ticket-arr-gate-label">Andén / Wagon <span class="label-optional">opcional</span></label>
-        <input type="text" id="ticket-arr-gate" placeholder="Ej: Andén 4" maxlength="30" />
+        <label for="ticket-arr-gate" id="ticket-arr-gate-label">Andén / Wagon <span class="label-optional">opcional</span></label>
+        <input type="text" id="ticket-arr-gate" placeholder="Ej: Andén 4" maxlength="30" aria-label="Puerta o andén de llegada" />
       </div>
 
       <div class="form-group">
         <label>Fecha y hora de llegada</label>
           <div class="date-row">
-            <input type="date" id="ticket-arr-date" />
+            <input type="date" id="ticket-arr-date" aria-label="Fecha de llegada" />
             <div class="time-btn" id="ticket-arr-time" data-value="" onclick="openTimePicker('ticket-arr-time')">--:--</div>
           </div>
       </div>

@@ -7,7 +7,6 @@ let _rawTripsFromStorage = (() => {
     const parsed = JSON.parse(localStorage.getItem('wandr_trips') || '[]');
     return Array.isArray(parsed) ? parsed : [];
   } catch(e) {
-    console.error('wandr: error parsing localStorage data', e);
     return [];
   }
 })();
@@ -1604,7 +1603,6 @@ ${(() => {
     document.getElementById('detail-content').innerHTML = `<div style="padding:20px;color:var(--danger)">
       <strong>Error al mostrar el viaje:</strong><br><small>${err.message}</small>
     </div>`;
-    console.error('renderDetail error:', err);
   }
 }
 
@@ -3699,15 +3697,11 @@ function save() {
     // Sanitizar todos los trips antes de guardar
     trips = trips.map(trip => sanitizeTripData(trip));
     
-    // Validar datos (solo en modo debug para no molestar al usuario)
-    if (typeof console !== 'undefined' && console.warn) {
-      trips.forEach(trip => {
-        const validation = validateTripData(trip);
-        if (!validation.valid) {
-          console.warn('[wandr] Validation warnings:', validation.errors);
-        }
-      });
-    }
+    // Validar datos (silencioso en producción)
+    trips.forEach(trip => {
+      const validation = validateTripData(trip);
+      // Validation errors are silently ignored for now
+    });
     
     localStorage.setItem('wandr_trips', JSON.stringify(trips));
     _showSaveIndicator('saved', '✓ Guardado');
@@ -3718,7 +3712,6 @@ function save() {
     } else {
       showToast('⚠️ Error al guardar datos.');
       _showSaveIndicator('error', '⚠️ Error');
-      console.error('save() error:', e);
     }
   }
 }
@@ -4814,7 +4807,7 @@ async function prefetchWeather(trip) {
   const cities = (trip.cities || []).filter(c => c.id);
   const results = await Promise.allSettled(cities.map(city => getWeatherForCity(city, trip)));
   results.forEach((r, i) => {
-    if (r.status === 'rejected') console.warn('[weather] city', cities[i]?.name, 'failed:', r.reason);
+    // Silently handle weather fetch failures
   });
   if (currentDetailTab === 'itinerary') renderDetail();
   if (currentDetailTab === 'overview') renderOverview();
@@ -4928,7 +4921,7 @@ function buildWeatherChipHtml(dayData) {
 function saveToWeatherCache(cityId, data) {
   try {
     localStorage.setItem(`wandr_weather_cache_${cityId}`, JSON.stringify({ data, timestamp: Date.now() }));
-  } catch(e) { console.error('Weather cache save error:', e); }
+  } catch(e) { /* silently ignore cache errors */ }
 }
 
 function loadFromWeatherCache(cityId) {
@@ -4997,7 +4990,7 @@ async function getCoordinatesForCity(city, trip) {
       if (data && data.length > 0) {
         return { lat: parseFloat(data[0].lat), lon: parseFloat(data[0].lon) };
       }
-    } catch(e) { console.error('Nominatim geocoding error:', e); }
+    } catch(e) { /* silently ignore geocoding errors */ }
   }
   return null;
 }
@@ -5053,7 +5046,7 @@ function getPackingSuggestions(weatherDay) {
 function saveToWeatherCache(cityId, data) {
   try {
     localStorage.setItem(`wandr_weather_cache_${cityId}`, JSON.stringify({ data, timestamp: Date.now() }));
-  } catch(e) { console.error('Weather cache save error:', e); }
+  } catch(e) { /* silently ignore */ }
 }
 
 function loadFromWeatherCache(cityId) {
@@ -5122,7 +5115,7 @@ async function getCoordinatesForCity(city, trip) {
       if (data && data.length > 0) {
         return { lat: parseFloat(data[0].lat), lon: parseFloat(data[0].lon) };
       }
-    } catch(e) { console.error('Nominatim geocoding error:', e); }
+    } catch(e) { /* silently ignore geocoding errors */ }
   }
   return null;
 }
@@ -5205,7 +5198,6 @@ async function loadCountryCodesForExistingCities() {
   });
 
   if (citiesWithoutCode.length === 0) {
-    console.log('[wandr] Todas las ciudades ya tienen country code');
     return;
   }
 
@@ -5215,8 +5207,6 @@ async function loadCountryCodesForExistingCities() {
     renderDetail();
   }
   
-  console.log(`[wandr] Cargando country codes para ${citiesWithoutCode.length} ciudades (solo las nuevas)...`);
-
   let changed = false;
   
   for (let i = 0; i < citiesWithoutCode.length; i++) {
@@ -5250,7 +5240,7 @@ async function loadCountryCodesForExistingCities() {
         }
       }
     } catch(e) {
-      console.warn(`[wandr] Error obteniendo country code para ${city.name}:`, e.message);
+      /* silently ignore country code errors */
     }
 
     if (countryCode) {
@@ -5282,7 +5272,7 @@ async function loadCountryCodesForExistingCities() {
     renderDetail();
   }
   
-  console.log(`[wandr] Country codes cargados para ${citiesWithoutCode.length} ciudades`);
+  if (changed) save();
 }
 
 // INIT — migrate & sanitize old data
@@ -5373,8 +5363,7 @@ if (_rawTripsFromStorage.length === 0 || _sanitized.length > 0) {
     save();
   }
 } else {
-  // Sanitization returned empty but original had data — keep original and warn
-  console.warn('wandr: sanitizeTrips returned empty on non-empty input; keeping original data');
+  // Sanitization returned empty but original had data — keep original
   trips = _rawTripsFromStorage;
 }
 _rawTripsFromStorage = null; // free reference
