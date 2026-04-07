@@ -188,7 +188,7 @@ function renderTrips() {
     const isOngoing = t.startDate <= today && t.endDate >= today;
     
     const citiesRow = cities.length
-      ? cities.map((ci, i) => `<span class="city-pill">📍 ${esc(ci.name)}</span>`).join('')
+      ? cities.map((ci, i) => cityPillHtml(ci)).join('')
       : `<span class="city-pill" style="opacity:0.5">Sin ciudades</span>`;
     
     return `<div class="trip-card${isPast ? ' trip-card-past' : ''}${isOngoing ? ' trip-card-ongoing' : ''}" draggable="true" data-trip-id="${t.id}" data-trip-index="${idx}"
@@ -1103,12 +1103,16 @@ function renderDetail() {
       const nightCount = ci.dayTrip ? 0
         : Math.round((new Date(ci.endDate + 'T00:00:00') - new Date(ci.startDate + 'T00:00:00')) / 86400000);
       const nightsLabel = ci.dayTrip ? 'excursión' : `${nightCount} noche${nightCount !== 1 ? 's' : ''}`;
+      const flag = getCountryFlag(ci.countryCode);
+      const flagImg = ci.countryCode ? `<img src="https://flagcdn.com/w20/${ci.countryCode.toLowerCase()}.png" class="city-flag" alt="${ci.countryCode.toUpperCase()}" onerror="this.style.display='none'" />` : '';
       return `<div class="city-tab ${i === currentCityIdx ? 'active' : ''} ${ci.dayTrip ? 'daytrip' : ''}" onclick="switchCity(${i})">
-        <span class="city-tab-name">${ci.dayTrip ? '🗺️ ' : ''}${esc(ci.name)}</span>
-        <span class="city-tab-nights">${nightsLabel}</span>
-        ${trip.cities.length > 1 ? `<button class="city-tab-del" onclick="event.stopPropagation();deleteCity('${ci.id}')" title="Eliminar">
-          <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-        </button>` : ''}
+        <div class="city-tab-content">
+          <div class="city-info">
+            ${flagImg}
+            <span class="city-name">${ci.dayTrip ? '🗺️ ' : ''}${esc(ci.name)}</span>
+          </div>
+          <div class="city-duration">${nightsLabel}</div>
+        </div>
       </div>`;
     }).join('');
 
@@ -1471,6 +1475,7 @@ function renderDetail() {
           </div>
           <button class="btn-edit-trip-dates" onclick="openEditTripDatesModal()" title="Editar fechas del viaje">
             <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+            <span>Editar</span>
           </button>
         </div>
       </div>
@@ -2239,7 +2244,15 @@ function openEditTripDatesModal() {
     section.style.display = '';
     list.innerHTML = (trip.cities || []).map((ci, i) => `
       <div class="edit-city-date-row">
-        <span class="edit-city-label">${esc(ci.name)}</span>
+        <div class="edit-city-name-wrap">
+          <span class="edit-city-label">${esc(ci.name)}</span>
+          <button class="edit-city-name-btn" onclick="openEditCityNameModal(${i})" title="Editar nombre">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+          </button>
+          ${trip.cities.length > 1 ? `<button class="edit-city-delete-btn" onclick="openDeleteCityFromEditModal(${i})" title="Eliminar ciudad">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3,6 5,6 21,6"/><path d="M19,6v14a2,2,0,0,1-2,2H7a2,2,0,0,1-2-2V6M8,6V4a2,2,0,0,1,2-2h4a2,2,0,0,1,2,2v2"/></svg>
+          </button>` : ''}
+        </div>
         <div class="edit-city-dates">
           <input type="date" id="edit-trip-city-start-${i}" value="${ci.startDate}" min="${trip.startDate}" max="${trip.endDate}" />
           <span class="edit-city-arrow">→</span>
@@ -2318,6 +2331,98 @@ function saveEditTripDates() {
   closeModal('modal-edit-trip-dates');
   renderDetail();
   showToast('✅ Fechas del viaje actualizadas');
+}
+
+// ══════════════════════════════════════
+// EDIT CITY NAME
+// ══════════════════════════════════════
+let _editingCityIndex = null;
+let _editingCityId = null;
+
+function openEditCityNameModal(cityIndex) {
+  const trip = trips.find(t => t.id === currentTripId);
+  if (!trip) return;
+  
+  _editingCityIndex = cityIndex;
+  _editingCityId = trip.cities[cityIndex].id;
+  const city = trip.cities[cityIndex];
+  
+  document.getElementById('edit-city-name-input').value = city.name || '';
+  document.getElementById('edit-city-country-input').value = city.countryCode || '';
+  openModal('modal-edit-city-name');
+}
+
+function confirmDeleteCityFromModal() {
+  const trip = trips.find(t => t.id === currentTripId);
+  if (!trip || _editingCityIndex === null) return;
+  
+  const city = trip.cities[_editingCityIndex];
+  document.getElementById('confirm-delete-city-msg').textContent = `¿Estás seguro de eliminar "${city.name}" del viaje? Se eliminarán todos los días y paradas de esta ciudad.`;
+  openModal('modal-confirm-delete-city');
+}
+
+function deleteCityFromModal() {
+  const trip = trips.find(t => t.id === currentTripId);
+  if (!trip || _editingCityId === null) return;
+  
+  const idx = trip.cities.findIndex(c => c.id === _editingCityId);
+  if (idx !== -1) {
+    trip.cities.splice(idx, 1);
+    
+    // Ajustar índice actual si es necesario
+    if (currentCityIdx >= trip.cities.length) {
+      currentCityIdx = Math.max(0, trip.cities.length - 1);
+    }
+    if (currentCityIdx < 0) currentCityIdx = 0;
+    currentDayIdx = 0;
+    
+    save();
+    closeModal('modal-confirm-delete-city');
+    closeModal('modal-edit-city-name');
+    renderDetail();
+    showToast('✅ Ciudad eliminada');
+  }
+  
+  _editingCityIndex = null;
+  _editingCityId = null;
+}
+
+function openDeleteCityFromEditModal(cityIndex) {
+  const trip = trips.find(t => t.id === currentTripId);
+  if (!trip || cityIndex === null) return;
+  
+  const city = trip.cities[cityIndex];
+  _editingCityIndex = cityIndex;
+  _editingCityId = city.id;
+  
+  document.getElementById('confirm-delete-city-msg').textContent = `¿Estás seguro de eliminar "${city.name}" del viaje? Se eliminarán todos los días y paradas de esta ciudad.`;
+  openModal('modal-confirm-delete-city');
+}
+
+function saveEditCityName() {
+  const trip = trips.find(t => t.id === currentTripId);
+  if (!trip || _editingCityIndex === null) return;
+  
+  const newName = document.getElementById('edit-city-name-input').value.trim();
+  const newCountry = document.getElementById('edit-city-country-input').value.trim().toLowerCase();
+  
+  if (!newName) {
+    showToast('⚠️ El nombre no puede estar vacío');
+    return;
+  }
+  
+  trip.cities[_editingCityIndex].name = newName;
+  if (newCountry) {
+    trip.cities[_editingCityIndex].countryCode = newCountry;
+  }
+  
+  save();
+  closeModal('modal-edit-city-name');
+  _editingCityIndex = null;
+  
+  // Actualizar la vista
+  renderDetail();
+  showToast('✅ Ciudad actualizada');
 }
 
 // ══════════════════════════════════════
@@ -2533,7 +2638,12 @@ async function searchAllGeocoders(query) {
     });
     const data = await res.json();
     if (data && Array.isArray(data) && data.length > 0) {
-      return data.map(r => ({ display_name: r.display_name, lat: r.lat, lon: r.lon }));
+      return data.map(r => ({ 
+        display_name: r.display_name, 
+        lat: r.lat, 
+        lon: r.lon,
+        country_code: r.address?.country_code?.toLowerCase() || null
+      }));
     }
   } catch(e) { /* continue */ }
 
@@ -2549,12 +2659,14 @@ async function searchAllGeocoders(query) {
         const city = p.city || '';
         const state = p.state || '';
         const country = p.country || '';
+        const countryCode = p.countrycode?.toLowerCase() || '';
         const parts = [name, street, city, state, country].filter(Boolean);
         const coords = f.geometry && f.geometry.coordinates;
         return {
           display_name: parts.join(', '),
           lat: coords ? coords[1] : null,
-          lon: coords ? coords[0] : null
+          lon: coords ? coords[0] : null,
+          country_code: countryCode || null
         };
       }).filter(r => r.display_name);
     }
@@ -2629,6 +2741,74 @@ function pickStopNameResult(index, nameInput, addrInput) {
   const display = document.getElementById('selected-address-display');
   if (display) display.style.display = 'block';
   document.getElementById('stop-name-results').style.display = 'none';
+}
+
+// ── City name autocomplete (Agregar ciudad) ─────────────────────
+let _cityAcTimer = null;
+let _cityAcResults = [];
+
+function initCityNameAutocomplete() {
+  const input = document.getElementById('new-city-name');
+  const list = document.getElementById('new-city-name-list');
+  if (!input || !list) return;
+
+  const newInput = input.cloneNode(true);
+  input.parentNode.replaceChild(newInput, input);
+  const el = document.getElementById('new-city-name');
+
+  el.addEventListener('input', () => {
+    clearTimeout(_cityAcTimer);
+    const q = el.value.trim();
+    if (q.length < 2) { list.classList.remove('open'); list.innerHTML = ''; return; }
+    _cityAcTimer = setTimeout(() => runCitySearch(q, list, el), 350);
+  });
+
+  el.addEventListener('focus', () => {
+    if (el.value.trim().length >= 2) runCitySearch(el.value.trim(), list, el);
+  });
+
+  document.addEventListener('click', (e) => {
+    if (!el.contains(e.target) && !list.contains(e.target)) { list.classList.remove('open'); }
+  });
+}
+
+async function runCitySearch(query, list, inputEl) {
+  _cityAcResults = [];
+  list.innerHTML = '<li class="ac-loading">Buscando...</li>';
+  list.classList.add('open');
+
+  const data = await searchAllGeocoders(query);
+  if (data && data.length > 0) {
+    _cityAcResults = data;
+    list.innerHTML = data.map((r, i) => {
+      const parts = r.display_name.split(',');
+      const cityName = parts[0].trim();
+      const country = parts.slice(1).join(',').trim().split(',')[0] || '';
+      const flag = getCountryFlag(r.country_code);
+      return `<li data-cni="${i}">
+        <div class="ac-main">${flag}${esc(cityName)}</div>
+        <div class="ac-sub">${esc(country)}</div>
+      </li>`;
+    }).join('');
+    list.querySelectorAll('li[data-cni]').forEach(li => {
+      const handler = () => pickCityResult(parseInt(li.dataset.cni, 10), inputEl);
+      li.addEventListener('mousedown', handler);
+      li.addEventListener('touchstart', (e) => { e.preventDefault(); handler(); }, { passive: false });
+    });
+  } else {
+    list.innerHTML = '<li class="ac-loading">Sin resultados. Escribí el nombre a mano.</li>';
+  }
+}
+
+function pickCityResult(index, inputEl) {
+  const result = _cityAcResults[index];
+  if (!result) return;
+  const parts = result.display_name.split(',');
+  inputEl.value = parts[0].trim();
+  // Guardar country_code en un campo hidden
+  const countryCodeField = document.getElementById('new-city-country-code');
+  if (countryCodeField) countryCodeField.value = result.country_code || '';
+  document.getElementById('new-city-name-list').classList.remove('open');
 }
 
 // ── Hotel name autocomplete (Agregar ciudad) ─────────────────
@@ -2890,7 +3070,10 @@ function openAddCityModal() {
     : `El viaje cubre del ${formatDate(trip.startDate)} al ${formatDate(trip.endDate)}.`;
 
   openModal('modal-add-city');
-  setTimeout(() => { initHotelNameAutocomplete(); }, 150);
+  setTimeout(() => { 
+    initCityNameAutocomplete(); 
+    initHotelNameAutocomplete(); 
+  }, 150);
 }
 
 function onNewCityStartChange() {
@@ -2966,6 +3149,7 @@ function saveNewCity() {
     hotelLat: isDayTrip ? null : parseFloat(document.getElementById('new-city-hotel-lat').value) || null,
     hotelLon: isDayTrip ? null : parseFloat(document.getElementById('new-city-hotel-lon').value) || null,
     startDate: cs, endDate: ce,
+    countryCode: document.getElementById('new-city-country-code').value || null,
     days: buildDays(cs, ce),
     ...(isDayTrip ? {
       dayTrip: true,
@@ -3473,8 +3657,45 @@ function esc(s) {
   return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
 }
 
+// Función helper para obtener la bandera de un país (imagen)
+function getCountryFlag(countryCode) {
+  if (!countryCode) return '';
+  const code = countryCode.toLowerCase();
+  // Solo usar si el código tiene 2 letras
+  if (code.length !== 2) return '';
+  
+  // Mapear códigos especiales
+  const codeMap = {
+    'uk': 'gb',
+    'xk': 'xk'  // Kosovo
+  };
+  const mappedCode = codeMap[code] || code;
+  
+  // Usar imágenes de flagcdn
+  return `<img src="https://flagcdn.com/w20/${mappedCode}.png" class="country-flag" alt="${code.toUpperCase()}" onerror="this.style.display='none'" />`;
+}
+
+// Generar HTML para el pill de ciudad con bandera
+function cityPillHtml(ci) {
+  const flag = getCountryFlag(ci.countryCode);
+  return `<span class="city-pill">${flag}${esc(ci.name)}</span>`;
+}
+
 function save() {
   try {
+    // Sanitizar todos los trips antes de guardar
+    trips = trips.map(trip => sanitizeTripData(trip));
+    
+    // Validar datos (solo en modo debug para no molestar al usuario)
+    if (typeof console !== 'undefined' && console.warn) {
+      trips.forEach(trip => {
+        const validation = validateTripData(trip);
+        if (!validation.valid) {
+          console.warn('[wandr] Validation warnings:', validation.errors);
+        }
+      });
+    }
+    
     localStorage.setItem('wandr_trips', JSON.stringify(trips));
     _showSaveIndicator('saved', '✓ Guardado');
   } catch(e) {
@@ -3499,6 +3720,244 @@ function _showSaveIndicator(type, text) {
   _saveIndicatorTimer = setTimeout(() => { el.className = ''; }, type === 'error' ? 3500 : 2000);
 }
 function mapsUrl(q) { return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(q)}`; }
+
+// ══════════════════════════════════════
+// INPUT SANITIZATION & VALIDATION
+// ══════════════════════════════════════
+
+// Límites de datos para prevenir ataques de tamaño
+const MAX_STRING_LENGTH = 200;
+const MAX_TRIP_NAME_LENGTH = 100;
+const MAX_CITY_NAME_LENGTH = 80;
+const MAX_ADDRESS_LENGTH = 500;
+const MAX_NOTE_LENGTH = 1000;
+const MAX_STOPS_PER_DAY = 50;
+const MAX_CITIES_PER_TRIP = 30;
+const MAX_TICKETS_PER_TRIP = 50;
+
+// Sanitizar strings para prevenir XSS
+function sanitizeInput(str, maxLen = MAX_STRING_LENGTH) {
+  if (str === null || str === undefined) return '';
+  if (typeof str !== 'string') return String(str);
+  // Eliminar caracteres peligrosos que podrían ser usados para XSS o injection
+  return str
+    .replace(/[<>'";&]/g, '') // Caracteres peligrosos: < > ' " ; &
+    .replace(/\s+/g, ' ')   // Normalizar whitespace
+    .trim()
+    .slice(0, maxLen); // Limitar longitud
+}
+
+// Sanitizar nombres de ciudades (允许 acentos y algunos caracteres especiales)
+function sanitizeCityName(str) {
+  if (!str) return '';
+  return str
+    .replace(/[<>;"&]/g, '') // Solo eliminar caracteres peligrosos
+    .replace(/\s+/g, ' ')
+    .trim()
+    .slice(0, MAX_CITY_NAME_LENGTH);
+}
+
+// Sanitizar direcciones (más permisivo porque puede tener números, símbolos de calle)
+function sanitizeAddress(str) {
+  if (!str) return '';
+  return str
+    .replace(/[<>'"&]/g, '') // Eliminar solo caracteres claramente peligrosos
+    .replace(/\s+/g, ' ')
+    .trim()
+    .slice(0, MAX_ADDRESS_LENGTH);
+}
+
+// Sanitizar notas (permite más caracteres pero limita longitud)
+function sanitizeNote(str) {
+  if (!str) return '';
+  return str
+    .replace(/[<>]/g, '') // Solo eliminar los más peligrosos
+    .trim()
+    .slice(0, MAX_NOTE_LENGTH);
+}
+
+// Validar coordenadas
+function isValidCoord(lat, lon) {
+  const latNum = parseFloat(lat);
+  const lonNum = parseFloat(lon);
+  if (isNaN(latNum) || isNaN(lonNum)) return false;
+  return latNum >= -90 && latNum <= 90 && lonNum >= -180 && lonNum <= 180;
+}
+
+// Validar fecha ISO (YYYY-MM-DD)
+function isValidDate(dateStr) {
+  if (!dateStr || typeof dateStr !== 'string') return false;
+  // Verificar formato YYYY-MM-DD
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) return false;
+  const date = new Date(dateStr);
+  return date instanceof Date && !isNaN(date.getTime());
+}
+
+// Validar time (HH:MM)
+function isValidTime(timeStr) {
+  if (!timeStr || typeof timeStr !== 'string') return false;
+  const match = timeStr.match(/^(\d{2}):(\d{2})$/);
+  if (!match) return false;
+  const hours = parseInt(match[1], 10);
+  const minutes = parseInt(match[2], 10);
+  return hours >= 0 && hours <= 23 && minutes >= 0 && minutes <= 59;
+}
+
+// Validar todo el trip antes de guardar
+function validateTripData(trip) {
+  const errors = [];
+  
+  if (!trip) {
+    errors.push('Trip no existe');
+    return { valid: false, errors };
+  }
+  
+  // Validar nombre del trip
+  if (trip.name) {
+    if (trip.name.length > MAX_TRIP_NAME_LENGTH) {
+      errors.push(`Nombre del viaje muy largo (máx ${MAX_TRIP_NAME_LENGTH} caracteres)`);
+    }
+  }
+  
+  // Validar fechas del trip
+  if (!isValidDate(trip.startDate)) {
+    errors.push('Fecha de inicio inválida');
+  }
+  if (!isValidDate(trip.endDate)) {
+    errors.push('Fecha de fin inválida');
+  }
+  
+  // Validar cities
+  if (!trip.cities || !Array.isArray(trip.cities)) {
+    errors.push('Cities no es un array');
+  } else {
+    if (trip.cities.length > MAX_CITIES_PER_TRIP) {
+      errors.push(`Demasiadas ciudades (máx ${MAX_CITIES_PER_TRIP})`);
+    }
+    
+    trip.cities.forEach((city, idx) => {
+      // Validar nombre
+      if (city.name && city.name.length > MAX_CITY_NAME_LENGTH) {
+        errors.push(`Ciudad ${idx + 1}: nombre muy largo`);
+      }
+      
+      // Validar coordenadas del hotel
+      if (city.hotelLat != null && city.hotelLon != null) {
+        if (!isValidCoord(city.hotelLat, city.hotelLon)) {
+          errors.push(`Ciudad ${city.name || idx + 1}: coordenadas del hotel inválidas`);
+        }
+      }
+      
+      // Validar fechas
+      if (city.startDate && !isValidDate(city.startDate)) {
+        errors.push(`Ciudad ${city.name || idx + 1}: fecha de inicio inválida`);
+      }
+      if (city.endDate && !isValidDate(city.endDate)) {
+        errors.push(`Ciudad ${city.name || idx + 1}: fecha de fin inválida`);
+      }
+      
+      // Validar días y stops
+      if (city.days && Array.isArray(city.days)) {
+        city.days.forEach((day, dayIdx) => {
+          if (day.stops && Array.isArray(day.stops)) {
+            if (day.stops.length > MAX_STOPS_PER_DAY) {
+              errors.push(`Ciudad ${city.name}: día ${dayIdx + 1}: demasiados stops (máx ${MAX_STOPS_PER_DAY})`);
+            }
+            
+            day.stops.forEach((stop, stopIdx) => {
+              // Validar nombre y dirección
+              if (stop.name && stop.name.length > MAX_STRING_LENGTH) {
+                errors.push(`Stop ${stopIdx + 1}: nombre muy largo`);
+              }
+              if (stop.address && stop.address.length > MAX_ADDRESS_LENGTH) {
+                errors.push(`Stop ${stopIdx + 1}: dirección muy larga`);
+              }
+              
+              // Validar coordenadas
+              if (stop.lat && stop.lon && !isValidCoord(stop.lat, stop.lon)) {
+                errors.push(`Stop ${stop.name || stopIdx + 1}: coordenadas inválidas`);
+              }
+            });
+          }
+        });
+      }
+    });
+  }
+  
+  // Validar tickets
+  if (trip.tickets && Array.isArray(trip.tickets)) {
+    if (trip.tickets.length > MAX_TICKETS_PER_TRIP) {
+      errors.push(`Demasiados tickets (máx ${MAX_TICKETS_PER_TRIP})`);
+    }
+    
+    trip.tickets.forEach((ticket, idx) => {
+      if (ticket.fromCity && ticket.fromCity.length > MAX_CITY_NAME_LENGTH) {
+        errors.push(`Ticket ${idx + 1}: ciudad de origen muy larga`);
+      }
+      if (ticket.toCity && ticket.toCity.length > MAX_CITY_NAME_LENGTH) {
+        errors.push(`Ticket ${idx + 1}: ciudad de destino muy larga`);
+      }
+    });
+  }
+  
+  return {
+    valid: errors.length === 0,
+    errors
+  };
+}
+
+// Aplicar sanitización a todos los campos de un trip antes de guardar
+function sanitizeTripData(trip) {
+  if (!trip) return trip;
+  
+  // Sanitizar nombre (usa trim + slice para permitir espacios pero limita longitud)
+  if (trip.name) trip.name = trip.name.trim().slice(0, MAX_TRIP_NAME_LENGTH);
+  
+  // Sanitizar ciudades
+  if (trip.cities && Array.isArray(trip.cities)) {
+    trip.cities.forEach(city => {
+      // Nombre - usa sanitizeCityName que permite acentos
+      if (city.name) city.name = sanitizeCityName(city.name);
+      
+      // Hotel
+      if (city.hotelName) city.hotelName = sanitizeInput(city.hotelName, MAX_CITY_NAME_LENGTH);
+      if (city.hotelAddr) city.hotelAddr = sanitizeAddress(city.hotelAddr);
+      
+      // Notas
+      if (city.note) city.note = sanitizeNote(city.note);
+      
+      // Días y stops
+      if (city.days && Array.isArray(city.days)) {
+        city.days.forEach(day => {
+          if (day.stops && Array.isArray(day.stops)) {
+            day.stops.forEach(stop => {
+              if (stop.name) stop.name = sanitizeInput(stop.name, MAX_STRING_LENGTH);
+              if (stop.address) stop.address = sanitizeAddress(stop.address);
+              if (stop.note) stop.note = sanitizeNote(stop.note);
+              if (stop.category) stop.category = sanitizeInput(stop.category, 30);
+              if (stop.transport) stop.transport = sanitizeInput(stop.transport, 20);
+            });
+          }
+        });
+      }
+    });
+  }
+  
+  // Sanitizar tickets
+  if (trip.tickets && Array.isArray(trip.tickets)) {
+    trip.tickets.forEach(ticket => {
+      if (ticket.company) ticket.company = sanitizeInput(ticket.company, 50);
+      if (ticket.fromCity) ticket.fromCity = sanitizeCityName(ticket.fromCity);
+      if (ticket.toCity) ticket.toCity = sanitizeCityName(ticket.toCity);
+      if (ticket.depTerminal) ticket.depTerminal = sanitizeAddress(ticket.depTerminal);
+      if (ticket.arrTerminal) ticket.arrTerminal = sanitizeAddress(ticket.arrTerminal);
+      if (ticket.depGate) ticket.depGate = sanitizeInput(ticket.depGate, 20);
+      if (ticket.arrGate) ticket.arrGate = sanitizeInput(ticket.arrGate, 20);
+    });
+  }
+  
+  return trip;
+}
 
 // Haversine formula for distance between two lat/lon points (returns km)
 function haversine(lat1, lon1, lat2, lon2) {
@@ -4377,8 +4836,10 @@ function buildWeatherHtml(dayData) {
   const tempRange = (tempMin && tempMax) ? `${tempMax} / ${tempMin}` : (tempMax || tempMin || '');
   const precip = dayData.precipProb !== null ? `${dayData.precipProb}%` : '';
   const wind = dayData.windSpeed !== null ? Math.round(dayData.windSpeed) + ' km/h' : '';
+  // Soportar ambos formatos de mapWmoCode (desc o description)
+  const weatherDesc = wmo.desc || wmo.description || 'Sin datos';
   return `<div class="weather-line">
-    <span class="weather-icon">${wmo.icon}</span><span class="weather-desc">${wmo.desc}</span>
+    <span class="weather-icon">${wmo.icon}</span><span class="weather-desc">${weatherDesc}</span>
     ${tempRange ? `<span class="weather-temp">🌡️ ${tempRange}</span>` : ''}
     ${precip ? `<span class="weather-precip">🌧️ ${precip}</span>` : ''}
     ${wind ? `<span class="weather-wind">💨 ${wind}</span>` : ''}
@@ -4696,11 +5157,124 @@ function getPackingSuggestions(weatherDay) {
 // ══════════════════════════════════════
 // INIT — migrate & sanitize old data
 // ══════════════════════════════════════
+
+// Cargar country codes para ciudades existentes usando geocodificación
+async function loadCountryCodesForExistingCities() {
+  // Clave para guardar los country codes ya procesados
+  const PROCESSED_KEY = 'wandr_country_codes_processed';
+  const processedCities = JSON.parse(localStorage.getItem(PROCESSED_KEY) || '{}');
+  
+  const citiesWithoutCode = [];
+  
+  // Buscar ciudades sin countryCode Y que no hayan sido procesadas antes
+  trips.forEach(trip => {
+    (trip.cities || []).forEach(city => {
+      // Si ya tiene countryCode O ya fue procesada antes, saltar
+      if (city.countryCode || processedCities[city.id]) {
+        return;
+      }
+      
+      // Ciudad sin countryCode y no procesada antes
+      // Prioridad 1: coordenadas del hotel
+      if (city.hotelLat && city.hotelLon) {
+        citiesWithoutCode.push({ city, trip, source: 'hotel' });
+      } else {
+        // Prioridad 2: coordenadas de stops
+        const firstStopWithCoords = (city.days || []).flatMap(d => d.stops || []).find(s => s.lat && s.lon);
+        if (firstStopWithCoords) {
+          citiesWithoutCode.push({ city, trip, source: 'stop', lat: firstStopWithCoords.lat, lon: firstStopWithCoords.lon });
+        } else {
+          // Prioridad 3: buscar por nombre de ciudad
+          citiesWithoutCode.push({ city, trip, source: 'name' });
+        }
+      }
+    });
+  });
+
+  if (citiesWithoutCode.length === 0) {
+    console.log('[wandr] Todas las ciudades ya tienen country code');
+    return;
+  }
+
+  console.log(`[wandr] Cargando country codes para ${citiesWithoutCode.length} ciudades (solo las nuevas)...`);
+
+  let changed = false;
+  
+  for (let i = 0; i < citiesWithoutCode.length; i++) {
+    const { city, trip, source, lat, lon } = citiesWithoutCode[i];
+    let countryCode = null;
+    let delay = 1000;
+
+    try {
+      if (source === 'name') {
+        // Buscar por nombre de ciudad
+        const data = await searchAllGeocoders(city.name);
+        if (data && data.length > 0 && data[0].country_code) {
+          countryCode = data[0].country_code;
+          // También guardar coordenadas si no tiene
+          if (!city.hotelLat && data[0].lat) {
+            city.hotelLat = parseFloat(data[0].lat);
+            city.hotelLon = parseFloat(data[0].lon);
+          }
+        }
+      } else {
+        // Reverse geocoding por coordenadas
+        const coordLat = lat || city.hotelLat;
+        const coordLon = lon || city.hotelLon;
+        const res = await fetch(
+          `https://nominatim.openstreetmap.org/reverse?lat=${coordLat}&lon=${coordLon}&format=json`,
+          { headers: { 'User-Agent': 'Wandr/1.0 (https://wandr.travel; contact@wandr.travel)' } }
+        );
+        const json = await res.json();
+        if (json?.address?.country_code) {
+          countryCode = json.address.country_code;
+        }
+      }
+    } catch(e) {
+      console.warn(`[wandr] Error obteniendo country code para ${city.name}:`, e.message);
+    }
+
+    if (countryCode) {
+      city.countryCode = countryCode;
+      processedCities[city.id] = true;
+      changed = true;
+    } else {
+      // Marcar como procesada aunque no se haya obtenido código (para no reintentar)
+      processedCities[city.id] = true;
+    }
+
+    // Rate limiting
+    if (i < citiesWithoutCode.length - 1) {
+      await new Promise(r => setTimeout(r, delay));
+    }
+  }
+
+  // Guardar el registro de ciudades procesadas
+  localStorage.setItem(PROCESSED_KEY, JSON.stringify(processedCities));
+  
+  // Guardar trips si hubo cambios
+  if (changed) {
+    save();
+  }
+  
+  console.log(`[wandr] Country codes cargados para ${citiesWithoutCode.length} ciudades`);
+}
+
 // INIT — migrate & sanitize old data
 // ══════════════════════════════════════
 function sanitizeTrips(raw) {
   if (!Array.isArray(raw)) return [];
   return raw.filter(t => t && t.id && t.name).map(t => {
+    // Apply full sanitization using the new function
+    const sanitized = sanitizeTripData({
+      id: t.id,
+      name: t.name,
+      startDate: t.startDate,
+      endDate: t.endDate,
+      cities: t.cities,
+      tickets: t.tickets
+    });
+    
     // Old format: trip had city/hotel directly, no cities array
     if (!Array.isArray(t.cities)) {
       const city = {
@@ -4712,10 +5286,18 @@ function sanitizeTrips(raw) {
         endDate: t.endDate,
         days: Array.isArray(t.days) ? t.days : buildDays(t.startDate, t.endDate)
       };
-      return { id: t.id, name: t.name, startDate: t.startDate, endDate: t.endDate, cities: [city], tickets: [] };
+      return { 
+        id: t.id, 
+        name: sanitized.name || t.name, 
+        startDate: t.startDate, 
+        endDate: t.endDate, 
+        cities: [city], 
+        tickets: [] 
+      };
     }
+    
     // Ensure each city has valid days matching its own date range, preserving stops
-    t.cities = (t.cities || []).filter(ci => ci && ci.startDate && ci.endDate).map(ci => {
+    sanitized.cities = (t.cities || []).filter(ci => ci && ci.startDate && ci.endDate).map(ci => {
       const stopsMap = {};
       (ci.days || []).forEach(d => {
         if (d && d.date && Array.isArray(d.stops) && d.stops.length) {
@@ -4724,9 +5306,9 @@ function sanitizeTrips(raw) {
             .filter(s => s && typeof s === 'object' && s.name)
             .map(s => ({
               id:        (typeof s.id === 'string' && s.id)        ? s.id        : uid(),
-              name:      typeof s.name      === 'string' ? s.name.slice(0, 200)      : '',
-              address:   typeof s.address   === 'string' ? s.address.slice(0, 300)   : '',
-              note:      typeof s.note      === 'string' ? s.note.slice(0, 500)      : '',
+              name:      sanitizeInput(s.name, 200),
+              address:   sanitizeAddress(s.address, 300),
+              note:      sanitizeNote(s.note, 500),
               timeFrom:  typeof s.timeFrom  === 'string' ? s.timeFrom  : '',
               timeTo:    typeof s.timeTo    === 'string' ? s.timeTo    : '',
               type:      ['attraction','restaurant','museum','park','hotel'].includes(s.type) ? s.type : 'attraction',
@@ -4744,10 +5326,14 @@ function sanitizeTrips(raw) {
       // Preserve hotel coordinates
       if (typeof ci.hotelLat === 'number') ci.hotelLat = ci.hotelLat;
       if (typeof ci.hotelLon === 'number') ci.hotelLon = ci.hotelLon;
+      // Sanitize city fields
+      ci.name = sanitizeCityName(ci.name);
+      if (ci.hotelName) ci.hotelName = sanitizeInput(ci.hotelName, 80);
+      if (ci.hotelAddr) ci.hotelAddr = sanitizeAddress(ci.hotelAddr);
       return ci;
     });
-    if (!Array.isArray(t.tickets)) t.tickets = [];
-    return t;
+    if (!Array.isArray(sanitized.tickets)) sanitized.tickets = [];
+    return sanitized;
   });
 }
 
@@ -4767,6 +5353,10 @@ if (_rawTripsFromStorage.length === 0 || _sanitized.length > 0) {
   trips = _rawTripsFromStorage;
 }
 _rawTripsFromStorage = null; // free reference
+
+// Cargar country codes para ciudades existentes que no lo tienen
+loadCountryCodesForExistingCities();
+
 renderTrips();
 initTheme();
 if ('serviceWorker' in navigator) {

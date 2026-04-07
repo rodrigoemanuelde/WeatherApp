@@ -4,6 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
   <meta name="theme-color" content="#4A7BF7" />
+  <meta name="mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
   <meta name="apple-mobile-web-app-title" content="Wandr" />
@@ -276,7 +277,11 @@
 
     <div class="form-group">
       <label id="new-city-name-label">Ciudad</label>
-      <input type="text" id="new-city-name" placeholder="Ej: Praga" />
+      <div class="autocomplete-wrap">
+        <input type="text" id="new-city-name" placeholder="Ej: Praga" autocomplete="off" />
+        <ul class="autocomplete-list" id="new-city-name-list"></ul>
+        <input type="hidden" id="new-city-country-code" />
+      </div>
     </div>
 
     <!-- Campos solo para estadía -->
@@ -406,6 +411,43 @@
     </p>
     <button class="btn-primary" onclick="saveEditCityDates()">Guardar cambios</button>
     <button class="btn-secondary" onclick="closeModal('modal-edit-city-dates')">Cancelar</button>
+  </div>
+</div>
+
+<!-- ══ MODAL: EDITAR NOMBRE DE CIUDAD ══ -->
+<div class="modal-overlay" id="modal-edit-city-name">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <h2>🏙️ Editar ciudad</h2>
+    <div class="form-group">
+      <label>Nombre de la ciudad</label>
+      <input type="text" id="edit-city-name-input" placeholder="Ej: Dubrovnik" />
+    </div>
+    <div class="form-group">
+      <label>País (código opcional)</label>
+      <input type="text" id="edit-city-country-input" placeholder="Ej: hr" maxlength="2" style="width:80px;text-transform:lowercase" />
+    </div>
+    <button class="btn-primary" onclick="saveEditCityName()">Guardar</button>
+    <div style="display:flex;gap:8px;margin-top:8px">
+      <button class="btn-secondary" onclick="closeModal('modal-edit-city-name')" style="flex:1">Cancelar</button>
+      <button class="btn-danger" onclick="confirmDeleteCityFromModal()" style="flex:1;display:flex;align-items:center;justify-content:center;gap:6px">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3,6 5,6 21,6"/><path d="M19,6v14a2,2,0,0,1-2,2H7a2,2,0,0,1-2-2V6M8,6V4a2,2,0,0,1,2-2h4a2,2,0,0,1,2,2v2"/></svg>
+        Eliminar
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- ══ MODAL: CONFIRMAR ELIMINAR CIUDAD ══ -->
+<div class="modal-overlay" id="modal-confirm-delete-city">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <h2>🗑️ Eliminar ciudad</h2>
+    <p style="color:var(--text2);margin-bottom:16px" id="confirm-delete-city-msg"></p>
+    <div style="display:flex;gap:8px">
+      <button class="btn-secondary" onclick="closeModal('modal-confirm-delete-city')" style="flex:1">Cancelar</button>
+      <button class="btn-danger" onclick="deleteCityFromModal()" style="flex:1">Eliminar</button>
+    </div>
   </div>
 </div>
 
