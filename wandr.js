@@ -18,6 +18,7 @@ let currentDayIdx = 0;
 let selectedType = 'attraction';
 let selectedTransport = 'walking';
 let currentDetailTab = 'itinerary';
+let isLoadingCountryCodes = false;
 let selectedTicketType = null;
 let editingTicketId = null;
 let _pendingDeleteTicketId = null;
@@ -1099,22 +1100,34 @@ function renderDetail() {
       if (arrDate >= city.startDate && arrDate <= city.endDate) transitDaysSet.add(arrDate);
     });
 
-    const cityTabs = trip.cities.map((ci, i) => {
-      const nightCount = ci.dayTrip ? 0
-        : Math.round((new Date(ci.endDate + 'T00:00:00') - new Date(ci.startDate + 'T00:00:00')) / 86400000);
-      const nightsLabel = ci.dayTrip ? 'excursión' : `${nightCount} noche${nightCount !== 1 ? 's' : ''}`;
-      const flag = getCountryFlag(ci.countryCode);
-      const flagImg = ci.countryCode ? `<img src="https://flagcdn.com/w20/${ci.countryCode.toLowerCase()}.png" class="city-flag" alt="${ci.countryCode.toUpperCase()}" onerror="this.style.display='none'" />` : '';
-      return `<div class="city-tab ${i === currentCityIdx ? 'active' : ''} ${ci.dayTrip ? 'daytrip' : ''}" onclick="switchCity(${i})">
-        <div class="city-tab-content">
-          <div class="city-info">
-            ${flagImg}
-            <span class="city-name">${ci.dayTrip ? '🗺️ ' : ''}${esc(ci.name)}</span>
+    const cityTabs = isLoadingCountryCodes 
+      ? trip.cities.map((ci, i) => `
+        <div class="city-tab city-tab-skeleton ${i === currentCityIdx ? 'active' : ''}" onclick="switchCity(${i})">
+          <div class="city-tab-content">
+            <div class="city-info">
+              <div class="skeleton-flag"></div>
+              <div class="skeleton-name"></div>
+            </div>
+            <div class="skeleton-duration"></div>
           </div>
-          <div class="city-duration">${nightsLabel}</div>
         </div>
-      </div>`;
-    }).join('');
+      `).join('')
+      : trip.cities.map((ci, i) => {
+        const nightCount = ci.dayTrip ? 0
+          : Math.round((new Date(ci.endDate + 'T00:00:00') - new Date(ci.startDate + 'T00:00:00')) / 86400000);
+        const nightsLabel = ci.dayTrip ? 'excursión' : `${nightCount} noche${nightCount !== 1 ? 's' : ''}`;
+        const flag = getCountryFlag(ci.countryCode);
+        const flagImg = ci.countryCode ? `<img src="https://flagcdn.com/w20/${ci.countryCode.toLowerCase()}.png" class="city-flag" alt="${ci.countryCode.toUpperCase()}" onerror="this.style.display='none'" />` : '';
+        return `<div class="city-tab ${i === currentCityIdx ? 'active' : ''} ${ci.dayTrip ? 'daytrip' : ''}" onclick="switchCity(${i})">
+          <div class="city-tab-content">
+            <div class="city-info">
+              ${flagImg}
+              <span class="city-name">${ci.dayTrip ? '🗺️ ' : ''}${esc(ci.name)}</span>
+            </div>
+            <div class="city-duration">${nightsLabel}</div>
+          </div>
+        </div>`;
+      }).join('');
 
     const dayTabs = city.days.map((d, i) => {
       const isTransit = transitDaysSet.has(d.date);
@@ -5196,6 +5209,12 @@ async function loadCountryCodesForExistingCities() {
     return;
   }
 
+  // Iniciar loading
+  isLoadingCountryCodes = true;
+  if (currentTripId) {
+    renderDetail();
+  }
+  
   console.log(`[wandr] Cargando country codes para ${citiesWithoutCode.length} ciudades (solo las nuevas)...`);
 
   let changed = false;
@@ -5255,6 +5274,12 @@ async function loadCountryCodesForExistingCities() {
   // Guardar trips si hubo cambios
   if (changed) {
     save();
+  }
+  
+  // Terminar loading y re-renderizar si estamos en detail
+  isLoadingCountryCodes = false;
+  if (currentTripId) {
+    renderDetail();
   }
   
   console.log(`[wandr] Country codes cargados para ${citiesWithoutCode.length} ciudades`);

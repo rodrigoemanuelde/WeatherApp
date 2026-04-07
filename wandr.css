@@ -175,6 +175,57 @@
       display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 0;
     }
     .city-tabs { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 30px; }
+    .city-tab-skeleton {
+      background: var(--bg2);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 8px 10px;
+      min-width: 70px;
+      max-width: 90px;
+      animation: pulse 1.5s ease-in-out infinite;
+    }
+    .city-tab-skeleton.active {
+      background: var(--accent);
+      border-color: var(--accent);
+      opacity: 0.7;
+    }
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.5; }
+    }
+    .city-tab-skeleton .skeleton-flag {
+      width: 14px;
+      height: 10px;
+      background: var(--border);
+      border-radius: 2px;
+      margin-bottom: 4px;
+    }
+    .city-tab-skeleton .skeleton-name {
+      width: 60px;
+      height: 12px;
+      background: var(--border);
+      border-radius: 3px;
+      margin-bottom: 4px;
+    }
+    .city-tab-skeleton .skeleton-duration {
+      width: 40px;
+      height: 10px;
+      background: var(--border);
+      border-radius: 3px;
+    }
+    .city-tab-skeleton .city-tab-content {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 2px;
+      width: 100%;
+    }
+    .city-tab-skeleton .city-info {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 2px;
+    }
     .city-tab {
       display: flex;
       flex-direction: column;
