@@ -2,109 +2,70 @@
 // ══════════════════════════════════════
 // STATE
 // ══════════════════════════════════════
-let _rawTripsFromStorage = (() => {
-  try {
-    const parsed = JSON.parse(localStorage.getItem('wandr_trips') || '[]');
-    return Array.isArray(parsed) ? parsed : [];
-  } catch(e) {
-    return [];
-  }
-})();
-let trips = _rawTripsFromStorage;
-let currentTripId = null;
-let currentCityIdx = 0;
-let currentDayIdx = 0;
-let selectedType = 'attraction';
-let selectedTransport = 'walking';
-let currentDetailTab = 'itinerary';
-let isLoadingCountryCodes = false;
-let selectedTicketType = null;
-let editingTicketId = null;
-let _pendingDeleteTicketId = null;
-let editingStopId = null;
+const _initialUiState = window.WandrState.createInitialUiState();
+let _rawTripsFromStorage = window.WandrStorage.loadTrips();
+const appStore = window.WandrState.createAppStore({
+  trips: _rawTripsFromStorage,
+  ui: _initialUiState
+});
+window.WandrState.bindStateGlobals(window, appStore, [
+  'currentTripId',
+  'currentCityIdx',
+  'currentDayIdx',
+  'selectedType',
+  'selectedTransport',
+  'currentDetailTab',
+  'isLoadingCountryCodes',
+  'selectedTicketType',
+  'editingTicketId',
+  '_pendingDeleteTicketId',
+  '_pendingDeleteCityId',
+  'editingStopId',
+  '_routeSeparatorRenderToken',
+  '_originalStopOrder'
+]);
+const OSRM_ROUTE_CACHE_KEY = 'wandr_osrm_route_cache_v1';
+const OSRM_ROUTE_CACHE_TTL = 24 * 60 * 60 * 1000;
+const _routeMetricsCache = window.WandrStorage.loadRouteMetricsCache();
+const _routeMetricsInflight = new Map();
+let _weatherCache = {};
+// Initialize weather cache from storage
+const weatherEntries = window.WandrStorage.listWeatherCacheEntries();
+_weatherCache = weatherEntries.reduce((acc, entry) => {
+  acc[entry.cityId] = entry.value;
+  return acc;
+}, {});
+window._weatherCache = _weatherCache;
+let _weatherPrefetching = false;
 
-// ══════════════════════════════════════
-// CITY WIZARD STORE (Zustand-like pattern)
-// ══════════════════════════════════════
-function createCityWizardStore() {
-  let state = {
-    cityEntries: [],
-    cityEntryState: {},
-    transitLegs: {}
-  };
-  let listeners = new Set();
+// Import routing module
+const TSPSolver = window.Wandr.Routing.TSPSolver;
+const RoutingMetrics = window.Wandr.Routing.RoutingMetrics;
+const RouteState = window.Wandr.Routing.RouteState;
 
-  function getState() { return state; }
+// Import cities module
+const cityWizard = window.Wandr.Cities.createCityWizardStore();
 
-  function setState(partial) {
-    state = typeof partial === 'function' ? partial(state) : { ...state, ...partial };
-    listeners.forEach(fn => fn(state));
-  }
-
-  function subscribe(fn) {
-    listeners.add(fn);
-    return () => listeners.delete(fn);
-  }
-
-  // Actions
-  function addCityEntry(id) {
-    setState(s => ({
-      ...s,
-      cityEntries: [...s.cityEntries, id],
-      cityEntryState: {
-        ...s.cityEntryState,
-        [id]: { name: '', hotel: '', addr: '', start: '', end: '' }
-      }
-    }));
-  }
-
-  function removeCityEntry(id) {
-    setState(s => {
-      const newEntries = s.cityEntries.filter(c => c !== id);
-      const newState = { ...s.cityEntryState };
-      delete newState[id];
-      return { ...s, cityEntries: newEntries, cityEntryState: newState };
+// Add syncFromDOM helper (specific to modal UI interaction)
+cityWizard.syncFromDOM = function() {
+  this.setState(s => {
+    const newState = { ...s.cityEntryState };
+    s.cityEntries.forEach(id => {
+      const existing = newState[id] || { name: '', start: '', end: '' };
+      const nameEl = document.getElementById('cn-' + id);
+      const startEl = document.getElementById('cs-' + id);
+      const endEl = document.getElementById('ce-' + id);
+      newState[id] = {
+        name: nameEl?.value || existing.name,
+        hotel: existing.hotel || '',
+        addr: existing.addr || '',
+        start: startEl?.value || existing.start,
+        end: endEl?.value || existing.end
+      };
     });
-  }
-
-  function updateCityField(id, field, value) {
-    setState(s => ({
-      ...s,
-      cityEntryState: {
-        ...s.cityEntryState,
-        [id]: { ...s.cityEntryState[id], [field]: value }
-      }
-    }));
-  }
-
-  function syncFromDOM() {
-    setState(s => {
-      const newState = { ...s.cityEntryState };
-      s.cityEntries.forEach(id => {
-        const existing = newState[id] || { name: '', start: '', end: '' };
-        const nameEl = document.getElementById('cn-' + id);
-        const startEl = document.getElementById('cs-' + id);
-        const endEl = document.getElementById('ce-' + id);
-        newState[id] = {
-          name: nameEl?.value || existing.name,
-          hotel: existing.hotel || '',
-          addr: existing.addr || '',
-          start: startEl?.value || existing.start,
-          end: endEl?.value || existing.end
-        };
-      });
-      return { ...s, cityEntryState: newState };
-    });
-  }
-
-  function reset() {
-    setState({ cityEntries: [], cityEntryState: {}, transitLegs: {} });
-  }
-
-  return { getState, setState, subscribe, addCityEntry, removeCityEntry, updateCityField, syncFromDOM, reset };
-}
-
-const cityWizard = createCityWizardStore();
+    return { ...s, cityEntryState: newState };
+  });
+};
 
 // ══════════════════════════════════════
 // APP SHORTCUTS
@@ -136,6 +97,28 @@ function uid() {
 }
 
 // ══════════════════════════════════════
+// SAFE ACCESSORS
+// ══════════════════════════════════════
+function getCurrentTrip() {
+  if (!currentTripId) return null;
+  return trips.find(t => t.id === currentTripId) || null;
+}
+
+function getCurrentCity() {
+  const trip = getCurrentTrip();
+  if (!trip) return null;
+  if (currentCityIdx == null || currentCityIdx < 0) return null;
+  return trip.cities?.[currentCityIdx] || null;
+}
+
+function getCurrentDay() {
+  const city = getCurrentCity();
+  if (!city) return null;
+  if (currentDayIdx == null || currentDayIdx < 0) return null;
+  return city.days?.[currentDayIdx] || null;
+}
+
+// ══════════════════════════════════════
 // SCREENS
 // ══════════════════════════════════════
 function showScreen(name) {
@@ -164,9 +147,9 @@ function goHome() {
 // ══════════════════════════════════════
 // TRIPS LIST
 // ══════════════════════════════════════
-function renderTrips() {
+function renderTripsLegacy() {
   const c = document.getElementById('trips-container');
-  if (!trips.length) {
+  if (!trips?.length) {
     c.innerHTML = `<div class="empty-state">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
       <p>Aún no tenés viajes</p><small>Tocá "Nuevo viaje" para empezar</small></div>`;
@@ -211,6 +194,74 @@ function renderTrips() {
         <span class="stat-dot"></span>
         <span>${stops} paradas</span>
         ${ticketsCount > 0 ? `<span class="stat-dot"></span><span>🎫 ${ticketsCount}</span>` : ''}
+      </div>
+      <div class="cities-pills">${citiesRow}</div>
+      <button class="trip-card-delete" onclick="event.stopPropagation();deleteTrip('${t.id}')">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/></svg>
+      </button>
+    </div>`;
+  }).join('') + '</div>';
+}
+
+function renderTrips() {
+  const c = document.getElementById('trips-container');
+  const today = new Date().toISOString().slice(0, 10);
+
+  if (!trips?.length) {
+    c.innerHTML = `<section class="trips-hero trips-hero-empty">
+      <div class="trips-hero-copy">
+        <span class="eyebrow">Organiza mejor</span>
+        <h1>Tu proximo viaje empieza aca</h1>
+        <p>Guarda ciudades, hoteles, pasajes y planes diarios en una sola vista.</p>
+      </div>
+    </section>
+    <div class="empty-state empty-state-rich">
+      <div class="empty-state-icon" aria-hidden="true">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+      </div>
+      <p>Crea tu primer itinerario</p>
+      <small>Empieza por las fechas y despues suma ciudades, hoteles y paradas.</small>
+    </div>`;
+    return;
+  }
+
+  c.innerHTML = '<div class="trips-grid">' + trips.map((t, idx) => {
+    const cities = t.cities || [];
+    const days = cities.reduce((a, ci) => a + (ci.days || []).length, 0);
+    const stops = cities.reduce((a, ci) => a + (ci.days || []).reduce((b, d) => b + (d.stops || []).length, 0), 0);
+    const totalNights = cities.reduce((acc, ci) => {
+      if (ci.dayTrip) return acc;
+      const s = new Date(ci.startDate + 'T00:00:00');
+      const e = new Date(ci.endDate + 'T00:00:00');
+      return acc + Math.round((e - s) / 86400000);
+    }, 0);
+    const ticketsCount = (t.tickets || []).filter(tk => !tk.stub).length;
+    const isPast = t.endDate < today;
+    const isOngoing = t.startDate <= today && t.endDate >= today;
+    const citiesRow = cities.length
+      ? cities.map(ci => cityPillHtml(ci)).join('')
+      : `<span class="city-pill" style="opacity:0.5">Sin ciudades</span>`;
+
+    return `<div class="trip-card${isPast ? ' trip-card-past' : ''}${isOngoing ? ' trip-card-ongoing' : ''}" draggable="true" data-trip-id="${t.id}" data-trip-index="${idx}"
+      ondragstart="onDragTripStart(event)"
+      ondragover="onDragTripOver(event)"
+      ondrop="onDropTrip(event)"
+      onclick="if(_justDragged){_justDragged=false;return;}openTrip('${t.id}')">
+      ${isPast ? '<div class="trip-card-badge">Finalizado</div>' : ''}
+      ${isOngoing ? '<div class="trip-card-badge trip-card-badge-ongoing">En curso</div>' : ''}
+      <div class="trip-card-drag-handle">::</div>
+      <div class="trip-card-accent"></div>
+      <h3>${esc(t.name)}</h3>
+      <div class="trip-card-meta">
+        <span>${formatDate(t.startDate)} - ${formatDate(t.endDate)}</span>
+      </div>
+      <div class="trip-card-stats">
+        <span>${days} dias</span>
+        <span class="stat-dot"></span>
+        <span>${totalNights} noches</span>
+        <span class="stat-dot"></span>
+        <span>${stops} paradas</span>
+        ${ticketsCount > 0 ? `<span class="stat-dot"></span><span>${ticketsCount} pasajes</span>` : ''}
       </div>
       <div class="cities-pills">${citiesRow}</div>
       <button class="trip-card-delete" onclick="event.stopPropagation();deleteTrip('${t.id}')">
@@ -277,8 +328,8 @@ function deleteTrip(id) {
   const totalStops = (trip.cities||[]).reduce((a,ci) => a + (ci.days||[]).reduce((b,d) => b + (d.stops||[]).length, 0), 0);
   document.getElementById('confirm-delete-trip-title').textContent = `¿Eliminar "${trip.name}"?`;
   document.getElementById('confirm-delete-trip-body').textContent = totalStops > 0
-    ? `Se eliminarán ${trip.cities.length} ciudad${trip.cities.length!==1?'es':''} y ${totalStops} parada${totalStops!==1?'s':''}. Esta acción no se puede deshacer.`
-    : 'Este viaje no tiene paradas cargadas. Esta acción no se puede deshacer.';
+    ? `Se eliminarán ${trip.cities.length} ciudad${trip.cities.length!==1?'es':''} y ${totalStops} parada${totalStops!==1?'s':''}. Esta accion no se puede deshacer.`
+    : 'Este viaje no tiene paradas cargadas. Esta accion no se puede deshacer.';
   openModal('modal-confirm-delete-trip');
 }
 
@@ -290,180 +341,6 @@ function confirmDeleteTrip() {
   closeModal('modal-confirm-delete-trip');
   renderTrips();
   showToast('🗑️ Viaje eliminado');
-}
-
-// ══════════════════════════════════════
-// NEW TRIP — date validation
-// ══════════════════════════════════════
-function openNewTripModal() {
-  cityWizard.reset();
-  const today = new Date().toISOString().slice(0, 10);
-  document.getElementById('trip-name').value = '';
-  const si = document.getElementById('trip-start');
-  const ei = document.getElementById('trip-end');
-  // Start empty, set min to today (block past dates)
-  si.value = '';
-  si.min = today;
-  si.max = '';
-  // Return starts empty, min will be updated when start is picked
-  ei.value = '';
-  ei.min = today;
-  ei.max = '';
-  document.getElementById('trip-end-error').classList.remove('visible');
-  ei.classList.remove('error');
-  document.getElementById('cities-list').innerHTML = '';
-  const id = uid();
-  cityWizard.addCityEntry(id);
-  renderCityEntries();
-  syncCityMins();
-  wizardGoToStep(1);
-  openModal('modal-new-trip');
-}
-
-function wizardGoToStep(step) {
-  document.querySelectorAll('.wizard-step').forEach((el, i) => {
-    el.classList.toggle('active', i + 1 <= step);
-    el.classList.toggle('completed', i + 1 < step);
-  });
-  document.querySelectorAll('.wizard-content').forEach((el, i) => {
-    el.style.display = (i + 1 === step) ? 'block' : 'none';
-  });
-  if (step === 3) wizardRenderSummary();
-}
-
-function wizardNextStep(currentStep) {
-  if (currentStep === 1) {
-    const name = document.getElementById('trip-name').value.trim();
-    const start = document.getElementById('trip-start').value;
-    const end = document.getElementById('trip-end').value;
-    if (!name) { showToast('⚠️ Ingresá el nombre del viaje'); return; }
-    if (!start || !end) { showToast('⚠️ Elegí las fechas del viaje'); return; }
-    if (end < start) { showToast('⚠️ La fecha fin no puede ser anterior'); return; }
-  }
-  wizardGoToStep(currentStep + 1);
-}
-
-function wizardPrevStep(currentStep) {
-  wizardGoToStep(currentStep - 1);
-}
-
-function wizardRenderSummary() {
-  const name = document.getElementById('trip-name').value.trim();
-  const start = document.getElementById('trip-start').value;
-  const end = document.getElementById('trip-end').value;
-  
-  // Sync DOM values into store
-  cityWizard.syncFromDOM();
-  const state = cityWizard.getState();
-  
-  let citiesHtml = '';
-  let totalDays = 0;
-  state.cityEntries.forEach((id, i) => {
-    const entry = state.cityEntryState[id] || {};
-    const cityName = entry.name || '';
-    const cs = entry.start || '';
-    const ce = entry.end || '';
-    
-    if (cityName && cs && ce) {
-      const s = new Date(cs + 'T00:00:00');
-      const e = new Date(ce + 'T00:00:00');
-      const days = Math.round((e - s) / 86400000) + 1;
-      totalDays += days;
-      
-      citiesHtml += `<span class="city-pill">📍 ${esc(cityName)}</span>`;
-    }
-  });
-  
-  document.getElementById('wizard-summary').innerHTML = `
-    <div class="trip-card" style="margin-bottom:16px">
-      <div class="trip-card-accent"></div>
-      <h3>${esc(name)}</h3>
-      <div class="trip-card-meta">
-        <span>📅 ${formatDate(start)} → ${formatDate(end)}</span>
-        <span>🌤️ ${totalDays} días · ${state.cityEntries.length} ciudad${state.cityEntries.length !== 1 ? 'es' : ''}</span>
-      </div>
-      <div class="cities-pills">${citiesHtml || '<span class="city-pill" style="opacity:0.5">Sin ciudades</span>'}</div>
-    </div>
-    <div class="summary-detail">
-      <div class="summary-detail-title">Detalle del viaje</div>
-      ${renderWizardCitiesDetail()}
-    </div>
-  `;
-}
-
-function renderWizardCitiesDetail() {
-  cityWizard.syncFromDOM();
-  const state = cityWizard.getState();
-  let html = '';
-  state.cityEntries.forEach((id, i) => {
-    const entry = state.cityEntryState[id] || {};
-    const cityName = entry.name || '';
-    const hotelName = entry.hotel || '';
-    const hotelAddr = entry.addr || '';
-    const cs = entry.start || '';
-    const ce = entry.end || '';
-    
-    if (cityName && cs && ce) {
-      const s = new Date(cs + 'T00:00:00');
-      const e = new Date(ce + 'T00:00:00');
-      const nights = Math.round((e - s) / 86400000);
-      
-      html += `
-        <div class="summary-city-card">
-          <div class="summary-city-header">
-            <span class="summary-city-num">${i + 1}</span>
-            <span class="summary-city-name">${esc(cityName)}</span>
-            <span class="summary-city-nights">${nights} noche${nights !== 1 ? 's' : ''}</span>
-          </div>
-          <div class="summary-city-dates">${formatDate(cs)} → ${formatDate(ce)}</div>
-          ${hotelName ? `<div class="summary-city-hotel">🏨 ${esc(hotelName)}${hotelAddr ? ` · ${esc(hotelAddr)}` : ''}</div>` : ''}
-        </div>
-      `;
-    }
-  });
-  return html;
-}
-
-function onTripStartChange() {
-  const startVal = document.getElementById('trip-start').value;
-  const endEl = document.getElementById('trip-end');
-  // Enforce: end cannot be before start
-  endEl.min = startVal;
-  if (endEl.value && endEl.value < startVal) {
-    endEl.value = startVal;
-  }
-  endEl.classList.remove('error');
-  document.getElementById('trip-end-error').classList.remove('visible');
-  syncCityMins();
-}
-
-function onTripEndChange() {
-  const startVal = document.getElementById('trip-start').value;
-  const endEl = document.getElementById('trip-end');
-  const errEl = document.getElementById('trip-end-error');
-  if (endEl.value < startVal) {
-    endEl.classList.add('error');
-    errEl.classList.add('visible');
-  } else {
-    endEl.classList.remove('error');
-    errEl.classList.remove('visible');
-  }
-  syncCityMins();
-}
-
-function syncCityMins() {
-  const tripStart = document.getElementById('trip-start').value;
-  const tripEnd = document.getElementById('trip-end').value;
-  const state = cityWizard.getState();
-  state.cityEntries.forEach(id => {
-    const csi = document.getElementById('cs-' + id);
-    const cei = document.getElementById('ce-' + id);
-    if (!csi || !cei) return;
-    if (tripStart) csi.min = tripStart;
-    if (tripEnd) { csi.max = tripEnd; cei.max = tripEnd; }
-    // keep city-end min in sync with city-start
-    if (csi.value) cei.min = csi.value;
-  });
 }
 
 // ══════════════════════════════════════
@@ -483,22 +360,12 @@ function addCityEntry() {
 
 let _pendingRemoveCityId = null;
 
-function removeCityEntry(id) {
-  const state = cityWizard.getState();
-  if (state.cityEntries.length <= 1) { showToast('⚠️ Necesitás al menos una ciudad'); return; }
-  const cityName = state.cityEntryState[id]?.name || 'esta ciudad';
-  _pendingRemoveCityId = id;
-  document.getElementById('confirm-delete-city-title').textContent = `¿Eliminar "${cityName}"?`;
-  document.getElementById('confirm-delete-city-body').textContent = 'Esta acción no se puede deshacer.';
-  openModal('modal-confirm-delete-city');
-}
-
 function confirmRemoveCityEntry() {
   const id = _pendingRemoveCityId;
   _pendingRemoveCityId = null;
   if (!id) return;
   cityWizard.removeCityEntry(id);
-  closeModal('modal-confirm-delete-city');
+  closeModal('modal-confirm-remove-city-entry');
   renderCityEntries();
   syncCityMins();
   showToast('Ciudad eliminada');
@@ -556,33 +423,20 @@ function renderCityEntries() {
 }
 
 function toggleTransitLegs(fromId, toId) {
-  const legKey = fromId + '_' + toId;
-  const state = cityWizard.getState();
-  if (state.transitLegs[legKey] && state.transitLegs[legKey].length > 0) {
-    // Ask to remove via custom modal instead of native confirm()
-    _pendingTransitLegKey = legKey;
+  // Use store action; returns false if legs exist (caller shows delete modal)
+  const hasLegs = !cityWizard.toggleTransitLegs(fromId, toId);
+  if (hasLegs) {
+    // Store has existing legs; ask user to delete
+    _pendingTransitLegKey = fromId + '_' + toId;
     openModal('modal-confirm-delete-transit');
   } else {
-    // Add first leg
-    cityWizard.setState(s => {
-      const newLegs = { ...s.transitLegs };
-      if (!newLegs[legKey]) newLegs[legKey] = [];
-      newLegs[legKey].push({ type: 'flight', fromTerminal: '', toTerminal: '', depTime: '', arrTime: '', viaCity: '' });
-      return { transitLegs: newLegs };
-    });
     renderCityEntries();
     syncCityMins();
   }
 }
 
 function addTransitLeg(fromId, toId) {
-  const legKey = fromId + '_' + toId;
-  cityWizard.setState(s => {
-    const newLegs = { ...s.transitLegs };
-    if (!newLegs[legKey]) newLegs[legKey] = [];
-    newLegs[legKey].push({ type: 'flight', fromTerminal: '', toTerminal: '', depTime: '', arrTime: '', viaCity: '' });
-    return { transitLegs: newLegs };
-  });
+  cityWizard.addTransitLeg(fromId, toId);
   renderCityEntries();
   syncCityMins();
 }
@@ -596,7 +450,7 @@ function removeTransitLeg(fromId, toId, idx) {
   const leg = state.transitLegs[legKey]?.[idx];
   const legType = leg?.type || 'tramo';
   document.getElementById('confirm-delete-transit-leg-title').textContent = `¿Eliminar ${legType}?`;
-  document.getElementById('confirm-delete-transit-leg-body').textContent = 'Se eliminará este tramo de viaje. Esta acción no se puede deshacer.';
+  document.getElementById('confirm-delete-transit-leg-body').textContent = 'Se eliminará este tramo de viaje. Esta accion no se puede deshacer.';
   openModal('modal-confirm-delete-transit-leg');
 }
 
@@ -604,37 +458,20 @@ function confirmRemoveTransitLeg() {
   if (!_pendingTransitLegRemove) return;
   const { fromId, toId, idx } = _pendingTransitLegRemove;
   _pendingTransitLegRemove = null;
-  const legKey = fromId + '_' + toId;
-  cityWizard.setState(s => {
-    if (!s.transitLegs[legKey]) return s;
-    const newLegs = { ...s.transitLegs };
-    newLegs[legKey].splice(idx, 1);
-    if (newLegs[legKey].length === 0) delete newLegs[legKey];
-    return { transitLegs: newLegs };
-  });
+  cityWizard.removeTransitLeg(fromId, toId, idx);
   closeModal('modal-confirm-delete-transit-leg');
   renderCityEntries();
   syncCityMins();
 }
 
 function setLegType(fromId, toId, idx, type) {
-  const legKey = fromId + '_' + toId;
-  cityWizard.setState(s => {
-    if (s.transitLegs[legKey] && s.transitLegs[legKey][idx]) {
-      s.transitLegs[legKey][idx].type = type;
-    }
-    return s;
-  });
+  cityWizard.setLegType(fromId, toId, idx, type);
   renderCityEntries();
   syncCityMins();
 }
 
 function updateLegField(fromId, toId, idx, field, value) {
-  const legKey = fromId + '_' + toId;
-  const state = cityWizard.getState();
-  if (state.transitLegs[legKey] && state.transitLegs[legKey][idx]) {
-    state.transitLegs[legKey][idx][field] = value;
-  }
+  cityWizard.updateLegField(fromId, toId, idx, field, value);
 }
 
 function renderTransitLegsSection(fromId, toId, legs) {
@@ -739,75 +576,54 @@ function createTrip() {
   if (!start || !end) { showToast('⚠️ Ingresá las fechas del viaje'); return; }
   if (end < start) { showToast('⚠️ La fecha fin no puede ser anterior al inicio'); return; }
 
-  const cities = [];
+  // Validate all cities before building trip
+  const citiesData = [];
   for (let i = 0; i < state.cityEntries.length; i++) {
     const id = state.cityEntries[i];
     const entry = state.cityEntryState[id] || {};
     const cityName = (entry.name || '').trim();
-    const hotelName = (entry.hotel || '').trim();
-    const hotelAddr = (entry.addr || '').trim();
-    const cs = entry.start || '';
-    const ce = entry.end || '';
 
     if (!cityName) { showToast(`⚠️ Ingresá el nombre de la ciudad ${i + 1}`); return; }
-    if (!cs || !ce) { showToast(`⚠️ Completá las fechas de ${cityName}`); return; }
-    if (ce < cs) { showToast(`⚠️ En ${cityName}: la salida debe ser igual o posterior a la llegada`); return; }
 
-    // Use trip dates as fallback if city dates are outside (lenient — just warn don't block)
-    const cityStart = cs < start ? start : cs;
-    const cityEnd = ce > end ? end : ce;
-
-    // Validate overlap against already-collected cities (allow shared day for check-out/check-in same day)
-    const overlap = cities.find(c => cityStart < c.endDate && cityEnd > c.startDate);
-    if (overlap) {
-      showToast(`⚠️ Las fechas de "${cityName}" se solapan con "${overlap.name}" (${formatDate(overlap.startDate)} → ${formatDate(overlap.endDate)})`);
+    // Validate city date range
+    const validation = window.Wandr.Cities.validateCityDateRange({
+      name: cityName,
+      start: entry.start || '',
+      end: entry.end || ''
+    });
+    if (!validation.valid) {
+      showToast(`⚠️ ${cityName}: ${validation.reason}`);
       return;
     }
 
-    cities.push({ id: uid(), name: cityName, hotelName, hotelAddr, startDate: cityStart, endDate: cityEnd, days: buildDays(cityStart, cityEnd) });
+    citiesData.push({
+      name: cityName,
+      start: entry.start,
+      end: entry.end,
+      startDate: entry.start < start ? start : entry.start,
+      endDate: entry.end > end ? end : entry.end
+    });
   }
 
-  const trip = { id: uid(), name, startDate: start, endDate: end, cities, tickets: [] };
-
-  // Generate chained tickets from transitLegs
-  for (let i = 0; i < state.cityEntries.length - 1; i++) {
-    const fromId = state.cityEntries[i];
-    const toId = state.cityEntries[i + 1];
-    const legKey = fromId + '_' + toId;
-    const legs = state.transitLegs[legKey];
-    if (legs && legs.length > 0) {
-      const fromEntry = state.cityEntryState[fromId] || {};
-      const toEntry = state.cityEntryState[toId] || {};
-      const fromCityName = (fromEntry.name || '').trim();
-      const toCityName = (toEntry.name || '').trim();
-      const fromCityEnd = fromEntry.end || '';
-      const toCityStart = toEntry.start || '';
-      // All legs in this connector share a chainId
-      const chainId = uid();
-      legs.forEach((leg, li) => {
-        const isFirst = li === 0;
-        const isLast  = li === legs.length - 1;
-        trip.tickets.push({
-          id: uid(),
-          type: leg.type || 'flight',
-          company: '',
-          fromCity: isFirst ? fromCityName : (legs[li-1].viaCity || fromCityName),
-          toCity:   isLast  ? toCityName   : (leg.viaCity || toCityName),
-          depTerminal: leg.fromTerminal || '',
-          arrTerminal: leg.toTerminal   || '',
-          depGate: '', arrGate: '',
-          depDate: isFirst ? fromCityEnd  : fromCityEnd,
-          depTime: leg.depTime || '',
-          arrDate: isLast  ? toCityStart  : toCityStart,
-          arrTime: leg.arrTime || '',
-          chainId: legs.length > 1 ? chainId : null,
-          stub: false,
-        });
-      });
+  // Validate no overlaps in cities
+  const overlapCheck = window.Wandr.Cities.validateCityOverlap(citiesData);
+  if (!overlapCheck.valid) {
+    const conflict = overlapCheck.conflicts[0];
+    if (conflict) {
+      const city1 = citiesData[conflict.idx1];
+      const city2 = citiesData[conflict.idx2];
+      showToast(`⚠️ Las fechas de "${city1.name}" se solapan con "${city2.name}"`);
     }
+    return;
   }
 
-  // Auto-generate stub tickets for transitions without explicit legs
+  // Use cities module to build trip from wizard state
+  const trip = window.Wandr.Cities.buildTripFromWizardState(state, {
+    name,
+    startDate: start,
+    endDate: end
+  });
+
   trips.push(trip);
   save();
   ensureTransitionTickets(trip);
@@ -821,25 +637,11 @@ function createTrip() {
   }, 150);
 }
 
-function buildDays(start, end) {
-  const days = [];
-  let d = new Date(start + 'T00:00:00');
-  const e = new Date(end + 'T00:00:00');
-  while (d <= e) {
-    days.push({ date: d.toISOString().slice(0, 10), stops: [] });
-    d.setDate(d.getDate() + 1);
-  }
-  return days;
-}
-
 // ══════════════════════════════════════
 // TRIP DETAIL
 // ══════════════════════════════════════
 function openTrip(id) {
-  currentTripId = id;
-  currentCityIdx = 0;
-  currentDayIdx = 0;
-  currentDetailTab = 'itinerary';
+  appStore.openTrip(id);
   showScreen('detail');
   switchDetailTab('itinerary');
   renderDetail();
@@ -847,7 +649,7 @@ function openTrip(id) {
 }
 
 function switchDetailTab(tab) {
-  currentDetailTab = tab;
+  appStore.setDetailTab(tab);
   document.getElementById('dtab-itinerary').classList.toggle('active', tab === 'itinerary');
   document.getElementById('dtab-overview').classList.toggle('active', tab === 'overview');
   document.getElementById('dtab-tickets').classList.toggle('active', tab === 'tickets');
@@ -933,7 +735,7 @@ function renderOverview() {
       const wd = new Date(d.date + 'T00:00:00').toLocaleDateString('es-AR', { weekday: 'short' }).slice(0, 3).toLowerCase();
       const dd = d.date.slice(8);
       const weatherData = _weatherCache && _weatherCache[city.id] && _weatherCache[city.id].days ? _weatherCache[city.id].days[d.date] : null;
-      const weatherHtml = buildWeatherChipHtml(weatherData);
+      const weatherHtml = window.Wandr && window.Wandr.WeatherService ? window.Wandr.WeatherService.buildWeatherChipHtml(weatherData) : '';
       const cls = ['ov-day-chip', isTransit ? 'transit' : (hasStops ? 'has' : '')].filter(Boolean).join(' ');
       const cityIdx = trip.cities.findIndex(c => c.id === city.id);
       const dayIdx  = (city.days || []).findIndex(d2 => d2.date === d.date);
@@ -1026,8 +828,8 @@ function renderOverview() {
 
   // Fetch weather for each city async and update day chips (ONE call per city, NOT per day)
   sortedCities.forEach((city, ci) => {
-    getWeatherForCity(city, trip).then(weatherData => {
-      if (!weatherData || !weatherData.daily) return;
+    (window.Wandr && window.Wandr.WeatherService ? window.Wandr.WeatherService.getWeatherForCity(city, trip) : Promise.resolve(null)).then(weatherData => {
+      if (!weatherData || !weatherData.days) return;
       const cityCards = el.querySelectorAll('.ov-city-card');
       if (!cityCards[ci]) return;
       const dayStrip = cityCards[ci].querySelector('.ov-day-strip');
@@ -1035,9 +837,9 @@ function renderOverview() {
       const chips = dayStrip.querySelectorAll('.ov-day-chip');
       (city.days || []).forEach((d, dayIdx) => {
         if (dayIdx >= chips.length) return;
-        const dateIndex = weatherData.daily.time.findIndex(date => date === d.date);
-        if (dateIndex < 0) return;
-        const wmo = mapWmoCode(weatherData.daily.weather_code[dateIndex]);
+        const dayData = weatherData.days[d.date];
+        if (!dayData) return;
+        const wmo = window.Wandr && window.Wandr.WeatherService ? window.Wandr.WeatherService.mapWmoCode(dayData.wmoCode) : { icon: '' };
         const chip = chips[dayIdx];
         const dot = chip.querySelector('.ov-dc-dot');
         if (dot) {
@@ -1050,560 +852,14 @@ function renderOverview() {
 }
 
 function ovGoToDay(cityIdx, dayIdx) {
-  currentCityIdx = cityIdx;
-  currentDayIdx  = dayIdx;
+  appStore.selectCityDay(cityIdx, dayIdx);
   switchDetailTab('itinerary');
   renderDetail();
   window.scrollTo(0, 0);
 }
 
 function renderDetail() {
-  try {
-    const trip = trips.find(t => t.id === currentTripId);
-    if (!trip) { document.getElementById('detail-content').innerHTML = '<p style="color:var(--danger);padding:20px">Error: viaje no encontrado.</p>'; return; }
-
-    const city = trip.cities[currentCityIdx] || trip.cities[0];
-    if (!city) { document.getElementById('detail-content').innerHTML = '<p style="color:var(--danger);padding:20px">Error: no hay ciudades en este viaje.</p>'; return; }
-
-    // Always rebuild the days list from city.startDate/endDate as source of truth,
-    // preserving any stops that fall within those dates
-    const stopsMap = {};
-    (city.days || []).forEach(d => { if (d.stops?.length) stopsMap[d.date] = d.stops; });
-    const correctDays = buildDays(city.startDate, city.endDate).map(d => ({
-      ...d, stops: stopsMap[d.date] || []
-    }));
-    // Only save if something actually changed
-    if (JSON.stringify(city.days?.map(d => d.date)) !== JSON.stringify(correctDays.map(d => d.date))) {
-      city.days = correctDays;
-      save();
-    } else {
-      city.days = correctDays;
-    }
-
-    if (currentDayIdx >= city.days.length) currentDayIdx = 0;
-    const day = city.days[currentDayIdx];
-    if (!day) { document.getElementById('detail-content').innerHTML = '<p style="color:var(--danger);padding:20px">Error: día no encontrado.</p>'; return; }
-
-    const stops = day.stops || [];
-
-    // Detect which days are transit days for this city
-    // A day is "transit" if tickets depart or arrive on that date involving this city
-    const trip_tickets = trip.tickets || [];
-    const transitDaysSet = new Set();
-    trip_tickets.forEach(tk => {
-      const depDate = tk.depDate;
-      const arrDate = tk.arrDate;
-      // If this city is the departure city and the dep date is in this city's range
-      if (depDate >= city.startDate && depDate <= city.endDate) transitDaysSet.add(depDate);
-      // If this city is the arrival city and arr date is in this city's range
-      if (arrDate >= city.startDate && arrDate <= city.endDate) transitDaysSet.add(arrDate);
-    });
-
-    const cityTabs = isLoadingCountryCodes 
-      ? trip.cities.map((ci, i) => `
-        <div class="city-tab city-tab-skeleton ${i === currentCityIdx ? 'active' : ''}" onclick="switchCity(${i})">
-          <div class="city-tab-content">
-            <div class="city-info">
-              <div class="skeleton-flag"></div>
-              <div class="skeleton-name"></div>
-            </div>
-            <div class="skeleton-duration"></div>
-          </div>
-        </div>
-      `).join('')
-      : trip.cities.map((ci, i) => {
-        const nightCount = ci.dayTrip ? 0
-          : Math.round((new Date(ci.endDate + 'T00:00:00') - new Date(ci.startDate + 'T00:00:00')) / 86400000);
-        const nightsLabel = ci.dayTrip ? 'excursión' : `${nightCount} noche${nightCount !== 1 ? 's' : ''}`;
-        const flag = getCountryFlag(ci.countryCode);
-        const flagImg = ci.countryCode ? `<img src="https://flagcdn.com/w20/${ci.countryCode.toLowerCase()}.png" class="city-flag" alt="${ci.countryCode.toUpperCase()}" onerror="this.style.display='none'" />` : '';
-        return `<div class="city-tab ${i === currentCityIdx ? 'active' : ''} ${ci.dayTrip ? 'daytrip' : ''}" onclick="switchCity(${i})">
-          <div class="city-tab-content">
-            <div class="city-info">
-              ${flagImg}
-              <span class="city-name">${ci.dayTrip ? '🗺️ ' : ''}${esc(ci.name)}</span>
-            </div>
-            <div class="city-duration">${nightsLabel}</div>
-          </div>
-        </div>`;
-      }).join('');
-
-    const dayTabs = city.days.map((d, i) => {
-      const isTransit = transitDaysSet.has(d.date);
-      return `<div class="day-tab ${i === currentDayIdx ? 'active' : ''} ${isTransit ? 'transit' : ''}" onclick="switchDay(${i})">
-        <small>${isTransit ? '✈' : getWeekday(d.date)}</small><strong>${d.date.slice(8)}</strong>
-      </div>`;
-    }).join('');
-
-    // Stops rendering
-    let stopsHtml = '';
-
-    // Declare today's arrival AND departure tickets here so they're available everywhere
-    const todayArrivalTickets = trip_tickets.filter(tk =>
-      tk.arrDate === day.date && tk.toCity === city.name
-    );
-    const todayArrival = todayArrivalTickets[0] || null;
-
-    const todayDepartureTickets = trip_tickets.filter(tk =>
-      tk.depDate === day.date && tk.fromCity === city.name
-    );
-    const todayDeparture = todayDepartureTickets[0] || null;
-
-    // Check if this day has a *defined* arrival ticket → last stop needs connector line
-    const dayHasArrival = !!(todayArrival && city.hotelName && (todayArrival.type || todayArrival.arrTerminal || todayArrival.toTerminal));
-
-    // Si hay vuelo de llegada, mostrar: 1) Terminal 2) Hotel 3) Paradas
-    if (todayArrival && (todayArrival.type || todayArrival.arrTerminal || todayArrival.toTerminal)) {
-      // 1. Mostrar terminal de llegada
-      const terminalName = todayArrival.arrTerminalFull || todayArrival.arrTerminal || todayArrival.toTerminal || null;
-      const terminalLabel = terminalName || ticketTypeLabel(todayArrival.type) + ' llegada';
-      const arrTimeStr = todayArrival.arrTime ? ` · ${todayArrival.arrTime}` : '';
-      const dest = city.hotelAddr || city.hotelName;
-      const routeTerminalToHotel = terminalName && dest
-        ? `https://www.google.com/maps/dir/?api=1&origin=${encodeURIComponent(terminalName)}&destination=${encodeURIComponent(dest)}&travelmode=transit`
-        : null;
-      stopsHtml += `<div class="transit-separator">
-        <div class="transit-separator-label">Llegada a la ciudad</div>
-      </div>
-      <div class="stop-item stop-transit">
-        <div class="stop-connector">
-          <div class="stop-dot transit-dot" style="background:rgba(127,207,184,0.2);border:2px solid var(--accent2);font-size:0.82rem">${ticketTypeIcon(todayArrival.type)}</div>
-          ${(stops.length || dayHasArrival) ? '<div class="stop-line"></div>' : ''}
-        </div>
-        <div class="stop-body">
-          <span class="transport-badge ${ticketTransportClass(todayArrival.type)}">${ticketTypeIcon(todayArrival.type)} ${ticketTypeLabel(todayArrival.type)}</span>
-          <div class="stop-name" style="margin-top:6px">${esc(terminalLabel)}</div>
-          <div class="stop-meta">
-            <span style="color:var(--accent2)">Punto de llegada${arrTimeStr}</span>
-            ${todayArrival.company ? `<span>${esc(todayArrival.company)}</span>` : ''}
-          </div>
-          <div class="stop-actions">
-            ${terminalName ? `<a class="btn-maps" href="${mapsUrl(terminalName)}" target="_blank">📌 Ver en Maps</a>` : ''}
-            ${routeTerminalToHotel ? `<a class="btn-maps btn-return-chip" href="${routeTerminalToHotel}" target="_blank">🏨 Cómo llegar al hotel</a>` : ''}
-          </div>
-        </div>
-      </div>`;
-      
-      // 2. Mostrar hotel después de la terminal
-      if (city.hotelName) {
-        const hotelRouteFromTerminal = terminalName && city.hotelAddr
-          ? `https://www.google.com/maps/dir/?api=1&origin=${encodeURIComponent(terminalName)}&destination=${encodeURIComponent(city.hotelAddr)}&travelmode=transit`
-          : null;
-        
-        // Determinar si es el primer o último día de la ciudad
-        const isFirstDayOfTrip = day.date === city.startDate;
-        const isLastDayOfTrip = day.date === city.endDate;
-        
-        let hotelMeta = '';
-        if (isFirstDayOfTrip && city.checkInTime) {
-          hotelMeta = `<span class="hotel-time-tag checkin">✅ Check-in ${city.checkInTime}</span>`;
-        } else if (isFirstDayOfTrip && !city.checkInTime) {
-          hotelMeta = `<span class="hotel-time-tag checkin-empty" onclick="openEditHotelModal()">✅ Agregar check-in</span>`;
-        } else if (isLastDayOfTrip && city.checkOutTime) {
-          hotelMeta = `<span class="hotel-time-tag checkout">🚪 Check-out ${city.checkOutTime}</span>`;
-        } else if (isLastDayOfTrip && !city.checkOutTime) {
-          hotelMeta = `<span class="hotel-time-tag checkout-empty" onclick="openEditHotelModal()">🚪 Agregar check-out</span>`;
-        } else {
-          hotelMeta = `<span style="color:var(--accent2)">Hotel</span>`;
-        }
-        
-        stopsHtml += `<div class="stop-item">
-          <div class="stop-connector">
-            <div class="stop-dot hotel">🏨</div>
-            ${stops.length ? '<div class="stop-line"></div>' : ''}
-          </div>
-          <div class="stop-body">
-            <div class="stop-name">${esc(city.hotelName)}</div>
-            <div class="stop-meta">
-              ${hotelMeta}
-              ${city.hotelAddr ? `<span>📍 ${esc(city.hotelAddr)}</span>` : ''}
-            </div>
-            <div class="stop-actions">
-              ${city.hotelAddr ? `<a class="btn-maps" href="${mapsUrl(city.hotelAddr)}" target="_blank">📌 Ver en Maps</a>` : ''}
-              ${hotelRouteFromTerminal ? `<a class="btn-maps btn-return-chip" href="${hotelRouteFromTerminal}" target="_blank">📍 Cómo llegar</a>` : ''}
-            </div>
-          </div>
-        </div>`;
-      }
-    } else if (city.hotelName) {
-      // Si no hay vuelo de llegada, mostrar hotel como primer elemento
-      // Determinar si es el primer o último día de la ciudad
-      const isFirstDayOfTrip = day.date === city.startDate;
-      const isLastDayOfTrip = day.date === city.endDate;
-      
-      let hotelMeta = '';
-      if (isFirstDayOfTrip && city.checkInTime) {
-        hotelMeta = `<span class="hotel-time-tag checkin">✅ Check-in ${city.checkInTime}</span>`;
-      } else if (isFirstDayOfTrip && !city.checkInTime) {
-        hotelMeta = `<span class="hotel-time-tag checkin-empty" onclick="openEditHotelModal()">✅ Agregar check-in</span>`;
-      } else if (isLastDayOfTrip && city.checkOutTime) {
-        hotelMeta = `<span class="hotel-time-tag checkout">🚪 Check-out ${city.checkOutTime}</span>`;
-      } else if (isLastDayOfTrip && !city.checkOutTime) {
-        hotelMeta = `<span class="hotel-time-tag checkout-empty" onclick="openEditHotelModal()">🚪 Agregar check-out</span>`;
-      } else {
-        hotelMeta = `<span style="color:var(--accent2)">Punto de partida</span>`;
-      }
-      
-      stopsHtml += `<div class="stop-item">
-        <div class="stop-connector">
-          <div class="stop-dot hotel">🏨</div>
-          ${stops.length ? '<div class="stop-line"></div>' : ''}
-        </div>
-        <div class="stop-body">
-          <div class="stop-name">${esc(city.hotelName)}</div>
-          <div class="stop-meta">
-            ${hotelMeta}
-            ${city.hotelAddr ? `<span>📍 ${esc(city.hotelAddr)}</span>` : ''}
-          </div>
-          <div class="stop-actions">
-            ${city.hotelAddr ? `<a class="btn-maps" href="${mapsUrl(city.hotelAddr)}" target="_blank">📌 Ver en Maps</a></div>` : ''}
-          </div>
-        </div>
-      </div>`;
-    }
-
-    stops.forEach((stop, idx) => {
-      const isLast = idx === stops.length - 1;
-      const isVisuallyLast = isLast && !dayHasArrival && !todayDeparture;
-      
-      // Primera parada: siempre desde el hotel
-      // Segunda+: desde la parada anterior
-      const prevStop = idx === 0 ? null : stops[idx - 1];
-      const hotelOrigin = city.hotelAddr || city.hotelName || city.name;
-      
-      // Calcular distancia desde el origen (hotel o parada anterior)
-      let distText = '';
-      if (idx === 0 && city.hotelLat && city.hotelLon && stop.lat && stop.lon) {
-        distText = formatDistance(haversine(city.hotelLat, city.hotelLon, stop.lat, stop.lon));
-      } else if (prevStop && prevStop.lat && prevStop.lon && stop.lat && stop.lon) {
-        distText = formatDistance(haversine(prevStop.lat, prevStop.lon, stop.lat, stop.lon));
-      }
-      
-      // Transport label for the separator
-      const tpLabel = transportLabel(stop.transport);
-      const tpIconStr = transportIcon(stop.transport);
-      
-      // Distance separator bar (between cards)
-      let distSeparator = '';
-      if (distText) {
-        const timeText = estimateTravelTime(
-          idx === 0 && city.hotelLat && city.hotelLon && stop.lat && stop.lon
-            ? haversine(city.hotelLat, city.hotelLon, stop.lat, stop.lon)
-            : (prevStop && prevStop.lat && prevStop.lon && stop.lat && stop.lon
-              ? haversine(prevStop.lat, prevStop.lon, stop.lat, stop.lon)
-              : 0),
-          stop.transport
-        );
-        const icon = idx === 0 ? '🏨' : tpIconStr;
-        distSeparator = `<div class="stop-dist-separator">
-          <div class="stop-dist-separator-line"></div>
-          <span class="stop-dist-separator-text">${icon} ${distText} · ~${timeText} · ${tpLabel}</span>
-          <div class="stop-dist-separator-line"></div>
-        </div>`;
-      }
-      
-      // Determinar origen: hotel para primera parada, parada anterior para las demás
-      let originCoords = null;
-      let originName = null;
-      
-      if (idx === 0) {
-        // Primera parada: usar hotel
-        originName = hotelOrigin;
-        if (city.hotelLat && city.hotelLon) {
-          originCoords = { lat: city.hotelLat, lon: city.hotelLon };
-        }
-      } else if (prevStop) {
-        // Usar coords de la parada anterior si existen
-        if (prevStop.lat && prevStop.lon) {
-          originCoords = { lat: prevStop.lat, lon: prevStop.lon };
-        } else {
-          originName = prevStop.address || prevStop.name;
-        }
-      }
-      
-      const gmMode = googleMapsMode(stop.transport);
-      
-      // Generar URL de ruta
-      let routeUrl = '';
-      if (stop.lat && stop.lon && originCoords) {
-        // Usar coordenadas para mejor precisión
-        routeUrl = `https://www.google.com/maps/dir/?api=1&origin=${originCoords.lat},${originCoords.lon}&destination=${stop.lat},${stop.lon}&travelmode=${gmMode}`;
-      } else if (originName && stop.address) {
-        routeUrl = `https://www.google.com/maps/dir/?api=1&origin=${encodeURIComponent(originName)}&destination=${encodeURIComponent(stop.address)}&travelmode=${gmMode}`;
-      } else if (stop.address || stop.name) {
-        routeUrl = mapsUrl(stop.address || stop.name);
-      }
-
-      // Generar URL para volver al hotel
-      let returnToHotelUrl = '';
-      if (city.hotelAddr || city.hotelName) {
-        const hotelDest = city.hotelAddr || city.hotelName;
-        if (stop.lat && stop.lon && city.hotelLat && city.hotelLon) {
-          returnToHotelUrl = `https://www.google.com/maps/dir/?api=1&origin=${stop.lat},${stop.lon}&destination=${city.hotelLat},${city.hotelLon}&travelmode=transit`;
-        } else {
-          returnToHotelUrl = `https://www.google.com/maps/dir/?api=1&origin=${encodeURIComponent(stop.address || stop.name)}&destination=${encodeURIComponent(hotelDest)}&travelmode=transit`;
-        }
-      }
-      
-      stopsHtml += distSeparator;
-      stopsHtml += `<div class="stop-item ${isVisuallyLast ? 'stop-last' : ''}" data-stopid="${stop.id}">
-        <div class="drag-handle" title="Arrastrar para reordenar">
-          <svg width="14" height="20" viewBox="0 0 14 20" fill="currentColor"><circle cx="4" cy="4" r="1.8"/><circle cx="10" cy="4" r="1.8"/><circle cx="4" cy="10" r="1.8"/><circle cx="10" cy="10" r="1.8"/><circle cx="4" cy="16" r="1.8"/><circle cx="10" cy="16" r="1.8"/></svg>
-        </div>
-        <div class="stop-connector">
-          <div class="stop-dot ${typeDotClass(stop.type)}">${typeIcon(stop.type)}</div>
-          ${!isVisuallyLast ? '<div class="stop-line"></div>' : ''}
-        </div>
-        <div class="stop-body">
-          <span class="transport-badge ${transportClass(stop.transport)}">${transportIcon(stop.transport)} ${transportLabel(stop.transport)}</span>
-          <div class="stop-name" style="margin-top:6px">${esc(stop.name)}</div>
-          <div class="stop-meta">
-            ${stop.address ? `<span>📍 ${esc(stop.address)}</span>` : ''}
-            ${(stop.timeFrom || stop.timeTo) ? `<span>🕐 ${stop.timeFrom || ''}${stop.timeFrom && stop.timeTo ? ' — ' : ''}${stop.timeTo || ''}</span>` : ''}
-            ${stop.note ? `<span>💬 ${esc(stop.note)}</span>` : ''}
-          </div>
-          <div class="stop-actions">
-            <a class="btn-maps" href="${routeUrl}" target="_blank">🗺️ Cómo llegar</a>
-            <a class="btn-maps" href="${mapsUrl(stop.address || stop.name)}" target="_blank">📌 Ver lugar</a>
-            ${returnToHotelUrl ? `<a class="btn-maps btn-return-chip" href="${returnToHotelUrl}" target="_blank">🏨 Volver al hotel</a>` : ''}
-            <button class="btn-edit-stop" onclick="openEditStopModal('${stop.id}')">
-              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
-            </button>
-            <button class="btn-delete-stop" onclick="deleteStop('${stop.id}')">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-            </button>
-          </div>
-        </div>
-      </div>`;
-    });
-
-    // ── Parada automática: terminal de salida si hay pasaje que sale hoy ──
-    let departureTerminalHtml = '';
-    // Only show if ticket has at least type or terminal defined (not a blank stub)
-    if (todayDeparture && (todayDeparture.type || todayDeparture.depTerminal || todayDeparture.fromTerminal)) {
-      const terminalName = todayDeparture.depTerminalFull || todayDeparture.depTerminal || todayDeparture.fromTerminal || null;
-      const terminalLabel = terminalName || ticketTypeLabel(todayDeparture.type) + ' salida';
-      const depTimeStr = todayDeparture.depTime ? ` · ${todayDeparture.depTime}` : '';
-      const gateStr = todayDeparture.depGate ? ` · Puerta ${todayDeparture.depGate}` : '';
-      // Origin: always the hotel (not the last stop)
-      const hotelOrigin = city.hotelAddr || city.hotelName || null;
-      const dest = terminalName || null;
-      const routeToTerminal = hotelOrigin && dest
-        ? `https://www.google.com/maps/dir/?api=1&origin=${encodeURIComponent(hotelOrigin)}&destination=${encodeURIComponent(dest)}&travelmode=transit`
-        : dest ? mapsUrl(dest) : '';
-
-      departureTerminalHtml = `<div class="transit-separator">
-        <div class="transit-separator-label">Salida de la ciudad</div>
-      </div>
-      <div class="stop-item stop-transit">
-        <div class="stop-connector">
-          <div class="stop-line" style="min-height:14px"></div>
-          <div class="stop-dot transit-dot" style="background:rgba(232,184,109,0.2);border:2px solid var(--accent3);font-size:0.82rem">${ticketTypeIcon(todayDeparture.type)}</div>
-        </div>
-        <div class="stop-body" style="padding-top:4px">
-          <span class="transport-badge ${ticketTransportClass(todayDeparture.type)}">${ticketTypeIcon(todayDeparture.type)} ${ticketTypeLabel(todayDeparture.type)}</span>
-          <div class="stop-name" style="margin-top:6px">${esc(terminalLabel)}</div>
-          <div class="stop-meta">
-            ${terminalName ? `<span>📍 ${esc(terminalName)}</span>` : ''}
-            <span style="color:var(--accent)">${todayDeparture.company ? esc(todayDeparture.company) + ' · ' : ''}Salida${depTimeStr}${gateStr}</span>
-          </div>
-          <div class="stop-actions">
-            ${routeToTerminal ? `<a class="btn-maps" href="${routeToTerminal}" target="_blank">🗺️ Cómo llegar a la terminal</a>` : ''}
-            ${terminalName ? `<a class="btn-maps" href="${mapsUrl(terminalName)}" target="_blank">📌 Ver terminal</a>` : ''}
-          </div>
-        </div>
-      </div>`;
-    }
-
-    // ── Parada automática: hotel de llegada si hay pasaje que llega hoy ──
-    // NOTA: Ya no se usa porque ahora el hotel se muestra inmediatamente después del vuelo de llegada
-    // Esta lógica está comentada para evitar duplicación
-    let arrivalHotelHtml = '';
-    /*
-    if (todayArrival && city.hotelName && (todayArrival.type || todayArrival.arrTerminal || todayArrival.toTerminal)) {
-      // Origin: last user stop if any, otherwise the arrival terminal
-      const lastStopAddr = stops.length > 0 ? (stops[stops.length-1].address || stops[stops.length-1].name) : null;
-      const origin = lastStopAddr || todayArrival.arrTerminal || todayArrival.toTerminal || todayArrival.toCity;
-      const dest = city.hotelAddr || city.hotelName;
-      const routeToHotel = origin && dest
-        ? `https://www.google.com/maps/dir/?api=1&origin=${encodeURIComponent(origin)}&destination=${encodeURIComponent(dest)}&travelmode=transit`
-        : dest ? mapsUrl(dest) : '';
-
-      arrivalHotelHtml = `<div class="stop-item stop-last arrival-hotel-stop">
-        <div class="stop-connector">
-          <div class="stop-line" style="min-height:14px"></div>
-          <div class="stop-dot hotel">🏨</div>
-        </div>
-        <div class="stop-body" style="padding-top:4px">
-          <div class="stop-name">${esc(city.hotelName)}</div>
-          <div class="stop-meta">
-            ${city.hotelAddr ? `<span>📍 ${esc(city.hotelAddr)}</span>` : ''}
-            <span style="color:var(--accent3);font-size:0.7rem">Check-in</span>
-          </div>
-          <div class="stop-actions">
-            ${city.hotelAddr ? `<a class="btn-maps" href="${mapsUrl(city.hotelAddr)}" target="_blank">📌 Ver en Maps</a>` : city.hotelName ? `<a class="btn-maps" href="${mapsUrl(city.hotelName)}" target="_blank">📌 Ver en Maps</a>` : ''}
-          </div>
-        </div>
-      </div>`;
-    }
-    */
-
-    if (!stops.length && !city.hotelName && !arrivalHotelHtml && !departureTerminalHtml) {
-      stopsHtml = `<div class="empty-state" style="padding:30px 0"><p>Sin paradas aún</p><small>Tocá + para agregar</small></div>`;
-    } else if (!stops.length && !city.hotelName && (arrivalHotelHtml || departureTerminalHtml)) {
-      stopsHtml = '';
-    }
-
-    let routeActionsHtml = '';
-    if (stops.length >= 1 && city.hotelAddr) {
-      const lastStop = stops[stops.length - 1];
-      const midStops = stops.slice(0, -1);
-      const wps = midStops.map(s => encodeURIComponent(s.address || s.name)).join('|');
-      const mode = googleMapsMode(stops[0].transport);
-      const fullUrl = `https://www.google.com/maps/dir/?api=1&origin=${encodeURIComponent(city.hotelAddr)}&destination=${encodeURIComponent(lastStop.address || lastStop.name)}${wps ? `&waypoints=${wps}` : ''}&travelmode=${mode}`;
-      const retUrl = `https://www.google.com/maps/dir/?api=1&origin=${encodeURIComponent(stops[stops.length-1].address || stops[stops.length-1].name)}&destination=${encodeURIComponent(city.hotelAddr)}&travelmode=transit`;
-      const isOptimized = _originalStopOrder !== null;
-      routeActionsHtml = `<div class="route-actions">
-        <button class="btn-optimize" onclick="${isOptimized ? 'restoreStopOrder()' : 'optimizeCurrentStops()'}">
-          ${isOptimized ? '↩️ Restaurar orden original' : '✨ Optimizar ruta'}
-        </button>
-        <a class="btn-full-route" href="${fullUrl}" target="_blank">🗺️ Ruta completa del día en Maps</a>
-        <a class="btn-return-hotel" href="${retUrl}" target="_blank">🏨 Volver al hotel</a>
-      </div>`;
-    }
-
-    // ── Gap detection ──────────────────────────────────────
-    const gapBanner = buildGapBanner(trip);
-
-    document.getElementById('detail-content').innerHTML = `
-      <div class="trip-header">
-        <div class="trip-header-top">
-          <div>
-            <div class="trip-title">${esc(trip.name)}</div>
-            <div class="trip-subtitle">
-              <span>📅 ${formatDate(trip.startDate)} → ${formatDate(trip.endDate)}</span>
-              <span>🏙️ ${trip.cities.length} ciudad${trip.cities.length !== 1 ? 'es' : ''}</span>
-            </div>
-          </div>
-          <button class="btn-edit-trip-dates" onclick="openEditTripDatesModal()" title="Editar fechas del viaje">
-            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
-            <span>Editar</span>
-          </button>
-        </div>
-      </div>
-
-      ${gapBanner}
-
-      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
-        <div class="section-label" style="margin-top:0">Destino</div>
-        ${!gapBanner ? `<button class="btn-add-city-inline" onclick="openAddCityModal()" title="Agregar ciudad o excursión">
-          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-          Ciudad
-        </button>` : ''}
-      </div>
-      <div class="city-selector-wrap"><div class="city-selector">${cityTabs}</div></div>
-
-      ${(() => {
-        if (city.dayTrip) {
-          return `<div class="daytrip-banner">
-            <div class="daytrip-banner-icon">🗺️</div>
-            <div class="daytrip-banner-info">
-              <strong>Excursión de día · ${esc(city.name)}</strong>
-              <small>${formatDate(city.startDate)}${city.dayTripTransport ? ' · ' + transportIcon(city.dayTripTransport) + ' ' + transportLabel(city.dayTripTransport) : ''}${city.dayTripDepartTime ? ' · Salida ' + city.dayTripDepartTime : ''}${city.dayTripReturnTime ? ' · Regreso ' + city.dayTripReturnTime : ''}</small>
-            </div>
-          </div>`;
-        }
-        const isFirstDay = day.date === city.startDate;
-        const isLastDay  = day.date === city.endDate;
-        const hotelLabel = `<div class="section-label" style="margin-bottom:8px">Hotel</div>`;
-        if (city.hotelName) {
-          const tags = [];
-          if (isFirstDay && city.checkInTime)   tags.push(`<span class="hotel-time-tag checkin">✅ Check-in ${city.checkInTime}</span>`);
-          if (isFirstDay && !city.checkInTime)  tags.push(`<span class="hotel-time-tag checkin-empty" onclick="openEditHotelModal()">✅ Agregar check-in</span>`);
-          if (isLastDay  && city.checkOutTime)  tags.push(`<span class="hotel-time-tag checkout">🚪 Check-out ${city.checkOutTime}</span>`);
-          if (isLastDay  && !city.checkOutTime) tags.push(`<span class="hotel-time-tag checkout-empty" onclick="openEditHotelModal()">🚪 Agregar check-out</span>`);
-          return hotelLabel + `<div class="hotel-banner">
-            <div class="hotel-banner-icon">🏨</div>
-            <div class="hotel-banner-info">
-              <strong>${esc(city.hotelName)}</strong>
-              <small>${city.hotelAddr ? esc(city.hotelAddr) + ' · ' : ''}${formatDate(city.startDate)} → ${formatDate(city.endDate)}</small>
-              ${tags.length ? `<div class="hotel-time-tags">${tags.join('')}</div>` : ''}
-            </div>
-            <div style="display:flex;gap:6px;flex-shrink:0">
-              <button class="btn-edit-hotel" onclick="openEditCityDatesModal()" title="Editar fechas de ${esc(city.name)}">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
-              </button>
-              <button class="btn-edit-hotel" onclick="openEditHotelModal()" title="Editar hotel">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
-              </button>
-            </div>
-          </div>`;
-        }
-        return hotelLabel + `<div class="hotel-missing-banner">
-          <div style="display:flex;align-items:center;gap:8px;flex:1" onclick="openEditHotelModal()">
-            <span>🏨 Sin hotel · ${formatDate(city.startDate)} → ${formatDate(city.endDate)}</span>
-            <span class="hotel-missing-add">+ Agregar hotel</span>
-          </div>
-          <button class="btn-edit-hotel" onclick="openEditCityDatesModal()" title="Editar fechas de ${esc(city.name)}">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
-          </button>
-        </div>`;
-      })()}
-
-      <div class="section-label" style="margin-bottom:8px">Día</div>
-      <div class="days-scroll-wrap">
-        <div class="days-scroll" id="days-scroll-el" onscroll="updateDayScrollFades()">${dayTabs}</div>
-      </div>
-
-${(() => {
-        const cityWeather = _weatherCache && _weatherCache[city.id];
-        let weatherData = null;
-        if (cityWeather) {
-          if (cityWeather.outOfRange) {
-            weatherData = cityWeather;
-          } else if (cityWeather.days) {
-            weatherData = cityWeather.days[day.date] || null;
-          }
-        }
-        const weatherHtml = buildWeatherHtml(weatherData);
-        if (weatherHtml) {
-          return `<div class="day-info-bar day-info-bar-weather">
-            <div>
-              <div class="day-label">${getWeekdayFull(day.date)}</div>
-              <div class="day-date">${formatDate(day.date)}</div>
-            </div>
-            <div class="stops-count">${stops.length} parada${stops.length !== 1 ? 's' : ''}</div>
-            ${weatherHtml}
-          </div>`;
-        }
-        return `<div class="day-info-bar">
-          <div>
-            <div class="day-label">${getWeekdayFull(day.date)}</div>
-            <div class="day-date">${formatDate(day.date)}</div>
-          </div>
-          <div class="stops-count">${stops.length} parada${stops.length !== 1 ? 's' : ''}</div>
-        </div>`;
-      })()}
-
-      <div class="stops-list" id="stops-list-el">${stopsHtml}${routeActionsHtml}${departureTerminalHtml}${arrivalHotelHtml}</div>
-    `;
-
-    initDragDrop();
-    setTimeout(updateDayScrollFades, 0);
-
-    // Prefetch weather in background
-    if (!_weatherPrefetching) {
-      _weatherPrefetching = true;
-      prefetchWeather(trip).then(() => {
-        if (currentDetailTab === 'itinerary') renderDetail();
-      });
-    }
-
-  } catch(err) {
-    document.getElementById('detail-content').innerHTML = `<div style="padding:20px;color:var(--danger)">
-      <strong>Error al mostrar el viaje:</strong><br><small>${err.message}</small>
-    </div>`;
-  }
+  return window.WandrRender.Detail.renderDetail();
 }
 
 function updateDayScrollFades() {
@@ -1618,13 +874,12 @@ function updateDayScrollFades() {
 }
 
 function switchCity(idx) {
-  currentCityIdx = idx;
-  currentDayIdx = 0;
+  appStore.switchCity(idx);
   renderDetail();
   window.scrollTo(0, 0);
 }
 function switchDay(idx) {
-  currentDayIdx = idx;
+  appStore.switchDay(idx);
   renderDetail();
   window.scrollTo(0, 0);
 }
@@ -1828,10 +1083,13 @@ function renderTickets() {
 
 function calcWaitTime(date1, time1, date2, time2) {
   if (!date1 || !date2) return null;
-  const t1 = new Date((date1 + 'T' + (time1 || '00:00')).replace('T', 'T'));
-  const t2 = new Date((date2 + 'T' + (time2 || '00:00')).replace('T', 'T'));
+  const dateTimeStr1 = date1 + 'T' + (time1 || '00:00');
+  const dateTimeStr2 = date2 + 'T' + (time2 || '00:00');
+  const t1 = new Date(dateTimeStr1);
+  const t2 = new Date(dateTimeStr2);
+  if (isNaN(t1.getTime()) || isNaN(t2.getTime())) return null;
   const diff = t2 - t1;
-  if (isNaN(diff) || diff < 0) return null;
+  if (diff < 0) return null;
   const hrs = Math.floor(diff / 3600000);
   const mins = Math.floor((diff % 3600000) / 60000);
   if (hrs === 0) return `${mins}min de espera`;
@@ -1936,8 +1194,7 @@ function renderTransitCard(tk) {
 
 function openAddTicketModal() {
   const trip = trips.find(t => t.id === currentTripId);
-  editingTicketId = null;
-  selectedTicketType = null;
+  appStore.beginAddTicket();
   document.getElementById('ticket-modal-title').textContent = '🎫 Agregar pasaje';
   document.getElementById('ticket-company').value = '';
   document.getElementById('ticket-from-city').value = '';
@@ -1967,9 +1224,8 @@ function openEditTicketModal(ticketId) {
   if (!trip) return;
   const tk = (trip.tickets || []).find(t => t.id === ticketId);
   if (!tk) return;
-  editingTicketId = ticketId;
+  appStore.beginEditTicket(ticketId, tk.type || null);
   document.getElementById('ticket-modal-title').textContent = '🎫 Editar pasaje';
-  selectedTicketType = tk.type || null;
   document.querySelectorAll('#ticket-type-grid .transport-option').forEach(el =>
     el.classList.toggle('selected', el.dataset.ttype === selectedTicketType)
   );
@@ -2024,7 +1280,7 @@ function ticketWizardPrevStep(currentStep) {
 }
 
 function selectTicketType(el, type) {
-  selectedTicketType = type;
+  appStore.setSelectedTicketType(type);
   document.querySelectorAll('#ticket-type-grid .transport-option').forEach(o => o.classList.remove('selected'));
   el.classList.add('selected');
   updateTicketFields(type);
@@ -2184,9 +1440,9 @@ function deleteTicket(ticketId) {
   if (!trip) return;
   const tk = (trip.tickets || []).find(t => t.id === ticketId);
   if (!tk) return;
-  _pendingDeleteTicketId = ticketId;
+  appStore.markTicketPendingDelete(ticketId);
   document.getElementById('confirm-delete-ticket-body').textContent =
-    `${ticketTypeLabel(tk.type)} ${esc(tk.fromCity)} → ${esc(tk.toCity)}${tk.depDate ? ', ' + formatDate(tk.depDate) : ''}. Esta acción no se puede deshacer.`;
+    `${ticketTypeLabel(tk.type)} ${esc(tk.fromCity)} → ${esc(tk.toCity)}${tk.depDate ? ', ' + formatDate(tk.depDate) : ''}. Esta accion no se puede deshacer.`;
   openModal('modal-confirm-delete-ticket');
 }
 
@@ -2194,7 +1450,7 @@ function confirmDeleteTicket() {
   const trip = trips.find(t => t.id === currentTripId);
   if (!trip || !_pendingDeleteTicketId) return;
   trip.tickets = (trip.tickets || []).filter(t => t.id !== _pendingDeleteTicketId);
-  _pendingDeleteTicketId = null;
+  appStore.clearPendingDeleteTicket();
   save();
   closeModal('modal-confirm-delete-ticket');
   renderTickets();
@@ -2202,19 +1458,17 @@ function confirmDeleteTicket() {
   showToast('🗑️ Pasaje eliminado');
 }
 
-let _pendingDeleteCityId = null;
-
 function deleteCity(cityId) {
   const trip = trips.find(t => t.id === currentTripId);
   if (!trip || trip.cities.length <= 1) { showToast('⚠️ El viaje debe tener al menos una ciudad'); return; }
   const city = trip.cities.find(c => c.id === cityId);
   if (!city) return;
-  _pendingDeleteCityId = cityId;
+  appStore.markCityPendingDelete(cityId);
   const totalStops = city.days.reduce((a, d) => a + d.stops.length, 0);
   document.getElementById('confirm-delete-city-title').textContent = `¿Eliminar ${city.name}?`;
   document.getElementById('confirm-delete-city-body').textContent = totalStops > 0
-    ? `Se eliminarán también los ${totalStops} punto${totalStops!==1?'s':''} del itinerario de esta ciudad. Esta acción no se puede deshacer.`
-    : 'Esta ciudad no tiene paradas cargadas. Esta acción no se puede deshacer.';
+    ? `Se eliminarán también los ${totalStops} punto${totalStops!==1?'s':''} del itinerario de esta ciudad. Esta accion no se puede deshacer.`
+    : 'Esta ciudad no tiene paradas cargadas. Esta accion no se puede deshacer.';
   openModal('modal-confirm-delete-city');
 }
 
@@ -2226,12 +1480,12 @@ function confirmDeleteCity() {
   const idx = trip.cities.findIndex(c => c.id === _pendingDeleteCityId);
   if (idx === -1) return;
   trip.cities.splice(idx, 1);
-  if (currentCityIdx >= trip.cities.length) currentCityIdx = trip.cities.length - 1;
-  if (currentCityIdx < 0) currentCityIdx = 0;
+  appStore.syncAfterCityDeletion(trip.cities.length);
   currentDayIdx = 0; // Always reset day index — it may no longer be valid for the new city
-  _pendingDeleteCityId = null;
+  appStore.clearPendingDeleteCity();
   save();
   closeModal('modal-confirm-delete-city');
+  closeModal('modal-edit-city-name');
   renderDetail();
   showToast(`🗑️ ${name} eliminada`);
 }
@@ -2260,9 +1514,6 @@ function openEditTripDatesModal() {
           <button class="edit-city-name-btn" onclick="openEditCityNameModal(${i})" title="Editar nombre">
             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
           </button>
-          ${trip.cities.length > 1 ? `<button class="edit-city-delete-btn" onclick="openDeleteCityFromEditModal(${i})" title="Eliminar ciudad">
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3,6 5,6 21,6"/><path d="M19,6v14a2,2,0,0,1-2,2H7a2,2,0,0,1-2-2V6M8,6V4a2,2,0,0,1,2-2h4a2,2,0,0,1,2,2v2"/></svg>
-          </button>` : ''}
         </div>
         <div class="edit-city-dates">
           <input type="date" id="edit-trip-city-start-${i}" value="${ci.startDate}" min="${trip.startDate}" max="${trip.endDate}" />
@@ -2332,7 +1583,7 @@ function saveEditTripDates() {
     if (ciStart !== ci.startDate || ciEnd !== ci.endDate) {
       const stopsMap = {};
       (ci.days || []).forEach(d => { if (d.stops?.length) stopsMap[d.date] = d.stops; });
-      ci.days = buildDays(ciStart, ciEnd).map(d => ({ ...d, stops: stopsMap[d.date] || [] }));
+      ci.days = window.Wandr.Cities.buildDays(ciStart, ciEnd).map(d => ({ ...d, stops: stopsMap[d.date] || [] }));
       ci.startDate = ciStart;
       ci.endDate = ciEnd;
     }
@@ -2363,50 +1614,60 @@ function openEditCityNameModal(cityIndex) {
   openModal('modal-edit-city-name');
 }
 
-function confirmDeleteCityFromModal() {
+function removeCityEntry(id) {
+  const state = cityWizard.getState();
+  if (state.cityEntries.length <= 1) { showToast('Necesitas al menos una ciudad'); return; }
+  const cityName = state.cityEntryState[id]?.name || 'esta ciudad';
+  _pendingRemoveCityId = id;
+  document.getElementById('confirm-remove-city-entry-msg').textContent = `Eliminar "${cityName}". Esta accion no se puede deshacer.`;
+  openModal('modal-confirm-remove-city-entry');
+}
+
+function confirmDeleteCityFromModalLegacy() {
   const trip = trips.find(t => t.id === currentTripId);
   if (!trip || _editingCityIndex === null) return;
-  
+
   const city = trip.cities[_editingCityIndex];
-  document.getElementById('confirm-delete-city-msg').textContent = `¿Estás seguro de eliminar "${city.name}" del viaje? Se eliminarán todos los días y paradas de esta ciudad.`;
+  document.getElementById('confirm-delete-city-title').textContent = `¿Eliminar ${city.name}?`;
+  document.getElementById('confirm-delete-city-body').textContent = 'Se eliminarán todos los días y paradas de esta ciudad. Esta accion no se puede deshacer.';
   openModal('modal-confirm-delete-city');
 }
 
-function deleteCityFromModal() {
+function openDeleteCityFromEditModalLegacy(cityIndex) {
   const trip = trips.find(t => t.id === currentTripId);
-  if (!trip || _editingCityId === null) return;
-  
-  const idx = trip.cities.findIndex(c => c.id === _editingCityId);
-  if (idx !== -1) {
-    trip.cities.splice(idx, 1);
-    
-    // Ajustar índice actual si es necesario
-    if (currentCityIdx >= trip.cities.length) {
-      currentCityIdx = Math.max(0, trip.cities.length - 1);
-    }
-    if (currentCityIdx < 0) currentCityIdx = 0;
-    currentDayIdx = 0;
-    
-    save();
-    closeModal('modal-confirm-delete-city');
-    closeModal('modal-edit-city-name');
-    renderDetail();
-    showToast('✅ Ciudad eliminada');
-  }
-  
-  _editingCityIndex = null;
-  _editingCityId = null;
+  if (!trip || cityIndex === null) return;
+
+  const city = trip.cities[cityIndex];
+  _editingCityIndex = cityIndex;
+  _editingCityId = city.id;
+
+  document.getElementById('confirm-delete-city-title').textContent = `¿Eliminar ${city.name}?`;
+  document.getElementById('confirm-delete-city-body').textContent = 'Se eliminarán todos los días y paradas de esta ciudad. Esta accion no se puede deshacer.';
+  openModal('modal-confirm-delete-city');
+}
+
+function confirmDeleteCityFromModal() {
+  const trip = trips.find(t => t.id === currentTripId);
+  if (!trip || _editingCityIndex === null) return;
+
+  const city = trip.cities[_editingCityIndex];
+  appStore.markCityPendingDelete(city.id);
+  document.getElementById('confirm-delete-city-title').textContent = `¿Eliminar ${city.name}?`;
+  document.getElementById('confirm-delete-city-body').textContent = 'Se eliminarán todos los días y paradas de esta ciudad. Esta accion no se puede deshacer.';
+  openModal('modal-confirm-delete-city');
 }
 
 function openDeleteCityFromEditModal(cityIndex) {
   const trip = trips.find(t => t.id === currentTripId);
   if (!trip || cityIndex === null) return;
-  
+
   const city = trip.cities[cityIndex];
   _editingCityIndex = cityIndex;
   _editingCityId = city.id;
-  
-  document.getElementById('confirm-delete-city-msg').textContent = `¿Estás seguro de eliminar "${city.name}" del viaje? Se eliminarán todos los días y paradas de esta ciudad.`;
+  appStore.markCityPendingDelete(city.id);
+
+  document.getElementById('confirm-delete-city-title').textContent = `¿Eliminar ${city.name}?`;
+  document.getElementById('confirm-delete-city-body').textContent = 'Se eliminarán todos los días y paradas de esta ciudad. Esta accion no se puede deshacer.';
   openModal('modal-confirm-delete-city');
 }
 
@@ -2440,9 +1701,10 @@ function saveEditCityName() {
 // EDIT CITY DATES
 // ══════════════════════════════════════
 function openEditCityDatesModal() {
-  const trip = trips.find(t => t.id === currentTripId);
+  const trip = getCurrentTrip();
   if (!trip) return;
-  const city = trip.cities[currentCityIdx];
+  const city = getCurrentCity();
+  if (!city) return;
   document.getElementById('edit-city-dates-name').textContent = city.name;
   document.getElementById('edit-city-start').value = city.startDate;
   document.getElementById('edit-city-start').min = trip.startDate;
@@ -2518,9 +1780,8 @@ function jumpToCityFromTimeline(dateStr) {
   if (city) {
     const cityIdx = trip.cities.findIndex(c => c.id === city.id);
     if (cityIdx !== -1) {
-      currentCityIdx = cityIdx;
       const dayIdx = city.days.findIndex(d => d.date === dateStr);
-      if (dayIdx !== -1) currentDayIdx = dayIdx;
+      appStore.selectCityDay(cityIdx, dayIdx);
       closeModal('modal-edit-city-dates');
       renderDetail();
     }
@@ -2556,9 +1817,10 @@ function onEditCityEndChange() {
 }
 
 function saveEditCityDates() {
-  const trip = trips.find(t => t.id === currentTripId);
+  const trip = getCurrentTrip();
   if (!trip) return;
-  const city = trip.cities[currentCityIdx];
+  const city = getCurrentCity();
+  if (!city) return;
   const newStart = document.getElementById('edit-city-start').value;
   const newEnd = document.getElementById('edit-city-end').value;
 
@@ -2581,7 +1843,7 @@ function saveEditCityDates() {
   // Rebuild days: keep existing stops for dates that survive, add empty days for new dates
   const existingByDate = {};
   city.days.forEach(d => { existingByDate[d.date] = d; });
-  city.days = buildDays(newStart, newEnd).map(d =>
+  city.days = window.Wandr.Cities.buildDays(newStart, newEnd).map(d =>
     existingByDate[d.date] ? existingByDate[d.date] : d
   );
   city.startDate = newStart;
@@ -2591,7 +1853,7 @@ function saveEditCityDates() {
   if (newStart < trip.startDate) trip.startDate = newStart;
   if (newEnd > trip.endDate) trip.endDate = newEnd;
 
-  if (currentDayIdx >= city.days.length) currentDayIdx = 0;
+  appStore.ensureCurrentDayInRange(city.days.length);
   save();
   closeModal('modal-edit-city-dates');
   renderDetail();
@@ -2963,9 +2225,10 @@ function pickEditHotelResult(index, nameInput, addrInput) {
 // ══════════════════════════════════════
 
 function openEditHotelModal() {
-  const trip = trips.find(t => t.id === currentTripId);
+  const trip = getCurrentTrip();
   if (!trip) return;
-  const city = trip.cities[currentCityIdx];
+  const city = getCurrentCity();
+  if (!city) return;
   document.getElementById('edit-hotel-city-name').textContent = city.name;
   document.getElementById('edit-hotel-name').value = city.hotelName || '';
   document.getElementById('edit-hotel-addr').value = city.hotelAddr || '';
@@ -2978,9 +2241,10 @@ function openEditHotelModal() {
 }
 
 function saveEditHotel() {
-  const trip = trips.find(t => t.id === currentTripId);
+  const trip = getCurrentTrip();
   if (!trip) return;
-  const city = trip.cities[currentCityIdx];
+  const city = getCurrentCity();
+  if (!city) return;
   city.hotelName = document.getElementById('edit-hotel-name').value.trim();
   city.hotelAddr = document.getElementById('edit-hotel-addr').value.trim();
   city.hotelLat = parseFloat(document.getElementById('edit-hotel-lat').value) || null;
@@ -3161,7 +2425,7 @@ function saveNewCity() {
     hotelLon: isDayTrip ? null : parseFloat(document.getElementById('new-city-hotel-lon').value) || null,
     startDate: cs, endDate: ce,
     countryCode: document.getElementById('new-city-country-code').value || null,
-    days: buildDays(cs, ce),
+    days: window.Wandr.Cities.buildDays(cs, ce),
     ...(isDayTrip ? {
       dayTrip: true,
       dayTripTransport: selectedDayTripTransport,
@@ -3174,8 +2438,7 @@ function saveNewCity() {
   if (!isDayTrip) ensureTransitionTickets(trip);
   save();
   closeModal('modal-add-city');
-  currentCityIdx = trip.cities.findIndex(c => c.id === newCity.id);
-  currentDayIdx = 0;
+  appStore.selectCityDay(trip.cities.findIndex(c => c.id === newCity.id), 0);
   renderDetail();
   showToast(`✅ ${isDayTrip ? 'Excursión' : name} agregada al viaje`);
 }
@@ -3212,8 +2475,9 @@ function openAddStopModal() {
 }
 
 function openEditStopModal(stopId) {
-  const trip = trips.find(t => t.id === currentTripId);
-  const stop = trip.cities[currentCityIdx].days[currentDayIdx].stops.find(s => s.id === stopId);
+  const day = getCurrentDay();
+  if (!day) return;
+  const stop = day.stops?.find(s => s.id === stopId);
   if (!stop) return;
 
   editingStopId = stopId;
@@ -3440,8 +2704,9 @@ function saveStop() {
   const timeTo = getWheelTime('stop-time-to');
   if (!name) { showToast('⚠️ Ingresá el nombre del lugar'); return; }
 
-  const trip = trips.find(t => t.id === currentTripId);
-  const stops = trip.cities[currentCityIdx].days[currentDayIdx].stops;
+  const day = getCurrentDay();
+  if (!day) return;
+  const stops = day.stops || [];
 
   const stopData = { name, address, note, timeFrom, timeTo, type: selectedType, transport: selectedTransport };
 
@@ -3471,12 +2736,12 @@ let _pendingDeleteStopId = null;
 let _originalStopOrder = null; // For stop optimization undo
 
 function deleteStop(stopId) {
-  const trip = trips.find(t => t.id === currentTripId);
-  const stop = trip.cities[currentCityIdx].days[currentDayIdx].stops.find(s => s.id === stopId);
+  const day = getCurrentDay();
+  const stop = day?.stops?.find(s => s.id === stopId);
   const stopName = stop?.name || 'esta parada';
   _pendingDeleteStopId = stopId;
   document.getElementById('confirm-delete-stop-title').textContent = `¿Eliminar "${stopName}"?`;
-  document.getElementById('confirm-delete-stop-body').textContent = 'Esta acción no se puede deshacer.';
+  document.getElementById('confirm-delete-stop-body').textContent = 'Esta accion no se puede deshacer.';
   openModal('modal-confirm-delete-stop');
 }
 
@@ -3484,9 +2749,9 @@ function confirmDeleteStop() {
   const stopId = _pendingDeleteStopId;
   _pendingDeleteStopId = null;
   if (!stopId) return;
-  const trip = trips.find(t => t.id === currentTripId);
-  const days = trip.cities[currentCityIdx].days;
-  days[currentDayIdx].stops = days[currentDayIdx].stops.filter(s => s.id !== stopId);
+  const day = getCurrentDay();
+  if (!day) return;
+  day.stops = (day.stops || []).filter(s => s.id !== stopId);
   save();
   closeModal('modal-confirm-delete-stop');
   renderDetail();
@@ -3495,129 +2760,6 @@ function confirmDeleteStop() {
 
 function selectType(el, t) { selectedType = t; document.querySelectorAll('.type-option').forEach(e => e.classList.remove('selected')); el.classList.add('selected'); }
 function selectTransport(el, t) { selectedTransport = t; document.querySelectorAll('.transport-option').forEach(e => e.classList.remove('selected')); el.classList.add('selected'); }
-
-// ══════════════════════════════════════
-// DRAG & DROP (touch + mouse)
-// ══════════════════════════════════════
-function initDragDrop() {
-  const list = document.getElementById('stops-list-el');
-  if (!list) return;
-
-  let dragEl = null;
-  let ghost = null;
-  let startY = 0;
-  let offsetY = 0;
-  let lastOver = null;
-  let isDragging = false;
-
-  function getItems() {
-    return Array.from(list.querySelectorAll('.stop-item[data-stopid]'));
-  }
-
-  function createGhost(el) {
-    const rect = el.getBoundingClientRect();
-    const g = el.cloneNode(true);
-    g.style.cssText = `
-      position: fixed;
-      left: ${rect.left}px;
-      top: ${rect.top}px;
-      width: ${rect.width}px;
-      z-index: 500;
-      opacity: 0.92;
-      pointer-events: none;
-      background: var(--bg3);
-      border-radius: 12px;
-      box-shadow: 0 12px 40px rgba(0,0,0,0.5);
-      border: 1px solid var(--accent);
-      transition: none;
-    `;
-    document.body.appendChild(g);
-    return g;
-  }
-
-  function getClientY(e) {
-    return e.touches ? e.touches[0].clientY : e.clientY;
-  }
-
-  function onDragStart(e) {
-    const handle = e.target.closest('.drag-handle');
-    if (!handle) return;
-    const item = handle.closest('.stop-item[data-stopid]');
-    if (!item) return;
-
-    // Only prevent default scroll when starting drag from handle
-    e.preventDefault();
-    isDragging = true;
-    dragEl = item;
-    const rect = item.getBoundingClientRect();
-    startY = getClientY(e);
-    offsetY = startY - rect.top;
-
-    dragEl.classList.add('dragging');
-    ghost = createGhost(dragEl);
-
-    document.addEventListener('touchmove', onDragMove, { passive: false });
-    document.addEventListener('touchend', onDragEnd);
-    document.addEventListener('mousemove', onDragMove);
-    document.addEventListener('mouseup', onDragEnd);
-  }
-
-  function onDragMove(e) {
-    if (!dragEl || !ghost || !isDragging) return;
-    e.preventDefault();
-
-    const clientY = getClientY(e);
-    ghost.style.top = (clientY - offsetY) + 'px';
-
-    const items = getItems();
-    let overEl = null;
-    for (const item of items) {
-      if (item === dragEl) continue;
-      const r = item.getBoundingClientRect();
-      if (clientY > r.top && clientY < r.bottom) {
-        overEl = item;
-        const mid = r.top + r.height / 2;
-        if (clientY < mid) {
-          list.insertBefore(dragEl, item);
-        } else {
-          list.insertBefore(dragEl, item.nextSibling);
-        }
-        break;
-      }
-    }
-
-    items.forEach(i => i.classList.remove('drag-over'));
-    if (overEl) overEl.classList.add('drag-over');
-    lastOver = overEl;
-  }
-
-  function onDragEnd() {
-    if (!dragEl) return;
-
-    const items = getItems();
-    const trip = trips.find(t => t.id === currentTripId);
-    const stopsArr = trip.cities[currentCityIdx].days[currentDayIdx].stops;
-    const newOrder = items.map(el => stopsArr.find(s => s.id === el.dataset.stopid)).filter(Boolean);
-    trip.cities[currentCityIdx].days[currentDayIdx].stops = newOrder;
-    save();
-
-    dragEl.classList.remove('dragging');
-    if (lastOver) lastOver.classList.remove('drag-over');
-    if (ghost) { ghost.remove(); ghost = null; }
-    dragEl = null; lastOver = null; isDragging = false;
-
-    renderDetail();
-
-    document.removeEventListener('touchmove', onDragMove);
-    document.removeEventListener('touchend', onDragEnd);
-    document.removeEventListener('mousemove', onDragMove);
-    document.removeEventListener('mouseup', onDragEnd);
-  }
-
-  // passive: true allows normal scrolling — only preventDefault inside onDragStart when handle is touched
-  list.addEventListener('touchstart', onDragStart, { passive: false });
-  list.addEventListener('mousedown', onDragStart);
-}
 
 // ══════════════════════════════════════
 // GAP DETECTION
@@ -3724,7 +2866,7 @@ function save() {
       // Validation errors are silently ignored for now
     });
     
-    localStorage.setItem('wandr_trips', JSON.stringify(trips));
+    window.WandrStorage.saveTrips(trips);
     _showSaveIndicator('saved', '✓ Guardado');
   } catch(e) {
     if (e.name === 'QuotaExceededError' || e.name === 'NS_ERROR_DOM_QUOTA_REACHED') {
@@ -3828,6 +2970,24 @@ function isValidTime(timeStr) {
   const hours = parseInt(match[1], 10);
   const minutes = parseInt(match[2], 10);
   return hours >= 0 && hours <= 23 && minutes >= 0 && minutes <= 59;
+}
+
+// Validar import JSON trips data
+function validateImportTrips(trips) {
+  const errors = [];
+  if (!Array.isArray(trips)) {
+    errors.push('Trips no es un array');
+    return errors;
+  }
+  
+  trips.forEach((trip, idx) => {
+    if (!trip.name) errors.push(`Trip ${idx + 1}: sin nombre`);
+    if (!trip.startDate || !isValidDate(trip.startDate)) errors.push(`Trip ${idx + 1}: fecha inicio inválida`);
+    if (!trip.endDate || !isValidDate(trip.endDate)) errors.push(`Trip ${idx + 1}: fecha fin inválida`);
+    if (!Array.isArray(trip.cities)) errors.push(`Trip ${idx + 1}: cities no es array`);
+  });
+  
+  return errors;
 }
 
 // Validar todo el trip antes de guardar
@@ -4017,35 +3177,234 @@ function estimateTravelTime(km, transport) {
 }
 
 // ── Stop optimization algorithms ──────────────────────────
-function stopDistance(a, b) {
+function osrmProfileForTransport(transport) {
+  return ({ walking: 'foot', taxi: 'driving', driving: 'driving' })[transport] || null;
+}
+
+function buildRouteCacheKey(fromLat, fromLon, toLat, toLon, transport) {
+  return [
+    transport,
+    Number(fromLat).toFixed(5),
+    Number(fromLon).toFixed(5),
+    Number(toLat).toFixed(5),
+    Number(toLon).toFixed(5)
+  ].join(':');
+}
+
+// Stage 1 bridge: keep global API stable while pure helpers live in js/utils and js/core.
+({
+  formatDate,
+  getWeekday,
+  getWeekdayFull,
+  formatDistance,
+  formatDurationFromSeconds,
+  haversine,
+  buildRouteCacheKey,
+  estimateTravelTime,
+  osrmProfileForTransport,
+  googleMapsMode,
+  transportClass,
+  transportIcon,
+  transportLabel
+} = window.WandrUtils);
+
+sanitizeInput = function (str, maxLen = MAX_STRING_LENGTH) {
+  return window.WandrUtils.sanitizeInput(str, maxLen);
+};
+
+sanitizeCityName = function (str) {
+  return window.WandrUtils.sanitizeCityName(str, MAX_CITY_NAME_LENGTH);
+};
+
+sanitizeAddress = function (str, maxLen = MAX_ADDRESS_LENGTH) {
+  return window.WandrUtils.sanitizeAddress(str, maxLen);
+};
+
+sanitizeNote = function (str, maxLen = MAX_NOTE_LENGTH) {
+  return window.WandrUtils.sanitizeNote(str, maxLen);
+};
+
+isValidCoord = function (lat, lon) {
+  return window.WandrUtils.isValidCoord(lat, lon);
+};
+
+isValidDate = function (dateStr) {
+  return window.WandrUtils.isValidDate(dateStr);
+};
+
+isValidTime = function (timeStr) {
+  return window.WandrUtils.isValidTime(timeStr);
+};
+
+validateTripData = function (trip) {
+  return window.WandrUtils.validateTripData(trip, {
+    maxStringLength: MAX_STRING_LENGTH,
+    maxTripNameLength: MAX_TRIP_NAME_LENGTH,
+    maxCityNameLength: MAX_CITY_NAME_LENGTH,
+    maxAddressLength: MAX_ADDRESS_LENGTH,
+    maxStopsPerDay: MAX_STOPS_PER_DAY,
+    maxCitiesPerTrip: MAX_CITIES_PER_TRIP,
+    maxTicketsPerTrip: MAX_TICKETS_PER_TRIP
+  });
+};
+
+sanitizeTripData = function (trip) {
+  return window.WandrUtils.sanitizeTripData(trip, {
+    maxStringLength: MAX_STRING_LENGTH,
+    maxTripNameLength: MAX_TRIP_NAME_LENGTH,
+    maxCityNameLength: MAX_CITY_NAME_LENGTH,
+    maxAddressLength: MAX_ADDRESS_LENGTH,
+    maxNoteLength: MAX_NOTE_LENGTH
+  });
+};
+
+function persistRouteMetricsCache() {
+  try {
+    window.WandrStorage.saveRouteMetricsCache(_routeMetricsCache);
+  } catch (e) {
+    // Ignore cache persistence failures silently.
+  }
+}
+
+function getCachedRouteMetrics(cacheKey) {
+  const cached = _routeMetricsCache[cacheKey];
+  if (!cached) return null;
+  if ((Date.now() - cached.ts) > OSRM_ROUTE_CACHE_TTL) {
+    delete _routeMetricsCache[cacheKey];
+    persistRouteMetricsCache();
+    return null;
+  }
+  return cached.data || null;
+}
+
+function setCachedRouteMetrics(cacheKey, data) {
+  _routeMetricsCache[cacheKey] = { ts: Date.now(), data };
+  persistRouteMetricsCache();
+}
+
+function formatDurationFromSeconds(seconds) {
+  const minutes = Math.round(seconds / 60);
+  if (minutes < 1) return '<1min';
+  if (minutes < 60) return `${minutes}min`;
+  const hrs = Math.floor(minutes / 60);
+  const mins = minutes % 60;
+  return mins > 0 ? `${hrs}h ${mins}min` : `${hrs}h`;
+}
+
+async function fetchRouteMetrics(fromLat, fromLon, toLat, toLon, transport) {
+  const profile = osrmProfileForTransport(transport);
+  if (!profile) return null;
+
+  const cacheKey = buildRouteCacheKey(fromLat, fromLon, toLat, toLon, transport);
+  const cached = getCachedRouteMetrics(cacheKey);
+  if (cached) return cached;
+
+  if (_routeMetricsInflight.has(cacheKey)) {
+    return _routeMetricsInflight.get(cacheKey);
+  }
+
+  const request = fetch(
+    `https://router.project-osrm.org/route/v1/${profile}/${fromLon},${fromLat};${toLon},${toLat}?overview=false`,
+    { method: 'GET' }
+  )
+    .then(resp => {
+      if (!resp.ok) throw new Error(`OSRM ${resp.status}`);
+      return resp.json();
+    })
+    .then(data => {
+      const route = data && data.routes && data.routes[0];
+      if (!route || typeof route.distance !== 'number' || typeof route.duration !== 'number') {
+        throw new Error('OSRM invalid response');
+      }
+      const metrics = {
+        distanceKm: route.distance / 1000,
+        durationSeconds: route.duration
+      };
+      setCachedRouteMetrics(cacheKey, metrics);
+      return metrics;
+    })
+    .catch(() => null)
+    .finally(() => {
+      _routeMetricsInflight.delete(cacheKey);
+    });
+
+  _routeMetricsInflight.set(cacheKey, request);
+  return request;
+}
+
+function hydrateRouteSeparators(renderToken) {
+  const detailRoot = document.getElementById('detail-content');
+  if (!detailRoot) return;
+
+  const trip = trips.find(t => t.id === currentTripId);
+  if (!trip) return;
+  const city = trip.cities[currentCityIdx] || trip.cities[0];
+  if (!city || !city.days || !city.days[currentDayIdx]) return;
+
+  const day = city.days[currentDayIdx];
+  const stops = day.stops || [];
+  const separators = Array.from(detailRoot.querySelectorAll('.stop-dist-separator-text[data-stop-id]'));
+
+  separators.forEach(async el => {
+    const stopId = el.dataset.stopId;
+    const stopIndex = stops.findIndex(s => s.id === stopId);
+    const stop = stopIndex >= 0 ? stops[stopIndex] : null;
+    if (!stop || stop.transport === 'transit') return;
+
+    const prevStop = stopIndex === 0 ? null : stops[stopIndex - 1];
+    const fromLat = stopIndex === 0 ? Number(city.hotelLat) : Number(prevStop && prevStop.lat);
+    const fromLon = stopIndex === 0 ? Number(city.hotelLon) : Number(prevStop && prevStop.lon);
+    const toLat = Number(stop.lat);
+    const toLon = Number(stop.lon);
+
+    if (![fromLat, fromLon, toLat, toLon].every(Number.isFinite)) return;
+
+    const profile = osrmProfileForTransport(stop.transport);
+    if (!profile) return;
+
+    const coordinates = [[fromLat, fromLon], [toLat, toLon]];
+
+    const metrics = await RoutingMetrics.fetch(coordinates, profile);
+    if (!metrics || renderToken !== _routeSeparatorRenderToken) return;
+    if (!document.body.contains(el)) return;
+
+    const distanceText = formatDistance(metrics.distance);
+    const timeText = formatDurationFromSeconds(metrics.duration);
+    const label = transportLabel(stop.transport);
+    const separatorText = `${distanceText} - ~${timeText} - ${label}`;
+    el.textContent = `${distanceText} · ~${timeText} · ${label}`;
+  });
+}
+
+function stopDistanceLegacy(a, b) {
   if (!a.lat || !a.lon || !b.lat || !b.lon) return Infinity;
   return haversine(a.lat, a.lon, b.lat, b.lon);
 }
 
-function totalRouteDistance(stops, hotelLat, hotelLon) {
+function totalRouteDistanceLegacy(stops, hotelLat, hotelLon) {
   let total = 0;
   let prev = { lat: hotelLat, lon: hotelLon };
   for (const stop of stops) {
-    total += stopDistance(prev, stop);
+    total += stopDistanceLegacy(prev, stop);
     prev = stop;
   }
   return total;
 }
 
 // Brute force: try all permutations (for ≤8 stops)
-function bruteForceOptimal(stops, hotelLat, hotelLon) {
+function bruteForceOptimalLegacy(stops, hotelLat, hotelLon) {
   if (stops.length <= 1) return [...stops];
   
   // Generate all permutations
   const indices = stops.map((_, i) => i);
-  const perms = permute(indices);
+  const perms = permuteLegacy(indices);
   
   let bestPerm = null;
   let bestDist = Infinity;
   
   for (const perm of perms) {
     const ordered = perm.map(i => stops[i]);
-    const dist = totalRouteDistance(ordered, hotelLat, hotelLon);
+    const dist = totalRouteDistanceLegacy(ordered, hotelLat, hotelLon);
     if (dist < bestDist) {
       bestDist = dist;
       bestPerm = ordered;
@@ -4055,12 +3414,12 @@ function bruteForceOptimal(stops, hotelLat, hotelLon) {
   return bestPerm || [...stops];
 }
 
-function permute(arr) {
+function permuteLegacy(arr) {
   if (arr.length <= 1) return [arr];
   const result = [];
   for (let i = 0; i < arr.length; i++) {
     const rest = [...arr.slice(0, i), ...arr.slice(i + 1)];
-    for (const p of permute(rest)) {
+    for (const p of permuteLegacy(rest)) {
       result.push([arr[i], ...p]);
     }
   }
@@ -4068,7 +3427,7 @@ function permute(arr) {
 }
 
 // Nearest neighbor: greedy approach (for >8 stops)
-function nearestNeighborOrder(stops, hotelLat, hotelLon) {
+function nearestNeighborOrderLegacy(stops, hotelLat, hotelLon) {
   if (stops.length <= 1) return [...stops];
   
   const remaining = [...stops];
@@ -4079,7 +3438,7 @@ function nearestNeighborOrder(stops, hotelLat, hotelLon) {
     let nearestIdx = 0;
     let nearestDist = Infinity;
     for (let i = 0; i < remaining.length; i++) {
-      const d = stopDistance(current, remaining[i]);
+      const d = stopDistanceLegacy(current, remaining[i]);
       if (d < nearestDist) {
         nearestDist = d;
         nearestIdx = i;
@@ -4094,11 +3453,11 @@ function nearestNeighborOrder(stops, hotelLat, hotelLon) {
 }
 
 // 2-opt improvement: swap pairs to reduce total distance
-function twoOptImprove(stops, hotelLat, hotelLon) {
+function twoOptImproveLegacy(stops, hotelLat, hotelLon) {
   if (stops.length <= 2) return [...stops];
   
   let improved = [...stops];
-  let improvedDist = totalRouteDistance(improved, hotelLat, hotelLon);
+  let improvedDist = totalRouteDistanceLegacy(improved, hotelLat, hotelLon);
   let changed = true;
   
   while (changed) {
@@ -4108,7 +3467,7 @@ function twoOptImprove(stops, hotelLat, hotelLon) {
         // Swap stops[i] and stops[j]
         const candidate = [...improved];
         [candidate[i], candidate[j]] = [candidate[j], candidate[i]];
-        const candidateDist = totalRouteDistance(candidate, hotelLat, hotelLon);
+        const candidateDist = totalRouteDistanceLegacy(candidate, hotelLat, hotelLon);
         if (candidateDist < improvedDist) {
           improved = candidate;
           improvedDist = candidateDist;
@@ -4121,10 +3480,10 @@ function twoOptImprove(stops, hotelLat, hotelLon) {
   return improved;
 }
 
-function optimizeCurrentStops() {
-  const trip = trips.find(t => t.id === currentTripId);
+function optimizeCurrentStopsLegacy() {
+  const trip = getCurrentTrip();
   if (!trip) return;
-  const city = trip.cities[currentCityIdx];
+  const city = getCurrentCity();
   if (!city) return;
   const day = city.days[currentDayIdx];
   if (!day || !day.stops || day.stops.length < 2) return;
@@ -4140,10 +3499,10 @@ function optimizeCurrentStops() {
   // Choose algorithm based on number of stops
   let optimized;
   if (day.stops.length <= 8) {
-    optimized = bruteForceOptimal(day.stops, hotelLat, hotelLon);
+    optimized = bruteForceOptimalLegacy(day.stops, hotelLat, hotelLon);
   } else {
-    optimized = nearestNeighborOrder(day.stops, hotelLat, hotelLon);
-    optimized = twoOptImprove(optimized, hotelLat, hotelLon);
+    optimized = nearestNeighborOrderLegacy(day.stops, hotelLat, hotelLon);
+    optimized = twoOptImproveLegacy(optimized, hotelLat, hotelLon);
   }
   
   day.stops = optimized;
@@ -4151,11 +3510,11 @@ function optimizeCurrentStops() {
   renderDetail();
 }
 
-function restoreStopOrder() {
+function restoreStopOrderLegacy() {
   if (_originalStopOrder === null) return;
-  const trip = trips.find(t => t.id === currentTripId);
+  const trip = getCurrentTrip();
   if (!trip) return;
-  const city = trip.cities[currentCityIdx];
+  const city = getCurrentCity();
   if (!city) return;
   const day = city.days[currentDayIdx];
   if (!day) return;
@@ -4171,7 +3530,7 @@ function typeDotClass(t) { return ({attraction:'attraction',restaurant:'restaura
 function transportClass(t) { return ({walking:'transport-walking',transit:'transport-transit',taxi:'transport-taxi',driving:'transport-car'})[t]||'transport-transit'; }
 function transportIcon(t) { return ({walking:'🚶',transit:'🚌',taxi:'🚕',driving:'🚗'})[t]||'🚌'; }
 function transportLabel(t) { return ({walking:'Caminando',transit:'Transporte público',taxi:'Taxi/Uber',driving:'Auto'})[t]||'Transporte'; }
-function formatDate(s) { if (!s) return ''; return new Date(s+'T00:00:00').toLocaleDateString('es-AR',{day:'numeric',month:'short'}); }
+function formatDate(s) { if (!s) return ''; const d = new Date(s+'T00:00:00'); const days = ['dom','lun','mar','mié','jue','vie','sáb']; const months = ['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic']; return `${d.getDate()} ${months[d.getMonth()]} ${d.getFullYear()}`; }
 function getWeekday(s) { return new Date(s+'T00:00:00').toLocaleDateString('es-AR',{weekday:'short'}).slice(0,3); }
 function getWeekdayFull(s) { return new Date(s+'T00:00:00').toLocaleDateString('es-AR',{weekday:'long'}).replace(/^\w/,c=>c.toUpperCase()); }
 
@@ -4181,7 +3540,7 @@ function getWeekdayFull(s) { return new Date(s+'T00:00:00').toLocaleDateString('
 let pendingImportData = null;
 
 function exportTrips() {
-  if (!trips.length) { showToast('⚠️ No hay viajes para exportar'); return; }
+  if (!trips?.length) { showToast('⚠️ No hay viajes para exportar'); return; }
   const payload = {
     _wandr: true,
     _version: 1,
@@ -4293,14 +3652,6 @@ function updateBackupCount() {
 // ══════════════════════════════════════
 // MODAL
 // ══════════════════════════════════════
-function openModal(id) {
-  document.getElementById(id).classList.add('open');
-  if (id === 'modal-backup') {
-    updateBackupCount();
-    document.getElementById('import-warning').style.display = 'none';
-    pendingImportData = null;
-  }
-}
 function toggleHelpSection(el) {
   const section = el.parentElement;
   const isOpen = section.classList.contains('open');
@@ -4432,48 +3783,45 @@ function twoOptImprove(stops, hotelLat, hotelLon) {
 }
 
 function optimizeCurrentStops() {
-  const trip = trips.find(t => t.id === currentTripId);
+  const trip = getCurrentTrip();
   if (!trip) return;
-  const city = trip.cities[currentCityIdx];
+  const city = getCurrentCity();
   if (!city) return;
   const day = city.days[currentDayIdx];
   if (!day || !day.stops || day.stops.length < 2) return;
   
-  // Save original order if not already saved
-  if (_originalStopOrder === null) {
-    _originalStopOrder = JSON.parse(JSON.stringify(day.stops));
-  }
+  // Save original order
+  RouteState.saveOriginalOrder(day.stops);
   
-  const hotelLat = city.hotelLat || 0;
-  const hotelLon = city.hotelLon || 0;
+  const origin = { lat: city.hotelLat || 0, lon: city.hotelLon || 0 };
   
-  // Choose algorithm based on number of stops
-  let optimized;
-  if (day.stops.length <= 8) {
-    optimized = bruteForceOptimal(day.stops, hotelLat, hotelLon);
-  } else {
-    optimized = nearestNeighborOrder(day.stops, hotelLat, hotelLon);
-    optimized = twoOptImprove(optimized, hotelLat, hotelLon);
-  }
+  // Optimize using new module
+  const optimized = TSPSolver.optimize(day.stops, origin);
   
   day.stops = optimized;
   save();
   renderDetail();
+  
+  // Async hydrate metrics
+  hydrateRouteSeparators();
 }
 
 function restoreStopOrder() {
-  if (_originalStopOrder === null) return;
-  const trip = trips.find(t => t.id === currentTripId);
-  if (!trip) return;
-  const city = trip.cities[currentCityIdx];
-  if (!city) return;
-  const day = city.days[currentDayIdx];
-  if (!day) return;
-  
-  day.stops = _originalStopOrder;
-  _originalStopOrder = null;
-  save();
-  renderDetail();
+  try {
+    const original = RouteState.restoreOriginalOrder();
+    const trip = getCurrentTrip();
+    if (!trip) return;
+    const city = getCurrentCity();
+    if (!city) return;
+    const day = city.days[currentDayIdx];
+    if (!day) return;
+    
+    day.stops = original;
+    save();
+    renderDetail();
+  } catch (error) {
+    console.warn('No saved order to restore');
+  }
 }
 
 function toggleHelpCard(el, title) {
@@ -4511,17 +3859,7 @@ window.confirmDeleteStop = confirmDeleteStop;
 window.confirmRemoveTransitLeg = confirmRemoveTransitLeg;
 window.optimizeCurrentStops = optimizeCurrentStops;
 window.restoreStopOrder = restoreStopOrder;
-window.openPackingModal = openPackingModal;
-window.mapWmoCode = mapWmoCode;
-window.getWeatherForCity = getWeatherForCity;
-function closeModal(id) {
-  document.getElementById(id).classList.remove('open');
-  if (id === 'modal-backup') {
-    pendingImportData = null;
-    document.getElementById('import-warning').style.display = 'none';
-    document.getElementById('import-file-input').value = '';
-  }
-}
+// Weather utilities have been moved to window.Wandr.WeatherService
 document.querySelectorAll('.modal-overlay').forEach(o => o.addEventListener('click', e => { 
   if (e.target === o) {
     o.classList.remove('open');
@@ -4538,7 +3876,7 @@ document.querySelectorAll('.modal-overlay').forEach(o => o.addEventListener('cli
 // ══════════════════════════════════════
 function toggleTheme() {
   const isLight = document.documentElement.classList.toggle('light');
-  localStorage.setItem('wandr_theme', isLight ? 'light' : 'dark');
+  window.WandrStorage.saveTheme(isLight ? 'light' : 'dark');
   document.getElementById('theme-icon-dark').style.display  = isLight ? 'none' : '';
   document.getElementById('theme-icon-light').style.display = isLight ? '' : 'none';
   document.getElementById('theme-label').textContent = isLight ? 'Oscuro' : 'Claro';
@@ -4546,7 +3884,7 @@ function toggleTheme() {
 }
 
 function initTheme() {
-  const saved = localStorage.getItem('wandr_theme');
+  const saved = window.WandrStorage.loadTheme();
   if (saved === 'light') {
     document.documentElement.classList.add('light');
     document.getElementById('theme-icon-dark').style.display  = 'none';
@@ -4566,419 +3904,23 @@ function showToast(msg) {
 // WEATHER SERVICE (Open-Meteo API)
 // ══════════════════════════════════════
 
-const WEATHER_CACHE_TTL = 30 * 60 * 1000; // 30 minutes
-let _weatherCache = null;
-let _weatherPrefetching = false;
-
-// Initialize weather cache from localStorage on load
-(function initWeatherCache() {
-  _weatherCache = {};
-  try {
-    const keys = [];
-    for (let i = 0; i < localStorage.length; i++) {
-      const key = localStorage.key(i);
-      if (key && key.startsWith('wandr_weather_cache_')) keys.push(key);
-    }
-    keys.forEach(key => {
-      const raw = localStorage.getItem(key);
-      if (raw) {
-        const cached = JSON.parse(raw);
-        if (Date.now() - cached.ts < WEATHER_CACHE_TTL) {
-          const cityId = key.replace('wandr_weather_cache_', '');
-          _weatherCache[cityId] = cached.data;
-        }
-      }
-    });
-  } catch(e) {}
-})();
-
-function mapWmoCode(code) {
-  const map = {
-    0:  { icon: '☀️', desc: 'Despejado', cls: 'weather-clear' },
-    1:  { icon: '🌤️', desc: 'Mayormente despejado', cls: 'weather-mostly-clear' },
-    2:  { icon: '⛅', desc: 'Parcialmente nublado', cls: 'weather-partly-cloudy' },
-    3:  { icon: '☁️', desc: 'Nublado', cls: 'weather-overcast' },
-    45: { icon: '🌫️', desc: 'Niebla', cls: 'weather-fog' },
-    48: { icon: '🌫️', desc: 'Niebla con escarcha', cls: 'weather-fog-rime' },
-    51: { icon: '🌦️', desc: 'Llovizna ligera', cls: 'weather-drizzle-light' },
-    53: { icon: '🌦️', desc: 'Llovizna moderada', cls: 'weather-drizzle' },
-    55: { icon: '🌦️', desc: 'Llovizna densa', cls: 'weather-drizzle-dense' },
-    56: { icon: '🌧️', desc: 'Llovizna helante ligera', cls: 'weather-freezing-drizzle-light' },
-    57: { icon: '🌧️', desc: 'Llovizna helante densa', cls: 'weather-freezing-drizzle-dense' },
-    61: { icon: '🌧️', desc: 'Lluvia ligera', cls: 'weather-rain-light' },
-    63: { icon: '🌧️', desc: 'Lluvia moderada', cls: 'weather-rain' },
-    65: { icon: '🌧️', desc: 'Lluvia fuerte', cls: 'weather-rain-heavy' },
-    66: { icon: '🌧️', desc: 'Lluvia helante ligera', cls: 'weather-freezing-rain-light' },
-    67: { icon: '🌧️', desc: 'Lluvia helante fuerte', cls: 'weather-freezing-rain-heavy' },
-    71: { icon: '🌨️', desc: 'Nieve ligera', cls: 'weather-snow-light' },
-    73: { icon: '🌨️', desc: 'Nieve moderada', cls: 'weather-snow' },
-    75: { icon: '🌨️', desc: 'Nieve fuerte', cls: 'weather-snow-heavy' },
-    77: { icon: '🌨️', desc: 'Granizo de nieve', cls: 'weather-snow-grains' },
-    80: { icon: '🌦️', desc: 'Chubascos ligeros', cls: 'weather-showers-light' },
-    81: { icon: '🌧️', desc: 'Chubascos moderados', cls: 'weather-showers' },
-    82: { icon: '🌧️', desc: 'Chubascos violentos', cls: 'weather-showers-violent' },
-    85: { icon: '🌨️', desc: 'Chubascos de nieve ligeros', cls: 'weather-snow-showers-light' },
-    86: { icon: '🌨️', desc: 'Chubascos de nieve fuertes', cls: 'weather-snow-showers-heavy' },
-    95: { icon: '⛈️', desc: 'Tormenta', cls: 'weather-thunderstorm' },
-    96: { icon: '⛈️', desc: 'Tormenta con granizo ligero', cls: 'weather-thunderstorm-hail-light' },
-    99: { icon: '⛈️', desc: 'Tormenta con granizo fuerte', cls: 'weather-thunderstorm-hail-heavy' },
-  };
-  return map[code] || { icon: '🌡️', desc: 'Sin datos', cls: 'weather-unknown' };
-}
-
-function getWeatherCache(cityId) {
-  try {
-    const raw = localStorage.getItem('wandr_weather_cache_' + cityId);
-    if (!raw) return null;
-    const cached = JSON.parse(raw);
-    if (Date.now() - cached.ts > WEATHER_CACHE_TTL) return null;
-    return cached.data;
-  } catch(e) { return null; }
-}
-
-function setWeatherCache(cityId, data) {
-  try {
-    localStorage.setItem('wandr_weather_cache_' + cityId, JSON.stringify({ ts: Date.now(), data }));
-  } catch(e) {}
-}
-
-async function fetchOpenMeteo(lat, lon) {
-  try {
-    const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&daily=weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max,wind_speed_10m_max&timezone=auto&forecast_days=16`;
-    const res = await fetch(url);
-    if (!res.ok) return null;
-    const data = await res.json();
-    
-    // Basic validation of API response structure
-    if (!data || typeof data !== 'object') return null;
-    if (!data.daily || typeof data.daily !== 'object') return null;
-    if (!Array.isArray(data.daily.time) || !Array.isArray(data.daily.weather_code) || 
-        !Array.isArray(data.daily.temperature_2m_max) || !Array.isArray(data.daily.temperature_2m_min) ||
-        !Array.isArray(data.daily.precipitation_probability_max) || !Array.isArray(data.daily.wind_speed_10m_max)) {
-      return null;
-    }
-    
-    // Ensure all arrays have the same length
-    const length = data.daily.time.length;
-    if (data.daily.weather_code.length !== length || 
-        data.daily.temperature_2m_max.length !== length ||
-        data.daily.temperature_2m_min.length !== length ||
-        data.daily.precipitation_probability_max.length !== length ||
-        data.daily.wind_speed_10m_max.length !== length) {
-      return null;
-    }
-    
-    return data;
-  } catch(e) { return null; }
-}
-
-async function fetchHistoricalWeather(lat, lon, startDate, endDate) {
-  try {
-    const start = new Date(startDate + 'T00:00:00');
-    const end = new Date(endDate + 'T00:00:00');
-    const years = [];
-    for (let y = 1; y <= 5; y++) {
-      const hStart = new Date(start);
-      hStart.setFullYear(hStart.getFullYear() - y);
-      const hEnd = new Date(end);
-      hEnd.setFullYear(hEnd.getFullYear() - y);
-      years.push({
-        start: hStart.toISOString().slice(0, 10),
-        end: hEnd.toISOString().slice(0, 10),
-      });
-    }
-    const promises = years.map(y => 
-      fetch(`https://archive-api.open-meteo.com/v1/archive?latitude=${lat}&longitude=${lon}&start_date=${y.start}&end_date=${y.end}&daily=temperature_2m_max,temperature_2m_min,precipitation_sum,wind_speed_10m_max&timezone=auto`)
-        .then(r => r.ok ? r.json() : null)
-        .catch(() => null)
-    );
-    const results = await Promise.allSettled(promises);
-    const allData = results.filter(r => r.status === 'fulfilled' && r.value).map(r => r.value);
-    return allData.length > 0 ? allData : null;
-  } catch(e) { return null; }
-}
-
-function buildHistoricalAverages(allData, startDate, endDate) {
-  if (!allData || allData.length === 0) return null;
-  const byDay = {};
-  allData.forEach(data => {
-    const daily = data.daily;
-    if (!daily) return;
-    for (let i = 0; i < (daily.time || []).length; i++) {
-      const dateStr = daily.time[i];
-      const mmdd = dateStr.slice(5);
-      if (!byDay[mmdd]) byDay[mmdd] = { maxs: [], mins: [], precip: [], wind: [] };
-      if (daily.temperature_2m_max?.[i] !== null && daily.temperature_2m_max?.[i] !== undefined) 
-        byDay[mmdd].maxs.push(daily.temperature_2m_max[i]);
-      if (daily.temperature_2m_min?.[i] !== null && daily.temperature_2m_min?.[i] !== undefined) 
-        byDay[mmdd].mins.push(daily.temperature_2m_min[i]);
-      if (daily.precipitation_sum?.[i] !== null && daily.precipitation_sum?.[i] !== undefined) 
-        byDay[mmdd].precip.push(daily.precipitation_sum[i]);
-      if (daily.wind_speed_10m_max?.[i] !== null && daily.wind_speed_10m_max?.[i] !== undefined) 
-        byDay[mmdd].wind.push(daily.wind_speed_10m_max[i]);
-    }
-  });
-  const start = new Date(startDate + 'T00:00:00');
-  const end = new Date(endDate + 'T00:00:00');
-  const days = {};
-  let totalMax = 0, totalMin = 0, totalPrecip = 0, rainyDays = 0, count = 0;
-  const current = new Date(start);
-  while (current <= end) {
-    const mmdd = String(current.getMonth() + 1).padStart(2, '0') + '-' + String(current.getDate()).padStart(2, '0');
-    const dateKey = current.toISOString().slice(0, 10);
-    const d = byDay[mmdd];
-    if (d && d.maxs.length > 0) {
-      const avgMax = Math.round(d.maxs.reduce((a, b) => a + b, 0) / d.maxs.length);
-      const avgMin = Math.round(d.mins.reduce((a, b) => a + b, 0) / d.mins.length);
-      const avgPrecip = d.precip.length > 0 ? Math.round(d.precip.reduce((a, b) => a + b, 0) / d.precip.length * 10) / 10 : 0;
-      const avgWind = d.wind.length > 0 ? Math.round(d.wind.reduce((a, b) => a + b, 0) / d.wind.length) : 0;
-      const rainyCount = d.precip.filter(p => p > 0.5).length;
-      days[dateKey] = {
-        wmoCode: null, tempMax: avgMax, tempMin: avgMin, precipProb: null, windSpeed: avgWind,
-        precipAvg: avgPrecip, rainyDays: rainyCount, totalDays: d.precip.length, isHistorical: true,
-      };
-      totalMax += avgMax; totalMin += avgMin; totalPrecip += avgPrecip;
-      if (rainyCount > 0) rainyDays++;
-      count++;
-    }
-    current.setDate(current.getDate() + 1);
-  }
-  if (count === 0) return null;
-  return {
-    days, cityAvg: { avgMax: Math.round(totalMax / count), avgMin: Math.round(totalMin / count), avgPrecip: Math.round(totalPrecip / count * 10) / 10, rainyDays, totalDays: count },
-    isHistorical: true,
-  };
-}
-
-function buildPackingSuggestions(hottestMax, coldestMin, rainChance, maxWind) {
-  const suggestions = [];
-  if (hottestMax >= 30) {
-    suggestions.push({ icon: '👕', text: 'Ropa bien liviana para el calor (shorts, remeras)' });
-    suggestions.push({ icon: '🧴', text: 'Protector solar SPF 50+' });
-    suggestions.push({ icon: '🕶️', text: 'Anteojos de sol y sombrero' });
-    suggestions.push({ icon: '💧', text: 'Botella de agua' });
-  } else if (hottestMax >= 25) {
-    suggestions.push({ icon: '👕', text: 'Ropa liviana (remeras, pantalones finos)' });
-    suggestions.push({ icon: '🧴', text: 'Protector solar' });
-    suggestions.push({ icon: '🕶️', text: 'Anteojos de sol' });
-  } else if (hottestMax >= 20) {
-    suggestions.push({ icon: '👕', text: 'Ropa de entretiempo (remeras, pantalones largos)' });
-  }
-  if (coldestMin < 5) {
-    suggestions.push({ icon: '🧥', text: 'Campera de invierno bien abrigada (para la noche/frío)' });
-    suggestions.push({ icon: '🧣', text: 'Bufanda, guantes térmicos y gorro' });
-    suggestions.push({ icon: '🧦', text: 'Medias térmicas gruesas' });
-    suggestions.push({ icon: '👕', text: 'Ropa térmica de primera capa' });
-  } else if (coldestMin < 10) {
-    suggestions.push({ icon: '🧥', text: 'Campera abrigada o de invierno (para la noche)' });
-    suggestions.push({ icon: '🧣', text: 'Bufanda y guantes' });
-    suggestions.push({ icon: '🧢', text: 'Gorro abrigado' });
-  } else if (coldestMin < 15) {
-    suggestions.push({ icon: '🧥', text: 'Campera abrigada o buzo para la noche' });
-    suggestions.push({ icon: '🧣', text: 'Bufanda o pañuelo' });
-  } else if (coldestMin < 20) {
-    suggestions.push({ icon: '🧥', text: 'Campera liviana o buzo para la noche' });
-  }
-  suggestions.push({ icon: '👟', text: 'Zapatillas cómodas para caminar' });
-  if (rainChance > 50) {
-    suggestions.push({ icon: '☂️', text: 'Paraguas (alta probabilidad de lluvia)' });
-    suggestions.push({ icon: '🧥', text: 'Campera impermeable o chubasquero' });
-  } else if (rainChance > 0) {
-    suggestions.push({ icon: '☂️', text: 'Paraguas (opcional si vas a caminar)' });
-  }
-  if (maxWind >= 40) {
-    suggestions.push({ icon: '💨', text: 'Campera cortaviento (ráfagas fuertes)' });
-  } else if (maxWind >= 25) {
-    suggestions.push({ icon: '🧥', text: 'Campera que corte el viento' });
-  }
-  return suggestions;
-}
-
-async function resolveCoordinates(city, trip) {
-  if (city.hotelLat && city.hotelLon) return { lat: city.hotelLat, lon: city.hotelLon };
-  for (const day of (city.days || [])) {
-    for (const stop of (day.stops || [])) {
-      if (stop.lat && stop.lon) return { lat: stop.lat, lon: stop.lon };
-    }
-  }
-  try {
-    const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(city.name)}&limit=1`);
-    if (res.ok) { const data = await res.json(); if (data.length > 0) return { lat: parseFloat(data[0].lat), lon: parseFloat(data[0].lon) }; }
-  } catch(e) {}
-  return null;
-}
-
-async function getWeatherForCity(city, trip) {
-  if (!city || !city.id) return null;
-  const cached = getWeatherCache(city.id);
-  if (cached) { return cached; }
-  const today = new Date(); today.setHours(0, 0, 0, 0);
-  const maxForecastDate = new Date(today); maxForecastDate.setDate(maxForecastDate.getDate() + 15);
-  const cityStartDate = new Date(city.startDate + 'T00:00:00');
-  const coords = await resolveCoordinates(city, trip);
-  if (!coords) { return null; }
-  if (cityStartDate > maxForecastDate) {
-    const historicalData = await fetchHistoricalWeather(coords.lat, coords.lon, city.startDate, city.endDate);
-    if (historicalData) {
-      const result = buildHistoricalAverages(historicalData, city.startDate, city.endDate);
-      if (result) {
-        setWeatherCache(city.id, result);
-        if (_weatherCache) _weatherCache[city.id] = result;
-        return result;
-      }
-    }
-    return null;
-  }
-  const data = await fetchOpenMeteo(coords.lat, coords.lon);
-  if (!data || !data.daily) return null;
-  const daily = data.daily;
-  const result = { days: {}, cityAvg: null };
-  for (let i = 0; i < (daily.time || []).length; i++) {
-    const date = daily.time[i];
-    result.days[date] = {
-      wmoCode: daily.weather_code?.[i] ?? null, tempMax: daily.temperature_2m_max?.[i] ?? null,
-      tempMin: daily.temperature_2m_min?.[i] ?? null, precipProb: daily.precipitation_probability_max?.[i] ?? null,
-      windSpeed: daily.wind_speed_10m_max?.[i] ?? null,
-    };
-  }
-  const validTemps = (daily.temperature_2m_max || []).filter(t => t !== null);
-  const validTempsMin = (daily.temperature_2m_min || []).filter(t => t !== null);
-  if (validTemps.length > 0) {
-    result.cityAvg = { avgMax: Math.round(validTemps.reduce((a, b) => a + b, 0) / validTemps.length), avgMin: Math.round(validTempsMin.reduce((a, b) => a + b, 0) / validTempsMin.length) };
-  }
-  setWeatherCache(city.id, result);
-  if (_weatherCache) _weatherCache[city.id] = result;
-  return result;
-}
-
-async function prefetchWeather(trip) {
-  if (!navigator.onLine) return;
-  if (!_weatherCache) _weatherCache = {};
-  const cities = (trip.cities || []).filter(c => c.id);
-  const results = await Promise.allSettled(cities.map(city => getWeatherForCity(city, trip)));
-  results.forEach((r, i) => {
-    // Silently handle weather fetch failures
-  });
-  if (currentDetailTab === 'itinerary') renderDetail();
-  if (currentDetailTab === 'overview') renderOverview();
-}
-
-function buildWeatherHtml(dayData) {
-  if (!dayData) return '';
-  if (dayData.isHistorical) {
-    const avgMax = dayData.tempMax !== null ? Math.round(dayData.tempMax) + '°' : '';
-    const avgMin = dayData.tempMin !== null ? Math.round(dayData.tempMin) + '°' : '';
-    const tempRange = (avgMax && avgMin) ? `${avgMax} / ${avgMin}` : (avgMax || avgMin || '');
-    const precip = dayData.precipAvg !== null && dayData.precipAvg !== undefined ? dayData.precipAvg + 'mm' : '';
-    const wind = dayData.windSpeed ? Math.round(dayData.windSpeed) + ' km/h' : '';
-    return `<div class="weather-line weather-historical">
-      <span class="weather-icon">📊</span><span class="weather-desc">Clima histórico</span>
-      ${tempRange ? `<span class="weather-temp">🌡️ ${tempRange}</span>` : ''}
-      ${precip ? `<span class="weather-precip">🌧️ ${precip}</span>` : ''}
-      ${wind ? `<span class="weather-wind">💨 ${wind}</span>` : ''}
-      <button class="weather-packing-btn" onclick="openPackingModal()">🧳 ¿Qué llevar?</button>
-    </div>`;
-  }
-  if (dayData.outOfRange) {
-    const start = dayData.cityStartDate ? formatDate(dayData.cityStartDate) : 'las fechas seleccionadas';
-    return `<div class="weather-line weather-out-of-range">
-      <span class="weather-icon">📅</span><span class="weather-desc">Pronóstico disponible ~1 semana antes de <strong>${start}</strong></span>
-    </div>`;
-  }
-  if (dayData.wmoCode === null) return '';
-  const wmo = mapWmoCode(dayData.wmoCode);
-  const tempMax = dayData.tempMax !== null ? Math.round(dayData.tempMax) + '°' : '';
-  const tempMin = dayData.tempMin !== null ? Math.round(dayData.tempMin) + '°' : '';
-  const tempRange = (tempMin && tempMax) ? `${tempMax} / ${tempMin}` : (tempMax || tempMin || '');
-  const precip = dayData.precipProb !== null ? `${dayData.precipProb}%` : '';
-  const wind = dayData.windSpeed !== null ? Math.round(dayData.windSpeed) + ' km/h' : '';
-  // Soportar ambos formatos de mapWmoCode (desc o description)
-  const weatherDesc = wmo.desc || wmo.description || 'Sin datos';
-  return `<div class="weather-line">
-    <span class="weather-icon">${wmo.icon}</span><span class="weather-desc">${weatherDesc}</span>
-    ${tempRange ? `<span class="weather-temp">🌡️ ${tempRange}</span>` : ''}
-    ${precip ? `<span class="weather-precip">🌧️ ${precip}</span>` : ''}
-    ${wind ? `<span class="weather-wind">💨 ${wind}</span>` : ''}
-    <button class="weather-packing-btn" onclick="openPackingModal()">🧳 ¿Qué llevar?</button>
-  </div>`;
-}
-
-function openPackingModal() {
-  const trip = trips.find(t => t.id === currentTripId);
-  if (!trip) return;
-  const city = trip.cities[currentCityIdx];
-  if (!city) return;
-  const cityWeather = _weatherCache && _weatherCache[city.id];
-  if (!cityWeather) { showToast('⚠️ No hay datos de clima disponibles'); return; }
-  document.getElementById('packing-city-name').textContent = city.name;
-  if (cityWeather.isHistorical) {
-    const days = Object.values(cityWeather.days);
-    const mins = days.map(d => d.tempMin).filter(t => t !== null);
-    const maxs = days.map(d => d.tempMax).filter(t => t !== null);
-    const winds = days.map(d => d.windSpeed).filter(w => w !== null);
-    const precipAvgs = days.map(d => d.precipAvg).filter(p => p !== null && p !== undefined);
-    const coldestMin = mins.length > 0 ? Math.round(Math.min(...mins)) : null;
-    const hottestMax = maxs.length > 0 ? Math.round(Math.max(...maxs)) : null;
-    const maxWind = winds.length > 0 ? Math.round(Math.max(...winds)) : 0;
-    const rainDaysCount = precipAvgs.filter(p => p > 1).length;
-    const totalDays = precipAvgs.length;
-    if (coldestMin === null || hottestMax === null) { showToast('⚠️ No hay datos suficientes'); return; }
-    const suggestions = buildPackingSuggestions(hottestMax, coldestMin, totalDays > 0 ? (rainDaysCount / totalDays) * 100 : 0, maxWind);
-    document.getElementById('packing-temp').textContent = `${hottestMax}° / ${coldestMin}°`;
-    document.getElementById('packing-rain').textContent = totalDays > 0 ? `~${rainDaysCount} de ${totalDays} días con lluvia (promedio histórico)` : 'Sin datos de lluvia';
-    document.getElementById('packing-list').innerHTML = suggestions.length > 0 ? suggestions.map(s => `<div class="packing-item"><span class="packing-icon">${esc(s.icon)}</span><span class="packing-text">${esc(s.text)}</span></div>`).join('') : '<p style="color:var(--text2);font-size:0.85rem">No hay sugerencias específicas.</p>';
-  } else if (cityWeather.days) {
-    const day = (city.days || [])[currentDayIdx];
-    if (!day) return;
-    const dayData = cityWeather.days[day.date];
-    if (!dayData || dayData.wmoCode === null) {
-      document.getElementById('packing-temp').textContent = 'Sin datos';
-      document.getElementById('packing-rain').textContent = '';
-      document.getElementById('packing-list').innerHTML = '<p style="color:var(--text2);font-size:0.85rem">No hay pronóstico para este día.</p>';
-      openModal('modal-packing'); return;
-    }
-    const wmo = mapWmoCode(dayData.wmoCode);
-    const tempMax = dayData.tempMax !== null ? Math.round(dayData.tempMax) + '°' : '';
-    const tempMin = dayData.tempMin !== null ? Math.round(dayData.tempMin) + '°' : '';
-    const dateObj = new Date(day.date + 'T00:00:00');
-    const weekday = dateObj.toLocaleDateString('es-AR', { weekday: 'long', day: 'numeric', month: 'long' });
-    const rainPct = dayData.precipProb || 0;
-    const suggestions = buildPackingSuggestions(dayData.tempMax, dayData.tempMin, rainPct, dayData.windSpeed || 0);
-    document.getElementById('packing-temp').textContent = `${weekday} · ${wmo.icon} ${tempMax} / ${tempMin}`;
-    document.getElementById('packing-rain').textContent = dayData.precipProb !== null ? `Probabilidad de lluvia: ${dayData.precipProb}%` : '';
-    document.getElementById('packing-list').innerHTML = suggestions.length > 0 ? suggestions.map(s => `<div class="packing-item"><span class="packing-icon">${esc(s.icon)}</span><span class="packing-text">${esc(s.text)}</span></div>`).join('') : '<p style="color:var(--text2);font-size:0.85rem">Clima agradable, sin recomendaciones especiales.</p>';
-  }
-  openModal('modal-packing');
-}
-
-function buildWeatherChipHtml(dayData) {
-  if (!dayData || dayData.outOfRange) return '';
-  if (dayData.isHistorical) {
-    const tempMax = dayData.tempMax !== null ? Math.round(dayData.tempMax) + '°' : '';
-    if (tempMax) return `<span class="weather-chip weather-historical-chip" title="Clima histórico">📊 ${tempMax}</span>`;
-    return '';
-  }
-  if (dayData.wmoCode === null) return '';
-  const wmo = mapWmoCode(dayData.wmoCode);
-  const tempMax = dayData.tempMax !== null ? Math.round(dayData.tempMax) + '°' : '';
-    return `<span class="weather-chip" title="${esc(wmo.desc)}">${esc(wmo.icon)} ${tempMax}</span>`;
-}
+// Extracted to js/core/weather.js. Old weather helpers are now provided by window.Wandr.WeatherService.
 
 // ══════════════════════════════════════
 // INIT — migrate & sanitize old data
 // ══════════════════════════════════════
 
-function saveToWeatherCache(cityId, data) {
+function saveToWeatherCacheLegacy(cityId, data) {
   try {
-    localStorage.setItem(`wandr_weather_cache_${cityId}`, JSON.stringify({ data, timestamp: Date.now() }));
+    window.WandrStorage.saveWeatherCache(cityId, { data, timestamp: Date.now() });
   } catch(e) { /* silently ignore cache errors */ }
 }
 
-function loadFromWeatherCache(cityId) {
+function loadFromWeatherCacheLegacy(cityId) {
   try {
-    const raw = localStorage.getItem(`wandr_weather_cache_${cityId}`);
-    if (!raw) return null;
-    const { data, timestamp } = JSON.parse(raw);
+    const cached = window.WandrStorage.loadWeatherCache(cityId);
+    if (!cached) return null;
+    const { data, timestamp } = cached;
     if (Date.now() - timestamp > 30 * 60 * 1000) return null; // 30 min TTL
     return data;
   } catch(e) { return null; }
@@ -5018,7 +3960,7 @@ function mapWmoCode(code) {
   return map[code] || { description: 'Desconocido', icon: '🌡️' };
 }
 
-async function getCoordinatesForCity(city, trip) {
+async function getCoordinatesForCityLegacy(city, trip) {
   if (city.hotelLat && city.hotelLon) {
     return { lat: city.hotelLat, lon: city.hotelLon };
   }
@@ -5049,7 +3991,7 @@ async function getCoordinatesForCity(city, trip) {
 // PACKING SUGGESTIONS
 // ══════════════════════════════════════
 
-function getPackingSuggestions(weatherDay) {
+function getPackingSuggestionsLegacy(weatherDay) {
   const suggestions = [];
   const wmo = weatherDay.weather_code;
   const maxTemp = weatherDay.temperature_2m_max;
@@ -5093,122 +4035,7 @@ function getPackingSuggestions(weatherDay) {
 // WEATHER SERVICE
 // ══════════════════════════════════════
 
-function saveToWeatherCache(cityId, data) {
-  try {
-    localStorage.setItem(`wandr_weather_cache_${cityId}`, JSON.stringify({ data, timestamp: Date.now() }));
-  } catch(e) { /* silently ignore */ }
-}
-
-function loadFromWeatherCache(cityId) {
-  try {
-    const raw = localStorage.getItem(`wandr_weather_cache_${cityId}`);
-    if (!raw) return null;
-    const { data, timestamp } = JSON.parse(raw);
-    if (Date.now() - timestamp > 30 * 60 * 1000) return null;
-    return data;
-  } catch(e) { return null; }
-}
-
-function mapWmoCode(code) {
-  const map = {
-    0: { description: 'Despejado', icon: '☀️' },
-    1: { description: 'Mayormente despejado', icon: '🌤️' },
-    2: { description: 'Mayormente despejado', icon: '🌤️' },
-    3: { description: 'Nublado', icon: '☁️' },
-    45: { description: 'Niebla', icon: '🌫️' },
-    48: { description: 'Niebla', icon: '🌫️' },
-    51: { description: 'Llovizna', icon: '🌦️' },
-    53: { description: 'Llovizna', icon: '🌦️' },
-    55: { description: 'Llovizna', icon: '🌦️' },
-    56: { description: 'Llovizna helada', icon: '🌧️' },
-    57: { description: 'Llovizna helada', icon: '🌧️' },
-    61: { description: 'Lluvia', icon: '🌧️' },
-    63: { description: 'Lluvia', icon: '🌧️' },
-    65: { description: 'Lluvia', icon: '🌧️' },
-    66: { description: 'Lluvia helada', icon: '🌨️' },
-    67: { description: 'Lluvia helada', icon: '🌨️' },
-    71: { description: 'Nieve', icon: '❄️' },
-    73: { description: 'Nieve', icon: '❄️' },
-    75: { description: 'Nieve', icon: '❄️' },
-    77: { description: 'Granos de nieve', icon: '🌨️' },
-    80: { description: 'Chubascos', icon: '🌦️' },
-    81: { description: 'Chubascos', icon: '🌦️' },
-    82: { description: 'Chubascos', icon: '🌦️' },
-    85: { description: 'Chubascos de nieve', icon: '🌨️' },
-    86: { description: 'Chubascos de nieve', icon: '🌨️' },
-    95: { description: 'Tormenta', icon: '⛈️' },
-    96: { description: 'Tormenta con granizo', icon: '⛈️' },
-    99: { description: 'Tormenta con granizo', icon: '⛈️' }
-  };
-  return map[code] || { description: 'Desconocido', icon: '🌡️' };
-}
-
-async function getCoordinatesForCity(city, trip) {
-  if (city.hotelLat && city.hotelLon) {
-    return { lat: city.hotelLat, lon: city.hotelLon };
-  }
-  const days = city.days || [];
-  for (const day of days) {
-    const stops = day.stops || [];
-    for (const stop of stops) {
-      if (stop.lat && stop.lon) {
-        return { lat: stop.lat, lon: stop.lon };
-      }
-    }
-  }
-  if (city.name) {
-    try {
-      const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(city.name)}&limit=1`, {
-        headers: { 'User-Agent': 'Wandr/1.0' }
-      });
-      const data = await res.json();
-      if (data && data.length > 0) {
-        return { lat: parseFloat(data[0].lat), lon: parseFloat(data[0].lon) };
-      }
-    } catch(e) { /* silently ignore geocoding errors */ }
-  }
-  return null;
-}
-
-// ══════════════════════════════════════
-// PACKING SUGGESTIONS
-// ══════════════════════════════════════
-
-function getPackingSuggestions(weatherDay) {
-  const suggestions = [];
-  const wmo = weatherDay.weather_code;
-  const maxTemp = weatherDay.temperature_2m_max;
-  const precip = weatherDay.precipitation_probability_max || 0;
-  const wind = weatherDay.wind_speed_10m_max || 0;
-  if (maxTemp < 10) {
-    suggestions.push({ icon: '🧥', text: 'Abrigo pesado' });
-    suggestions.push({ icon: '🧤', text: 'Guantes' });
-    suggestions.push({ icon: '🧣', text: 'Bufanda' });
-    suggestions.push({ icon: '🧢', text: 'Gorro' });
-  } else if (maxTemp < 20) {
-    suggestions.push({ icon: '🧥', text: 'Campera liviana' });
-    suggestions.push({ icon: '🧶', text: 'Sweater' });
-  } else {
-    suggestions.push({ icon: '🧴', text: 'Protector solar' });
-    suggestions.push({ icon: '🕶️', text: 'Gafas de sol' });
-    suggestions.push({ icon: '👒', text: 'Sombrero' });
-  }
-  if (precip > 30) {
-    suggestions.push({ icon: '☂️', text: 'Paraguas' });
-    suggestions.push({ icon: '🧥', text: 'Impermeable' });
-  }
-  if (wind > 30) {
-    suggestions.push({ icon: '🧥', text: 'Cortavientos' });
-  }
-  if ([71,73,75,77,85,86].includes(wmo)) {
-    suggestions.push({ icon: '🥾', text: 'Botas impermeables' });
-    suggestions.push({ icon: '🧣', text: 'Ropa térmica' });
-  }
-  suggestions.push({ icon: '🔌', text: 'Cargador de celular' });
-  suggestions.push({ icon: '💧', text: 'Botella de agua' });
-  suggestions.push({ icon: '📄', text: 'Documentos' });
-  return suggestions;
-}
+// Extracted to js/core/weather.js. Legacy helpers no longer live in wandr.js.
 
 // ══════════════════════════════════════
 // INIT — migrate & sanitize old data
@@ -5216,9 +4043,7 @@ function getPackingSuggestions(weatherDay) {
 
 // Cargar country codes para ciudades existentes usando geocodificación
 async function loadCountryCodesForExistingCities() {
-  // Clave para guardar los country codes ya procesados
-  const PROCESSED_KEY = 'wandr_country_codes_processed';
-  const processedCities = JSON.parse(localStorage.getItem(PROCESSED_KEY) || '{}');
+  const processedCities = window.WandrStorage.loadProcessedCountryCodes();
   
   const citiesWithoutCode = [];
   
@@ -5309,7 +4134,7 @@ async function loadCountryCodesForExistingCities() {
   }
 
   // Guardar el registro de ciudades procesadas
-  localStorage.setItem(PROCESSED_KEY, JSON.stringify(processedCities));
+  window.WandrStorage.saveProcessedCountryCodes(processedCities);
   
   // Guardar trips si hubo cambios
   if (changed) {
@@ -5349,7 +4174,7 @@ function sanitizeTrips(raw) {
         hotelAddr: t.hotelAddr || '',
         startDate: t.startDate,
         endDate: t.endDate,
-        days: Array.isArray(t.days) ? t.days : buildDays(t.startDate, t.endDate)
+        days: Array.isArray(t.days) ? t.days : window.Wandr.Cities.buildDays(t.startDate, t.endDate)
       };
       return { 
         id: t.id, 
@@ -5385,7 +4210,7 @@ function sanitizeTrips(raw) {
           if (cleanStops.length) stopsMap[d.date] = cleanStops;
         }
       });
-      ci.days = buildDays(ci.startDate, ci.endDate).map(d => ({
+      ci.days = window.Wandr.Cities.buildDays(ci.startDate, ci.endDate).map(d => ({
         date: d.date, stops: stopsMap[d.date] || []
       }));
       // Preserve hotel coordinates
@@ -5403,6 +4228,21 @@ function sanitizeTrips(raw) {
 }
 
 const _sanitized = sanitizeTrips(_rawTripsFromStorage);
+// Stage 3 bridge: keep legacy global API stable while screen renderers live in js/render.
+if (window.WandrRender) {
+  renderTrips = window.WandrRender.renderTrips || renderTrips;
+  renderOverview = window.WandrRender.renderOverview || renderOverview;
+  ovGoToDay = window.WandrRender.ovGoToDay || ovGoToDay;
+  renderDetail = window.WandrRender.renderDetail || renderDetail;
+  updateDayScrollFades = window.WandrRender.updateDayScrollFades || updateDayScrollFades;
+  switchCity = window.WandrRender.switchCity || switchCity;
+  switchDay = window.WandrRender.switchDay || switchDay;
+  renderTickets = window.WandrRender.renderTickets || renderTickets;
+  calcWaitTime = window.WandrRender.calcWaitTime || calcWaitTime;
+  calcDuration = window.WandrRender.calcDuration || calcDuration;
+  renderTicketCard = window.WandrRender.renderTicketCard || renderTicketCard;
+  renderTransitCard = window.WandrRender.renderTransitCard || renderTransitCard;
+}
 // Only overwrite stored data if sanitization actually produced something useful,
 // or if the original was already empty. This prevents a parse/sanitize bug from
 // wiping all user data by replacing it with an empty array.
@@ -5647,12 +4487,12 @@ function openTimePicker(targetId) {
   openModal('modal-time-picker');
 }
 
-function closeTimePicker() {
+function closeTimePickerLegacy() {
   closeModal('modal-time-picker');
   _tpTargetId = null;
 }
 
-function confirmTimePicker() {
+function confirmTimePickerLegacy() {
   if (!_tpTargetId || !_tpHour || !_tpMin) return;
   const h = String(_tpHour.getValue()).padStart(2, '0');
   const m = String(_tpMin.getValue()).padStart(2, '0');
@@ -5668,12 +4508,12 @@ function confirmTimePicker() {
 }
 
 // Public API
-function getWheelTime(id) {
+function getWheelTimeLegacy(id) {
   const el = document.getElementById(id);
   return el ? (el.dataset.value || '') : '';
 }
 
-function setWheelTime(id, value) {
+function setWheelTimeLegacy(id, value) {
   const el = document.getElementById(id);
   if (!el) return;
   el.dataset.value = value || '';
@@ -5740,6 +4580,24 @@ function closeTimePicker() {
   _tpMin = null;
 }
 
+// ══ STAGE 3 BRIDGE: Backward Compatibility for Modal Functions ══
+// Assign WandrRender.Modals functions to global scope for HTML onclick handlers
+
+window.openModal = WandrRender.openModal;
+window.closeModal = WandrRender.closeModal;
+window.openNewTripModal = WandrRender.Modals.Trip.openNew;
+window.openEditTripDatesModal = WandrRender.Modals.Trip.openEditDates;
+window.openAddCityModal = WandrRender.Modals.City.openAdd;
+window.openEditCityNameModal = WandrRender.Modals.City.openEditName;
+window.openEditCityDatesModal = WandrRender.Modals.City.openEditDates;
+window.openDeleteCityFromEditModal = WandrRender.Modals.City.openDeleteFromEdit;
+window.openAddStopModal = WandrRender.Modals.Stop.openAdd;
+window.openEditStopModal = WandrRender.Modals.Stop.openEdit;
+window.openAddTicketModal = WandrRender.Modals.Ticket.openAdd;
+window.openEditTicketModal = WandrRender.Modals.Ticket.openEdit;
+window.openEditHotelModal = WandrRender.Modals.Hotel.openEdit;
+window.openPackingModal = WandrRender.Modals.Packing.openModal;
+
 function confirmTimePicker() {
   if (!_tpTargetId || !_tpHour || !_tpMin) return;
   
@@ -5770,3 +4628,6 @@ function setWheelTime(id, value) {
   el.textContent = value || '--:--';
   el.classList.toggle('has-value', !!value);
 }
+
+
+

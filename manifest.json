@@ -1,7 +1,7 @@
 {
-  "name": "Wandr — Planificador de Viajes",
+  "name": "Wandr \u2014 Planificador de Viajes",
   "short_name": "Wandr",
-  "description": "Planificá tu viaje día a día con rutas en Google Maps",
+  "description": "Planific\u00e1 tu viaje d\u00eda a d\u00eda con rutas en Google Maps",
   "start_url": "./index.html",
   "display": "standalone",
   "background_color": "#0e0e1a",

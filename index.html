@@ -8,7 +8,7 @@
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
   <meta name="apple-mobile-web-app-title" content="Wandr" />
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; connect-src 'self' https://api.mapbox.com https://geocode.xyz https://nominatim.openstreetmap.org https://photon.komoot.io https://api.open-meteo.com https://archive-api.open-meteo.com https://cdn.jsdelivr.net; img-src 'self' data: https://flagcdn.com blob:; manifest-src 'self'; worker-src 'self'; base-uri 'self'; form-action 'self';" />
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; connect-src 'self' https://api.mapbox.com https://geocode.xyz https://nominatim.openstreetmap.org https://photon.komoot.io https://api.open-meteo.com https://archive-api.open-meteo.com https://cdn.jsdelivr.net https://router.project-osrm.org; img-src 'self' data: https://flagcdn.com blob:; manifest-src 'self'; worker-src 'self'; base-uri 'self'; form-action 'self';" />
   <title>Wandr — Planificador de Viajes</title>
   <link rel="manifest" href="manifest.json" />
   <link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png" />
@@ -48,8 +48,8 @@
   </button>
   <div class="detail-tabs">
     <button class="detail-tab active" id="dtab-itinerary" onclick="switchDetailTab('itinerary')">Itinerario</button>
-    <button class="detail-tab" id="dtab-overview" onclick="switchDetailTab('overview')">🗺️ Resumen</button>
-    <button class="detail-tab" id="dtab-tickets" onclick="switchDetailTab('tickets')">🎫 Pasajes</button>
+    <button class="detail-tab" id="dtab-overview" onclick="switchDetailTab('overview')">Resumen</button>
+    <button class="detail-tab" id="dtab-tickets" onclick="switchDetailTab('tickets')">Pasajes</button>
   </div>
   <div id="detail-content"></div>
   <div id="overview-content" style="display:none"></div>
@@ -103,7 +103,7 @@
 
     <!-- Step 1: Info del viaje -->
     <div class="wizard-content" id="wizard-step-1">
-      <h2>✈️ Nuevo Viaje</h2>
+      <h2>Nuevo viaje</h2>
       <div class="form-group">
         <label for="trip-name">Nombre del viaje</label>
         <input type="text" id="trip-name" placeholder="Ej: Europa 2026" maxlength="60" aria-label="Nombre del viaje" />
@@ -118,7 +118,7 @@
           <div>
             <input type="date" id="trip-end" placeholder="Fin" onchange="onTripEndChange()" aria-label="Fecha de regreso" />
             <div style="font-size:0.7rem;color:var(--text2);margin-top:4px">Regreso</div>
-            <div class="error-msg" id="trip-end-error">⚠️ Debe ser igual o posterior al inicio</div>
+            <div class="error-msg" id="trip-end-error">Debe ser igual o posterior al inicio</div>
           </div>
         </div>
       </div>
@@ -127,20 +127,20 @@
 
     <!-- Step 2: Ciudades -->
     <div class="wizard-content" id="wizard-step-2" style="display:none">
-      <h2>🏙️ Ciudades</h2>
+      <h2>Ciudades</h2>
       <div id="cities-list"></div>
       <div class="wizard-nav">
-        <button class="btn-secondary" onclick="wizardPrevStep(2)" style="flex:1">Atrás</button>
+        <button class="btn-secondary" onclick="wizardPrevStep(2)" style="flex:1">Atras</button>
         <button class="btn-primary" onclick="wizardNextStep(2)" style="flex:1;margin-left:10px">Siguiente</button>
       </div>
     </div>
 
     <!-- Step 3: Resumen -->
     <div class="wizard-content" id="wizard-step-3" style="display:none">
-      <h2>✅ Revisar</h2>
+      <h2>Revisar</h2>
       <div id="wizard-summary"></div>
       <button class="btn-primary" onclick="createTrip()">Crear viaje</button>
-      <button class="btn-secondary" onclick="wizardPrevStep(3)">Atrás</button>
+      <button class="btn-secondary" onclick="wizardPrevStep(3)">Atras</button>
     </div>
 
     <button class="btn-cancel-wizard" onclick="closeModal('modal-new-trip')">Cancelar</button>
@@ -151,7 +151,7 @@
 <div class="modal-overlay" id="modal-add-stop">
   <div class="modal">
     <div class="modal-handle"></div>
-    <h2 id="stop-modal-title">📍 Agregar parada</h2>
+    <h2 id="stop-modal-title">Agregar parada</h2>
 
     <!-- Wizard Progress -->
     <div class="wizard-progress" id="stop-wizard-progress">
@@ -162,7 +162,7 @@
       <div class="wizard-line"></div>
       <div class="wizard-step" data-step="2">
         <span class="wizard-step-num">2</span>
-        <span class="wizard-step-label">Dirección</span>
+        <span class="wizard-step-label">Direccion</span>
       </div>
       <div class="wizard-line"></div>
       <div class="wizard-step" data-step="3">
@@ -193,7 +193,7 @@
           <input type="text" id="stop-name" placeholder="Ej: Manneken Pis, Torre Eiffel..." maxlength="80" autocomplete="off" aria-label="Nombre del lugar" />
           <ul class="autocomplete-results" id="stop-name-results"></ul>
         </div>
-        <small style="color:var(--text2);font-size:0.75rem;margin-top:6px;display:block">Escribí al menos 3 caracteres. Si no encuentra, podés escribir el nombre a mano y seguir.</small>
+        <small style="color:var(--text2);font-size:0.75rem;margin-top:6px;display:block">Escribi al menos 3 caracteres. Si no encuentra, podes escribir el nombre a mano y seguir.</small>
       </div>
       <button class="btn-primary" onclick="stopWizardNextStep(1)">Siguiente</button>
     </div>
@@ -201,15 +201,15 @@
     <!-- Step 2: Dirección -->
     <div class="wizard-content" id="stop-wizard-step-2" style="display:none">
       <div class="form-group">
-        <label for="stop-addr">Dirección</label>
+        <label for="stop-addr">Direccion</label>
         <div class="autocomplete-wrap" style="position:relative">
-          <input type="text" id="stop-addr" placeholder="Escribí la dirección..." autocomplete="off" maxlength="150" aria-label="Dirección del lugar" />
+          <input type="text" id="stop-addr" placeholder="Escribi la direccion..." autocomplete="off" maxlength="150" aria-label="Direccion del lugar" />
           <ul class="autocomplete-results" id="stop-addr-results"></ul>
         </div>
-        <small style="color:var(--text2);font-size:0.75rem;margin-top:6px;display:block">Escribí al menos 3 caracteres para buscar</small>
+        <small style="color:var(--text2);font-size:0.75rem;margin-top:6px;display:block">Escribi al menos 3 caracteres para buscar</small>
       </div>
       <div class="selected-address" id="selected-address-display" style="display:none">
-        <span style="color:var(--accent2)">✓ Dirección seleccionada</span>
+        <span style="color:var(--accent2)">Direccion seleccionada</span>
       </div>
       <div class="wizard-nav">
         <button class="btn-secondary" onclick="stopWizardPrevStep(2)" style="flex:1">Atrás</button>
@@ -234,10 +234,10 @@
       </div>
       <div class="form-group">
         <label for="stop-note">Nota <span class="label-optional">opcional</span></label>
-        <input type="text" id="stop-note" placeholder="Ej: Entrada gratis, reservar con anticipación" maxlength="200" aria-label="Nota opcional" />
+          <input type="text" id="stop-note" placeholder="Ej: Entrada gratis, reservar con anticipacion" maxlength="200" aria-label="Nota opcional" />
       </div>
       <div class="wizard-nav">
-        <button class="btn-secondary" onclick="stopWizardPrevStep(3)" style="flex:1">Atrás</button>
+        <button class="btn-secondary" onclick="stopWizardPrevStep(3)" style="flex:1">Atras</button>
         <button class="btn-primary" onclick="stopWizardNextStep(3)" style="flex:1;margin-left:10px">Siguiente</button>
       </div>
     </div>
@@ -245,7 +245,7 @@
     <!-- Step 4: Transporte -->
     <div class="wizard-content" id="stop-wizard-step-4" style="display:none">
       <div class="form-group">
-        <label>Cómo llegar (desde parada anterior)</label>
+        <label>Como llegar (desde parada anterior)</label>
         <div class="transport-grid">
           <div class="transport-option selected" data-mode="walking" onclick="selectTransport(this,'walking')">🚶<small>Caminando</small></div>
           <div class="transport-option" data-mode="transit" onclick="selectTransport(this,'transit')">🚌<small>Transporte</small></div>
@@ -254,7 +254,7 @@
         </div>
       </div>
       <button class="btn-primary" id="stop-save-btn" onclick="saveStop()">Agregar parada</button>
-      <button class="btn-secondary" onclick="stopWizardPrevStep(4)">Atrás</button>
+      <button class="btn-secondary" onclick="stopWizardPrevStep(4)">Atras</button>
     </div>
 
     <button class="btn-cancel-wizard" onclick="closeModal('modal-add-stop')">Cancelar</button>
@@ -265,15 +265,15 @@
 <div class="modal-overlay" id="modal-add-city">
   <div class="modal">
     <div class="modal-handle"></div>
-    <h2 id="add-city-modal-title">🏙️ Agregar ciudad</h2>
+    <h2 id="add-city-modal-title">Agregar ciudad</h2>
     <p style="color:var(--text2);font-size:0.84rem;margin-bottom:16px" id="add-city-gap-hint"></p>
 
     <!-- Tipo: estadía vs excursión -->
     <div class="form-group">
       <label>Tipo</label>
       <div class="type-grid" style="grid-template-columns:1fr 1fr">
-        <div class="type-option selected" id="city-type-stay" onclick="selectCityType('stay')">🏨<small>Estadía</small></div>
-        <div class="type-option" id="city-type-daytrip" onclick="selectCityType('daytrip')">🗺️<small>Excursión</small></div>
+         <div class="type-option selected" id="city-type-stay" onclick="selectCityType('stay')"><small>Estadia</small></div>
+         <div class="type-option" id="city-type-daytrip" onclick="selectCityType('daytrip')"><small>Excursion</small></div>
       </div>
     </div>
 
@@ -441,14 +441,14 @@
 </div>
 
 <!-- ══ MODAL: CONFIRMAR ELIMINAR CIUDAD ══ -->
-<div class="modal-overlay" id="modal-confirm-delete-city">
+<div class="modal-overlay" id="modal-confirm-remove-city-entry">
   <div class="modal">
     <div class="modal-handle"></div>
-    <h2>🗑️ Eliminar ciudad</h2>
-    <p style="color:var(--text2);margin-bottom:16px" id="confirm-delete-city-msg"></p>
+    <h2>Eliminar ciudad</h2>
+    <p style="color:var(--text2);margin-bottom:16px" id="confirm-remove-city-entry-msg"></p>
     <div style="display:flex;gap:8px">
-      <button class="btn-secondary" onclick="closeModal('modal-confirm-delete-city')" style="flex:1">Cancelar</button>
-      <button class="btn-danger" onclick="deleteCityFromModal()" style="flex:1">Eliminar</button>
+      <button class="btn-secondary" onclick="closeModal('modal-confirm-remove-city-entry')" style="flex:1">Cancelar</button>
+      <button class="btn-danger" onclick="confirmRemoveCityEntry()" style="flex:1">Eliminar</button>
     </div>
   </div>
 </div>
@@ -457,7 +457,7 @@
 <div class="modal-overlay" id="modal-packing">
   <div class="modal">
     <div class="modal-handle"></div>
-    <h2>🧳 Qué llevar a <span id="packing-city-name"></span></h2>
+    <h2>Que llevar a <span id="packing-city-name"></span></h2>
     <div class="packing-modal-summary">
       <div class="packing-summary-item">
         <span class="packing-summary-icon">🌡️</span>
@@ -477,18 +477,18 @@
 <div class="modal-overlay" id="modal-edit-hotel">
   <div class="modal">
     <div class="modal-handle"></div>
-    <h2>🏨 Hotel en <span id="edit-hotel-city-name"></span></h2>
+    <h2>Hotel en <span id="edit-hotel-city-name"></span></h2>
     <div class="form-group">
       <label for="edit-hotel-name">Nombre del hotel</label>
       <div class="autocomplete-wrap">
-        <input type="text" id="edit-hotel-name" placeholder="Buscá el hotel..." autocomplete="off" aria-label="Nombre del hotel" />
+         <input type="text" id="edit-hotel-name" placeholder="Busca el hotel..." autocomplete="off" aria-label="Nombre del hotel" />
         <ul class="autocomplete-list" id="edit-hotel-name-list"></ul>
       </div>
     </div>
     <div class="form-group">
-      <label>Dirección</label>
+        <label>Direccion</label>
       <div class="autocomplete-wrap">
-        <input type="text" id="edit-hotel-addr" placeholder="Se completa automáticamente" autocomplete="off" aria-label="Dirección del hotel" />
+        <input type="text" id="edit-hotel-addr" placeholder="Se completa automaticamente" autocomplete="off" aria-label="Direccion del hotel" />
         <input type="hidden" id="edit-hotel-lat" />
         <input type="hidden" id="edit-hotel-lon" />
         <ul class="autocomplete-list" id="edit-hotel-addr-list"></ul>
@@ -540,9 +540,9 @@
   <div class="modal">
     <div class="modal-handle"></div>
     <div class="confirm-icon">🗑️</div>
-    <h2 id="confirm-delete-trip-title" style="text-align:center;margin-bottom:10px">¿Eliminar viaje?</h2>
+    <h2 id="confirm-delete-trip-title" style="text-align:center;margin-bottom:10px">Eliminar viaje?</h2>
     <p id="confirm-delete-trip-body" style="color:var(--text2);font-size:0.88rem;line-height:1.55;margin-bottom:24px;text-align:center"></p>
-    <button class="btn-danger-full" onclick="confirmDeleteTrip()">Sí, eliminar</button>
+    <button class="btn-danger-full" onclick="confirmDeleteTrip()">Si, eliminar</button>
     <button class="btn-secondary" onclick="closeModal('modal-confirm-delete-trip')">Cancelar</button>
   </div>
 </div>
@@ -552,9 +552,9 @@
   <div class="modal">
     <div class="modal-handle"></div>
     <div class="confirm-icon">🗑️</div>
-    <h2 id="confirm-delete-city-title" style="text-align:center;margin-bottom:10px">¿Eliminar ciudad?</h2>
+    <h2 id="confirm-delete-city-title" style="text-align:center;margin-bottom:10px">Eliminar ciudad?</h2>
     <p id="confirm-delete-city-body" style="color:var(--text2);font-size:0.88rem;line-height:1.55;margin-bottom:24px;text-align:center"></p>
-    <button class="btn-danger-full" onclick="confirmRemoveCityEntry()">Sí, eliminar</button>
+    <button class="btn-danger-full" onclick="confirmDeleteCity()">Si, eliminar</button>
     <button class="btn-secondary" onclick="closeModal('modal-confirm-delete-city')">Cancelar</button>
   </div>
 </div>
@@ -564,11 +564,11 @@
   <div class="modal">
     <div class="modal-handle"></div>
     <div class="confirm-icon">⚠️</div>
-    <h2 style="text-align:center;margin-bottom:10px">¿Reemplazar todos los viajes?</h2>
+    <h2 style="text-align:center;margin-bottom:10px">Reemplazar todos los viajes?</h2>
     <p style="color:var(--text2);font-size:0.88rem;line-height:1.55;margin-bottom:24px;text-align:center">
-      Esto eliminará tus viajes actuales y los reemplazará con los <strong id="confirm-import-count" style="color:var(--text)">0</strong> viaje(s) del archivo. Esta acción no se puede deshacer.
+      Esto eliminara tus viajes actuales y los reemplazara con los <strong id="confirm-import-count" style="color:var(--text)">0</strong> viaje(s) del archivo. Esta accion no se puede deshacer.
     </p>
-    <button class="btn-danger-full" onclick="confirmImportReplace()">Sí, reemplazar todo</button>
+    <button class="btn-danger-full" onclick="confirmImportReplace()">Si, reemplazar todo</button>
     <button class="btn-secondary" onclick="closeModal('modal-confirm-import')">Cancelar</button>
   </div>
 </div>
@@ -577,7 +577,7 @@
 <div class="modal-overlay" id="modal-ticket">
   <div class="modal">
     <div class="modal-handle"></div>
-    <h2 id="ticket-modal-title">🎫 Agregar pasaje</h2>
+    <h2 id="ticket-modal-title">Agregar pasaje</h2>
 
     <!-- Wizard Progress -->
     <div class="wizard-progress" id="ticket-wizard-progress">
@@ -602,10 +602,10 @@
       <div class="form-group">
         <label>Tipo de transporte</label>
         <div class="transport-grid" id="ticket-type-grid">
-          <div class="transport-option" data-ttype="flight" onclick="selectTicketType(this,'flight')">✈️<small>Vuelo</small></div>
-          <div class="transport-option" data-ttype="bus"    onclick="selectTicketType(this,'bus')">🚌<small>Bus</small></div>
-          <div class="transport-option" data-ttype="train"  onclick="selectTicketType(this,'train')">🚆<small>Tren</small></div>
-          <div class="transport-option" data-ttype="boat"   onclick="selectTicketType(this,'boat')">⛴️<small>Barco</small></div>
+          <div class="transport-option" data-ttype="flight" onclick="selectTicketType(this,'flight')"><small>Vuelo</small></div>
+          <div class="transport-option" data-ttype="bus"    onclick="selectTicketType(this,'bus')"><small>Bus</small></div>
+          <div class="transport-option" data-ttype="train"  onclick="selectTicketType(this,'train')"><small>Tren</small></div>
+          <div class="transport-option" data-ttype="boat"   onclick="selectTicketType(this,'boat')"><small>Barco</small></div>
         </div>
       </div>
 
@@ -873,6 +873,23 @@
 
 <div id="toast"></div>
 
+<script src="js/utils/dates.js"></script>
+<script src="js/utils/format.js"></script>
+<script src="js/utils/geo.js"></script>
+<script src="js/utils/transport.js"></script>
+<script src="js/utils/sanitize.js"></script>
+<script src="js/core/validation.js"></script>
+<script src="js/core/storage.js"></script>
+<script src="js/core/weather.js"></script>
+<script src="js/core/routing.js"></script>
+<script src="js/core/cities.js"></script>
+<script src="js/state/store.js"></script>
+<script src="js/render/trips.js"></script>
+<script src="js/render/overview.js"></script>
+<script src="js/render/detail.js"></script>
+<script src="js/render/tickets.js"></script>
+<script src="js/render/modals.js"></script>
 <script src="wandr.js"></script>
+<script src="js/render/dragdrop.js"></script>
 </body>
 </html>
