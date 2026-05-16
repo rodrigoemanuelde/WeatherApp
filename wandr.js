@@ -123,21 +123,26 @@ function getCurrentDay() {
 // ══════════════════════════════════════
 function showScreen(name) {
   document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
-  document.getElementById('screen-' + name).classList.add('active');
+  const screenEl = safeGet('screen-' + name);
+  if (screenEl) screenEl.classList.add('active');
   if (name === 'trips') {
-    document.getElementById('btn-add-stop').classList.remove('visible');
-    document.getElementById('btn-new-trip').style.display = '';
+    const btnAddStop = safeGet('btn-add-stop');
+    const btnNewTrip = safeGet('btn-new-trip');
+    if (btnAddStop) btnAddStop.classList.remove('visible');
+    if (btnNewTrip) btnNewTrip.style.display = '';
     renderTrips();
   } else {
-    // In detail screen, FAB only shows on itinerary tab
     const showFab = currentDetailTab === 'itinerary';
-    document.getElementById('btn-add-stop').classList.toggle('visible', showFab);
-    document.getElementById('btn-new-trip').style.display = 'none';
+    const btnAddStop = safeGet('btn-add-stop');
+    const btnNewTrip = safeGet('btn-new-trip');
+    if (btnAddStop) btnAddStop.classList.toggle('visible', showFab);
+    if (btnNewTrip) btnNewTrip.style.display = 'none';
   }
 }
 function goBack() { showScreen('trips'); }
 function goHome() {
-  if (document.getElementById('screen-trips').classList.contains('active')) {
+  const screenTrips = safeGet('screen-trips');
+  if (screenTrips && screenTrips.classList.contains('active')) {
     window.scrollTo(0, 0);
   } else {
     showScreen('trips');
@@ -650,14 +655,21 @@ function openTrip(id) {
 
 function switchDetailTab(tab) {
   appStore.setDetailTab(tab);
-  document.getElementById('dtab-itinerary').classList.toggle('active', tab === 'itinerary');
-  document.getElementById('dtab-overview').classList.toggle('active', tab === 'overview');
-  document.getElementById('dtab-tickets').classList.toggle('active', tab === 'tickets');
-  document.getElementById('detail-content').style.display   = tab === 'itinerary' ? 'block' : 'none';
-  document.getElementById('overview-content').style.display = tab === 'overview'  ? 'block' : 'none';
-  document.getElementById('tickets-content').style.display  = tab === 'tickets'   ? 'block' : 'none';
-  // FAB only visible on itinerary tab
-  document.getElementById('btn-add-stop').style.display = tab === 'itinerary' ? '' : 'none';
+  const dtabItinerary = safeGet('dtab-itinerary');
+  const dtabOverview = safeGet('dtab-overview');
+  const dtabTickets = safeGet('dtab-tickets');
+  const detailContent = safeGet('detail-content');
+  const overviewContent = safeGet('overview-content');
+  const ticketsContent = safeGet('tickets-content');
+  const btnAddStop = safeGet('btn-add-stop');
+  
+  if (dtabItinerary) dtabItinerary.classList.toggle('active', tab === 'itinerary');
+  if (dtabOverview) dtabOverview.classList.toggle('active', tab === 'overview');
+  if (dtabTickets) dtabTickets.classList.toggle('active', tab === 'tickets');
+  if (detailContent) detailContent.style.display = tab === 'itinerary' ? 'block' : 'none';
+  if (overviewContent) overviewContent.style.display = tab === 'overview' ? 'block' : 'none';
+  if (ticketsContent) ticketsContent.style.display = tab === 'tickets' ? 'block' : 'none';
+  if (btnAddStop) btnAddStop.style.display = tab === 'itinerary' ? '' : 'none';
   if (tab === 'tickets') renderTickets();
   if (tab === 'overview') renderOverview();
 }
@@ -2831,6 +2843,12 @@ function esc(s) {
   return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
 }
 
+function safeGet(id) {
+  if (!id) return null;
+  return document.getElementById(id);
+}
+window.safeGet = safeGet;
+
 // Función helper para obtener la bandera de un país (imagen)
 function getCountryFlag(countryCode) {
   if (!countryCode) return '';
@@ -4471,7 +4489,7 @@ let _tpHour, _tpMin;
 
 function openTimePicker(targetId) {
   _tpTargetId = targetId;
-  const el = document.getElementById(targetId);
+  const el = safeGet(targetId);
   const currentVal = el ? (el.dataset.value || '') : '';
 
   const h = currentVal ? parseInt(currentVal.split(':')[0], 10) : 0;

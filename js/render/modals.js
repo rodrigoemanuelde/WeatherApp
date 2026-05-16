@@ -14,10 +14,13 @@
    * @public Opens a modal by ID (adds 'open' class)
    */
   function openModal(id) {
-    document.getElementById(id).classList.add('open');
+    const modal = safeGet(id);
+    if (!modal) return;
+    modal.classList.add('open');
     if (id === 'modal-backup') {
       updateBackupCount();
-      document.getElementById('import-warning').style.display = 'none';
+      const warningEl = safeGet('import-warning');
+      if (warningEl) warningEl.style.display = 'none';
       pendingImportData = null;
     }
   }
@@ -26,11 +29,15 @@
    * @public Closes a modal by ID (removes 'open' class)
    */
   function closeModal(id) {
-    document.getElementById(id).classList.remove('open');
+    const modal = safeGet(id);
+    if (!modal) return;
+    modal.classList.remove('open');
     if (id === 'modal-backup') {
       pendingImportData = null;
-      document.getElementById('import-warning').style.display = 'none';
-      document.getElementById('import-file-input').value = '';
+      const warningEl = safeGet('import-warning');
+      const fileInputEl = safeGet('import-file-input');
+      if (warningEl) warningEl.style.display = 'none';
+      if (fileInputEl) fileInputEl.value = '';
     }
   }
 
