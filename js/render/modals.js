@@ -552,11 +552,11 @@
    * @private Wizard step navigation for ticket modal
    */
   function ticketWizardGoToStep(step) {
-    document.querySelectorAll('#modal-add-ticket .wizard-step').forEach((el, i) => {
+    document.querySelectorAll('#modal-ticket .wizard-step').forEach((el, i) => {
       el.classList.toggle('active', i + 1 <= step);
       el.classList.toggle('completed', i + 1 < step);
     });
-    document.querySelectorAll('#modal-add-ticket .wizard-content').forEach((el, i) => {
+    document.querySelectorAll('#modal-ticket .wizard-content').forEach((el, i) => {
       el.style.display = (i + 1 === step) ? 'block' : 'none';
     });
   }
@@ -578,7 +578,7 @@
    */
   function updateTicketFields(type) {
     selectedTicketType = type;
-    const fields = document.querySelectorAll('#modal-add-ticket .ticket-field');
+    const fields = document.querySelectorAll('#modal-ticket .ticket-field');
     fields.forEach(f => f.style.display = 'none');
     const showFields = {
       flight: ['ticket-flight-number', 'ticket-depart-city', 'ticket-arrive-city', 'ticket-depart-time', 'ticket-arrive-time', 'ticket-seat', 'ticket-gate'],
@@ -598,13 +598,13 @@
    */
   function openAddTicketModal() {
     // Reset form
-    document.querySelectorAll('#modal-add-ticket input, #modal-add-ticket textarea').forEach(el => el.value = '');
+    document.querySelectorAll('#modal-ticket input, #modal-ticket textarea').forEach(el => el.value = '');
     selectedTicketType = null;
-    document.querySelectorAll('#modal-add-ticket .ticket-type-btn').forEach(btn => btn.classList.remove('selected'));
-    document.querySelectorAll('#modal-add-ticket .ticket-field').forEach(f => f.style.display = 'none');
+    document.querySelectorAll('#modal-ticket .ticket-type-btn').forEach(btn => btn.classList.remove('selected'));
+    document.querySelectorAll('#modal-ticket .ticket-field').forEach(f => f.style.display = 'none');
     appStore.beginAddTicket();
     ticketWizardGoToStep(1);
-    openModal('modal-add-ticket');
+    openModal('modal-ticket');
   }
 
   /**
@@ -618,7 +618,7 @@
 
     // Populate form
     selectedTicketType = ticket.type;
-    document.querySelectorAll('#modal-add-ticket .ticket-type-btn').forEach(btn => {
+    document.querySelectorAll('#modal-ticket .ticket-type-btn').forEach(btn => {
       btn.classList.toggle('selected', btn.dataset.type === ticket.type);
     });
     updateTicketFields(ticket.type);
@@ -631,7 +631,7 @@
     
     appStore.beginEditTicket(ticketId);
     ticketWizardGoToStep(1);
-    openModal('modal-add-ticket');
+    openModal('modal-ticket');
   }
 
   // ══ HOTEL MODALS ═════════════════════════════════════════════

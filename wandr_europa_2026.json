@@ -1,0 +1,326 @@
+{
+  "_wandr": true,
+  "_version": 1,
+  "_exported": "2026-05-16T00:00:00.000Z",
+  "trips": [
+    {
+      "id": "europa2026",
+      "name": "Europa 2026",
+      "startDate": "2026-06-02",
+      "endDate": "2026-06-17",
+      "cities": [
+        {
+          "id": "bru-001",
+          "name": "Bruselas",
+          "hotelName": "Floris Arlequin Grand Place",
+          "hotelAddr": "Rue de la Fourche 17, 1000 Brussels, Bélgica",
+          "hotelLat": 50.8492,
+          "hotelLon": 4.3533,
+          "checkInTime": "15:00",
+          "checkOutTime": "11:00",
+          "startDate": "2026-06-02",
+          "endDate": "2026-06-03",
+          "dayTrip": false,
+          "days": [
+            {
+              "date": "2026-06-02",
+              "stops": [
+                { "id": "bru001", "name": "Llegada aeropuerto BRU", "address": "Aeropuerto de Bruselas (BRU), Bélgica", "lat": 50.9014, "lon": 4.4844, "transport": "transit", "notes": "11:30 - Vuelo AZ156 desde Roma", "order": 1 },
+                { "id": "bru002", "name": "Tren a Bruxelles-Midi", "address": "Bruxelles-Midi, Bélgica", "lat": 50.8362, "lon": 4.3441, "transport": "train", "notes": "~35-40 min", "order": 2 },
+                { "id": "bru003", "name": "Llegada al hotel", "address": "Floris Arlequin Grand Place, Rue de la Fourche 17, 1000 Brussels", "lat": 50.8492, "lon": 4.3533, "transport": "walking", "notes": "12:30 - Dejar valijas", "order": 3 },
+                { "id": "bru004", "name": "Almuerzo en Grand Place", "address": "Grand Place, Brussels, Bélgica", "lat": 50.8467, "lon": 4.3525, "transport": "walking", "notes": "13:00", "order": 4 },
+                { "id": "bru005", "name": "Check-in", "address": "Floris Arlequin Grand Place", "lat": 50.8492, "lon": 4.3533, "transport": "walking", "notes": "15:00", "order": 5 },
+                { "id": "bru006", "name": "Grand Place", "address": "Grand Place, Brussels", "lat": 50.8467, "lon": 4.3525, "transport": "walking", "notes": "16:00 - Plaza central", "order": 6 },
+                { "id": "bru007", "name": "Manneken Pis", "address": "Manneken Pis, Brussels", "lat": 50.8449, "lon": 4.3496, "transport": "walking", "notes": "16:30 - La糙像", "order": 7 },
+                { "id": "bru008", "name": "Barrio de Sablon", "address": "Sablon, Brussels", "lat": 50.8422, "lon": 4.3422, "transport": "walking", "notes": "18:30 - Antigüedades y chocolate", "order": 8 },
+                { "id": "bru009", "name": "Cena en Rue des Bouchers", "address": "Rue des Bouchers, Brussels", "lat": 50.8463, "lon": 4.3495, "transport": "walking", "notes": "20:30 - Moules-frites", "order": 9 }
+              ]
+            },
+            {
+              "date": "2026-06-03",
+              "stops": [
+                { "id": "bru010", "name": "Desayuno + check-out", "address": "Floris Arlequin Grand Place", "lat": 50.8492, "lon": 4.3533, "transport": "walking", "notes": "07:30 - Check-out antes de las 11:00", "order": 1 },
+                { "id": "bru011", "name": "Tren Bruselas → Brujas", "address": "Bruges Railway Station, Bélgica", "lat": 51.1973, "lon": 3.2193, "transport": "train", "notes": "09:00 - Gare du Midi. ~60 min", "order": 2 }
+              ]
+            }
+          ]
+        },
+        {
+          "id": "bru-002",
+          "name": "Brujas",
+          "hotelName": "Martin's Brugge",
+          "hotelAddr": "Oude Burg 19, 8000 Brugge, Bélgica",
+          "hotelLat": 51.2092,
+          "hotelLon": 3.2247,
+          "checkInTime": "15:00",
+          "checkOutTime": "10:00",
+          "startDate": "2026-06-03",
+          "endDate": "2026-06-06",
+          "dayTrip": false,
+          "days": [
+            {
+              "date": "2026-06-03",
+              "stops": [
+                { "id": "brug001", "name": "Llegada a Brujas", "address": "Bruges Railway Station", "lat": 51.1973, "lon": 3.2193, "transport": "train", "notes": "10:00", "order": 1 },
+                { "id": "brug002", "name": "Check-in", "address": "Martin's Brugge, Oude Burg 19", "lat": 51.2092, "lon": 3.2247, "transport": "walking", "notes": "11:00", "order": 2 },
+                { "id": "brug003", "name": "Almuerzo en Markt", "address": "Markt, Bruges", "lat": 51.2073, "lon": 3.2255, "transport": "walking", "notes": "12:30", "order": 3 },
+                { "id": "brug004", "name": "Plaza del Mercado", "address": "Markt, Bruges", "lat": 51.2073, "lon": 3.2255, "transport": "walking", "notes": "14:00", "order": 4 },
+                { "id": "brug005", "name": "Torre del Campanario", "address": "Belfort, Markt 7, 8000 Bruges", "lat": 51.2079, "lon": 3.2264, "transport": "walking", "notes": "15:00", "order": 5 },
+                { "id": "brug006", "name": "Basilica de la Santa Sangre", "address": "Heilig-Bloedbasiliek, Bruges", "lat": 51.2085, "lon": 3.2249, "transport": "walking", "notes": "16:00", "order": 6 },
+                { "id": "brug007", "name": "Cena", "address": "Bruges", "lat": 51.2092, "lon": 3.2247, "transport": "walking", "notes": "20:00", "order": 7 }
+              ]
+            },
+            {
+              "date": "2026-06-04",
+              "stops": [
+                { "id": "brug008", "name": "Desayuno", "address": "Martin's Brugge", "lat": 51.2092, "lon": 3.2247, "transport": "walking", "notes": "09:00", "order": 1 },
+                { "id": "brug009", "name": "Mercado medieval", "address": "Markt, Bruges", "lat": 51.2073, "lon": 3.2255, "transport": "walking", "notes": "10:00", "order": 2 },
+                { "id": "brug010", "name": "Iglesia de Nuestra Señora", "address": "Onze-Lieve-Vrouwekerk, Bruges", "lat": 51.2056, "lon": 3.2270, "transport": "walking", "notes": "11:30", "order": 3 },
+                { "id": "brug011", "name": "Almuerzo", "address": "Bruges", "lat": 51.2092, "lon": 3.2247, "transport": "walking", "notes": "13:00", "order": 4 },
+                { "id": "brug012", "name": "Paseo por los canales", "address": "Bonenmargens, Bruges", "lat": 51.2081, "lon": 3.2291, "transport": "walking", "notes": "15:00", "order": 5 },
+                { "id": "brug013", "name": "Cena", "address": "Bruges", "lat": 51.2092, "lon": 3.2247, "transport": "walking", "notes": "20:00", "order": 6 }
+              ]
+            },
+            {
+              "date": "2026-06-05",
+              "stops": [
+                { "id": "brug014", "name": "Desayuno", "address": "Martin's Brugge", "lat": 51.2092, "lon": 3.2247, "transport": "walking", "notes": "09:00", "order": 1 },
+                { "id": "brug015", "name": "Groeningemuseum", "address": "Dijver 7, 8000 Bruges", "lat": 51.2068, "lon": 3.2251, "transport": "walking", "notes": "10:00 - Museo de arte flamenco", "order": 2 },
+                { "id": "brug016", "name": "Almuerzo", "address": "Bruges", "lat": 51.2092, "lon": 3.2247, "transport": "walking", "notes": "13:00", "order": 3 },
+                { "id": "brug017", "name": "Barrio Sint-Walburga", "address": "Sint-Walburga, Bruges", "lat": 51.2031, "lon": 3.2192, "transport": "walking", "notes": "15:00 - Compras de chocolates", "order": 4 },
+                { "id": "brug018", "name": "Cena de despedida", "address": "Bruges", "lat": 51.2092, "lon": 3.2247, "transport": "walking", "notes": "20:00", "order": 5 }
+              ]
+            },
+            {
+              "date": "2026-06-06",
+              "stops": [
+                { "id": "brug019", "name": "Check-out", "address": "Martin's Brugge", "lat": 51.2092, "lon": 3.2247, "transport": "walking", "notes": "10:00", "order": 1 },
+                { "id": "brug020", "name": "Tren Brujas → Colonia", "address": "Köln Hauptbahnhof, Alemania", "lat": 50.9384, "lon": 7.0119, "transport": "train", "notes": "11:30 - Via Amberes y Düsseldorf. ~4 hs", "order": 2 }
+              ]
+            }
+          ]
+        },
+        {
+          "id": "col-001",
+          "name": "Colonia",
+          "hotelName": "CityClass Hotel Europa am Dom",
+          "hotelAddr": "Am Hof 26, 50667 Köln, Alemania",
+          "hotelLat": 50.9384,
+          "hotelLon": 7.0119,
+          "checkInTime": "15:00",
+          "checkOutTime": "10:00",
+          "startDate": "2026-06-06",
+          "endDate": "2026-06-08",
+          "dayTrip": false,
+          "days": [
+            {
+              "date": "2026-06-06",
+              "stops": [
+                { "id": "col001", "name": "Llegada a Colonia", "address": "Köln Hauptbahnhof", "lat": 50.9384, "lon": 7.0119, "transport": "train", "notes": "16:00", "order": 1 },
+                { "id": "col002", "name": "Check-in", "address": "CityClass Hotel Europa am Dom", "lat": 50.9384, "lon": 7.0119, "transport": "walking", "notes": "17:00", "order": 2 },
+                { "id": "col003", "name": "Catedral de Colón", "address": "Kölner Dom, Alemania", "lat": 50.9413, "lon": 6.9583, "transport": "walking", "notes": "18:00 - La catedral gótica", "order": 3 },
+                { "id": "col004", "name": "Cena en Altstadt", "address": "Altstadt, Cologne", "lat": 50.9378, "lon": 6.9603, "transport": "walking", "notes": "20:00 - Kölsch y schnitzel", "order": 4 }
+              ]
+            },
+            {
+              "date": "2026-06-07",
+              "stops": [
+                { "id": "col005", "name": "Desayuno", "address": "CityClass Hotel Europa am Dom", "lat": 50.9384, "lon": 7.0119, "transport": "walking", "notes": "09:00", "order": 1 },
+                { "id": "col006", "name": "Museo Ludwig", "address": "Museum Ludwig, Cologne", "lat": 50.9366, "lon": 6.9618, "transport": "walking", "notes": "10:00 - Arte moderno", "order": 2 },
+                { "id": "col007", "name": "Rheinuferpromenade", "address": "Rheinuferpromenade, Cologne", "lat": 50.9342, "lon": 6.9633, "transport": "walking", "notes": "12:30 - Paseo por el Rin", "order": 3 },
+                { "id": "col008", "name": "Almuerzo en Deutz", "address": "Deutz, Cologne", "lat": 50.9294, "lon": 6.9714, "transport": "walking", "notes": "14:00", "order": 4 },
+                { "id": "col009", "name": "Barrio belga", "address": "Belgisches Viertel, Cologne", "lat": 50.9380, "lon": 6.9432, "transport": "walking", "notes": "16:00 - Diseño y galerías", "order": 5 },
+                { "id": "col010", "name": "Cena + última Kölsch", "address": "Colonia", "lat": 50.9384, "lon": 7.0119, "transport": "walking", "notes": "19:30", "order": 6 }
+              ]
+            },
+            {
+              "date": "2026-06-08",
+              "stops": [
+                { "id": "col011", "name": "Desayuno + check-out", "address": "CityClass Hotel Europa am Dom", "lat": 50.9384, "lon": 7.0119, "transport": "walking", "notes": "07:30", "order": 1 },
+                { "id": "col012", "name": "Tren Colonia → Praga", "address": "Praha hlavní nádraží, República Checa", "lat": 50.0833, "lon": 14.4378, "transport": "train", "notes": "09:30 - Vía Frankfurt. ~4,5-5 hs", "order": 2 }
+              ]
+            }
+          ]
+        },
+        {
+          "id": "prg-001",
+          "name": "Praga",
+          "hotelName": "Hotel Adria",
+          "hotelAddr": "Václavské náměstí 22, 110 00 Praha, República Checa",
+          "hotelLat": 50.0833,
+          "hotelLon": 14.4378,
+          "checkInTime": "15:00",
+          "checkOutTime": "10:00",
+          "startDate": "2026-06-08",
+          "endDate": "2026-06-11",
+          "dayTrip": false,
+          "days": [
+            {
+              "date": "2026-06-08",
+              "stops": [
+                { "id": "prg001", "name": "Llegada a Praga", "address": "Praha hlavní nádraží", "lat": 50.0833, "lon": 14.4378, "transport": "train", "notes": "14:30", "order": 1 },
+                { "id": "prg002", "name": "Check-in", "address": "Hotel Adria, Václavské náměstí 22", "lat": 50.0817, "lon": 14.4279, "transport": "walking", "notes": "15:00", "order": 2 },
+                { "id": "prg003", "name": "Plaza de la Ciudad Vieja", "address": "Old Town Square, Prague", "lat": 50.0871, "lon": 14.4212, "transport": "walking", "notes": "16:30", "order": 3 },
+                { "id": "prg004", "name": "Reloj Astronómico", "address": "Old Town Square, Prague", "lat": 50.0871, "lon": 14.4212, "transport": "walking", "notes": "17:00", "order": 4 },
+                { "id": "prg005", "name": "Cena", "address": "Celetná, Prague", "lat": 50.0872, "lon": 14.4252, "transport": "walking", "notes": "19:00 - Svíčková o goulash", "order": 5 },
+                { "id": "prg006", "name": "Puente de Carlos de noche", "address": "Charles Bridge, Prague", "lat": 50.0869, "lon": 14.4108, "transport": "walking", "notes": "21:30", "order": 6 }
+              ]
+            },
+            {
+              "date": "2026-06-09",
+              "stops": [
+                { "id": "prg007", "name": "Desayuno", "address": "Hotel Adria", "lat": 50.0817, "lon": 14.4279, "transport": "walking", "notes": "09:00", "order": 1 },
+                { "id": "prg008", "name": "Castillo de Praga", "address": "Prague Castle, República Checa", "lat": 50.0911, "lon": 14.3995, "transport": "walking", "notes": "09:45 - Hradčany", "order": 2 },
+                { "id": "prg009", "name": "Catedral de San Vito", "address": "St. Vitus Cathedral, Prague", "lat": 50.0907, "lon": 14.4004, "transport": "walking", "notes": "11:00", "order": 3 },
+                { "id": "prg010", "name": "Almuerzo en Malá Strana", "address": "Malá Strana, Prague", "lat": 50.0879, "lon": 14.4049, "transport": "walking", "notes": "13:00", "order": 4 },
+                { "id": "prg011", "name": "Jardín Wallenstein", "address": "Wallenstein Gardens, Prague", "lat": 50.0903, "lon": 14.4039, "transport": "walking", "notes": "15:00", "order": 5 },
+                { "id": "prg012", "name": "Petřín", "address": "Petřín, Prague", "lat": 50.0844, "lon": 14.4002, "transport": "funicular", "notes": "17:00 - Vistas panorámicas", "order": 6 },
+                { "id": "prg013", "name": "Cena en Vinohrady", "address": "Vinohrady, Prague", "lat": 50.0764, "lon": 14.4499, "transport": "walking", "notes": "20:00", "order": 7 }
+              ]
+            },
+            {
+              "date": "2026-06-10",
+              "stops": [
+                { "id": "prg014", "name": "Desayuno", "address": "Hotel Adria", "lat": 50.0817, "lon": 14.4279, "transport": "walking", "notes": "09:00", "order": 1 },
+                { "id": "prg015", "name": "Barrio Judío", "address": "Jewish Quarter, Prague", "lat": 50.0892, "lon": 14.4179, "transport": "walking", "notes": "10:00 - Josefov", "order": 2 },
+                { "id": "prg016", "name": "Cementerio Judío", "address": "Jewish Cemetery, Prague", "lat": 50.0897, "lon": 14.4175, "transport": "walking", "notes": "11:00", "order": 3 },
+                { "id": "prg017", "name": "Almuerzo", "address": "Old Town, Prague", "lat": 50.0871, "lon": 14.4212, "transport": "walking", "notes": "12:30", "order": 4 },
+                { "id": "prg018", "name": "Vinohrady", "address": "Vinohrady, Prague", "lat": 50.0764, "lon": 14.4499, "transport": "walking", "notes": "14:30 - Art Nouveau", "order": 5 },
+                { "id": "prg019", "name": "Compras", "address": "Praga", "lat": 50.0871, "lon": 14.4212, "transport": "walking", "notes": "17:00 - Cristalería y marionetas", "order": 6 },
+                { "id": "prg020", "name": "Cena de despedida", "address": "Praga", "lat": 50.0871, "lon": 14.4212, "transport": "walking", "notes": "20:00 - Pilsner checo", "order": 7 }
+              ]
+            },
+            {
+              "date": "2026-06-11",
+              "stops": [
+                { "id": "prg021", "name": "Desayuno + check-out", "address": "Hotel Adria", "lat": 50.0817, "lon": 14.4279, "transport": "walking", "notes": "07:30", "order": 1 },
+                { "id": "prg022", "name": "Tren Praga → Budapest", "address": "Budapest Keleti Railway Station, Hungría", "lat": 47.5003, "lon": 19.0869, "transport": "train", "notes": "09:30 - Vía Brno y Bratislava. ~7 hs", "order": 2 }
+              ]
+            }
+          ]
+        },
+        {
+          "id": "bud-001",
+          "name": "Budapest",
+          "hotelName": "H2 Hotel",
+          "hotelAddr": "Sas utca 24, 1051 Budapest, Hungría",
+          "hotelLat": 47.5003,
+          "hotelLon": 19.0869,
+          "checkInTime": "15:00",
+          "checkOutTime": "10:00",
+          "startDate": "2026-06-11",
+          "endDate": "2026-06-14",
+          "dayTrip": false,
+          "days": [
+            {
+              "date": "2026-06-11",
+              "stops": [
+                { "id": "bud001", "name": "Llegada a Budapest", "address": "Budapest Keleti Railway Station", "lat": 47.5003, "lon": 19.0869, "transport": "train", "notes": "17:00", "order": 1 },
+                { "id": "bud002", "name": "Check-in", "address": "H2 Hotel, Sas utca 24", "lat": 47.4987, "lon": 19.0511, "transport": "walking", "notes": "17:30", "order": 2 },
+                { "id": "bud003", "name": "Basílica de San Esteban", "address": "St. Stephen's Basilica, Budapest", "lat": 47.5008, "lon": 19.0531, "transport": "walking", "notes": "19:00 - Vista de noche", "order": 3 },
+                { "id": "bud004", "name": "Cena", "address": "Liszt Ferenc tér, Budapest", "lat": 47.5016, "lon": 19.0537, "transport": "walking", "notes": "20:30", "order": 4 }
+              ]
+            },
+            {
+              "date": "2026-06-12",
+              "stops": [
+                { "id": "bud005", "name": "Desayuno", "address": "H2 Hotel", "lat": 47.4987, "lon": 19.0511, "transport": "walking", "notes": "09:00", "order": 1 },
+                { "id": "bud006", "name": "Castillo de Buda", "address": "Buda Castle, Budapest", "lat": 47.4961, "lon": 19.0308, "transport": "funicular", "notes": "10:00 - Colina del castillo", "order": 2 },
+                { "id": "bud007", "name": "Palacio Real", "address": "Royal Palace, Budapest", "lat": 47.4959, "lon": 19.0282, "transport": "walking", "notes": "11:00", "order": 3 },
+                { "id": "bud008", "name": "Bastión de los Pescadores", "address": "Fisherman's Bastion, Budapest", "lat": 47.4947, "lon": 19.0341, "transport": "walking", "notes": "12:00", "order": 4 },
+                { "id": "bud009", "name": "Almuerzo", "address": "Castle District, Budapest", "lat": 47.4961, "lon": 19.0308, "transport": "walking", "notes": "13:30", "order": 5 },
+                { "id": "bud010", "name": "Termas Széchenyi", "address": "Széchenyi Thermal Bath, Budapest", "lat": 47.5155, "lon": 19.0825, "transport": "transit", "notes": "15:30 - Baños termales", "order": 6 },
+                { "id": "bud011", "name": "Cena + ruin bars", "address": "Szimpla Kert, Budapest", "lat": 47.5004, "lon": 19.0603, "transport": "walking", "notes": "20:00", "order": 7 }
+              ]
+            },
+            {
+              "date": "2026-06-13",
+              "stops": [
+                { "id": "bud012", "name": "Desayuno", "address": "H2 Hotel", "lat": 47.4987, "lon": 19.0511, "transport": "walking", "notes": "09:00", "order": 1 },
+                { "id": "bud013", "name": "Parlamento", "address": "Hungarian Parliament Building", "lat": 47.5079, "lon": 19.0466, "transport": "walking", "notes": "10:00 - Visita guiada", "order": 2 },
+                { "id": "bud014", "name": "Gran Bulevar", "address": "Andrássy Avenue, Budapest", "lat": 47.5056, "lon": 19.0529, "transport": "walking", "notes": "12:00", "order": 3 },
+                { "id": "bud015", "name": "Mercado Central", "address": "Central Market Hall, Budapest", "lat": 47.4885, "lon": 19.0573, "transport": "walking", "notes": "12:30", "order": 4 },
+                { "id": "bud016", "name": "Almuerzo", "address": "Central Market Hall, Budapest", "lat": 47.4885, "lon": 19.0573, "transport": "walking", "notes": "14:00 - Lángos", "order": 5 },
+                { "id": "bud017", "name": "Crucero por el Danubio", "address": "Danube River, Budapest", "lat": 47.4989, "lon": 19.0437, "transport": "boat", "notes": "17:00 - Al atardecer", "order": 6 },
+                { "id": "bud018", "name": "Cena de despedida", "address": "Budapest", "lat": 47.5003, "lon": 19.0869, "transport": "walking", "notes": "20:30", "order": 7 }
+              ]
+            },
+            {
+              "date": "2026-06-14",
+              "stops": [
+                { "id": "bud019", "name": "Desayuno + check-out", "address": "H2 Hotel", "lat": 47.4987, "lon": 19.0511, "transport": "walking", "notes": "07:30", "order": 1 },
+                { "id": "bud020", "name": "Tren Budapest → Viena", "address": "Wien Hauptbahnhof, Austria", "lat": 48.1859, "lon": 16.3777, "transport": "train", "notes": "09:30 - ~2,5 hs", "order": 2 }
+              ]
+            }
+          ]
+        },
+        {
+          "id": "vie-001",
+          "name": "Viena",
+          "hotelName": "NH Collection Wien Zentrum",
+          "hotelAddr": "Mariahilfer Strasse 78, 1070 Wien, Austria",
+          "hotelLat": 48.1859,
+          "hotelLon": 16.3777,
+          "checkInTime": "15:00",
+          "checkOutTime": "10:00",
+          "startDate": "2026-06-14",
+          "endDate": "2026-06-17",
+          "dayTrip": false,
+          "days": [
+            {
+              "date": "2026-06-14",
+              "stops": [
+                { "id": "vie001", "name": "Llegada a Viena", "address": "Wien Hauptbahnhof", "lat": 48.1859, "lon": 16.3777, "transport": "train", "notes": "12:00", "order": 1 },
+                { "id": "vie002", "name": "Almuerzo en Naschmarkt", "address": "Naschmarkt, Vienna", "lat": 48.1978, "lon": 16.3535, "transport": "walking", "notes": "13:00", "order": 2 },
+                { "id": "vie003", "name": "Check-in", "address": "NH Collection Wien Zentrum", "lat": 48.1859, "lon": 16.3777, "transport": "walking", "notes": "15:00", "order": 3 },
+                { "id": "vie004", "name": "Ringstrasse", "address": "Ringstrasse, Vienna", "lat": 48.2103, "lon": 16.3611, "transport": "walking", "notes": "16:30 - Ópera, Parlamento, Rathaus", "order": 4 },
+                { "id": "vie005", "name": "Cena en Karlsplatz", "address": "Karlsplatz, Vienna", "lat": 48.1985, "lon": 16.3691, "transport": "walking", "notes": "19:00", "order": 5 }
+              ]
+            },
+            {
+              "date": "2026-06-15",
+              "stops": [
+                { "id": "vie006", "name": "Desayuno", "address": "NH Collection Wien Zentrum", "lat": 48.1859, "lon": 16.3777, "transport": "walking", "notes": "09:00", "order": 1 },
+                { "id": "vie007", "name": "Palacio Schönbrunn", "address": "Schönbrunn Palace, Vienna", "lat": 48.1857, "lon": 16.3126, "transport": "transit", "notes": "09:30 - El Versalles austríaco", "order": 2 },
+                { "id": "vie008", "name": "Gloriette", "address": "Gloriette, Schönbrunn", "lat": 48.1861, "lon": 16.3019, "transport": "walking", "notes": "12:00", "order": 3 },
+                { "id": "vie009", "name": "Almuerzo", "address": "Schönbrunn, Vienna", "lat": 48.1857, "lon": 16.3126, "transport": "walking", "notes": "13:00", "order": 4 },
+                { "id": "vie010", "name": "Belvedere", "address": "Belvedere Palace, Vienna", "lat": 48.1919, "lon": 16.3715, "transport": "transit", "notes": "15:00 - El Beso de Klimt", "order": 5 },
+                { "id": "vie011", "name": "Barrio Neubau", "address": "Neubau, Vienna", "lat": 48.1997, "lon": 16.3596, "transport": "walking", "notes": "18:00", "order": 6 },
+                { "id": "vie012", "name": "Cena Wiener Schnitzel", "address": "Figlmüller, Vienna", "lat": 48.2086, "lon": 14.2989, "transport": "walking", "notes": "20:30", "order": 7 }
+              ]
+            },
+            {
+              "date": "2026-06-16",
+              "stops": [
+                { "id": "vie013", "name": "Desayuno", "address": "NH Collection Wien Zentrum", "lat": 48.1859, "lon": 16.3777, "transport": "walking", "notes": "09:00", "order": 1 },
+                { "id": "vie014", "name": "Kunsthistorisches Museum", "address": "Kunsthistorisches Museum, Vienna", "lat": 48.2038, "lon": 16.3633, "transport": "walking", "notes": "10:00 - Vermeer, Velázquez", "order": 2 },
+                { "id": "vie015", "name": "Almuerzo", "address": "Innere Stadt, Vienna", "lat": 48.2086, "lon": 16.3700, "transport": "walking", "notes": "13:30", "order": 3 },
+                { "id": "vie016", "name": "Stephansdom", "address": "St. Stephen's Cathedral, Vienna", "lat": 48.2084, "lon": 16.3732, "transport": "walking", "notes": "15:00", "order": 4 },
+                { "id": "vie017", "name": "Graben y Kohlmarkt", "address": "Graben, Vienna", "lat": 48.2098, "lon": 16.3682, "transport": "walking", "notes": "17:00 - Calles comerciales", "order": 5 },
+                { "id": "vie018", "name": "Cena de despedida", "address": "Viena", "lat": 48.2086, "lon": 16.3700, "transport": "walking", "notes": "19:30", "order": 6 }
+              ]
+            },
+            {
+              "date": "2026-06-17",
+              "stops": [
+                { "id": "vie019", "name": "Check-out + desayuno", "address": "NH Collection Wien Zentrum", "lat": 48.1859, "lon": 16.3777, "transport": "walking", "notes": "07:00", "order": 1 },
+                { "id": "vie020", "name": "Traslado al aeropuerto", "address": "Vienna International Airport (VIE)", "lat": 48.1103, "lon": 16.5697, "transport": "transit", "notes": "08:00 - S-Bahn CAT ~16 min", "order": 2 },
+                { "id": "vie021", "name": "Embarque Ryanair", "address": "VIE", "lat": 48.1103, "lon": 16.5697, "transport": "flight", "notes": "09:00 - Check-in online", "order": 3 },
+                { "id": "vie022", "name": "Vuelo Viena → Dubrovnik", "address": "Dubrovnik Airport (DBV), Croacia", "lat": 42.5614, "lon": 18.2682, "transport": "flight", "notes": "11:00 - Ryanair. ~1h 15min", "order": 4 }
+              ]
+            }
+          ]
+        }
+      ],
+      "tickets": [
+        { "id": "t1", "type": "flight", "company": "AZ156", "fromCity": "Roma", "toCity": "Bruselas", "fromTerminal": "Fiumicino", "toTerminal": "BRU", "depDate": "2026-06-02", "depTime": "19:30", "arrDate": "2026-06-02", "arrTime": "11:30", "stub": false },
+        { "id": "t2", "type": "train", "fromCity": "Bruselas", "toCity": "Brujas", "fromTerminal": "Gare du Midi", "toTerminal": "Bruges Station", "depDate": "2026-06-03", "depTime": "09:00", "arrDate": "2026-06-03", "arrTime": "10:00", "stub": false },
+        { "id": "t3", "type": "train", "fromCity": "Brujas", "toCity": "Colonia", "fromTerminal": "Bruges Station", "toTerminal": "Köln Hauptbahnhof", "depDate": "2026-06-06", "depTime": "11:30", "arrDate": "2026-06-06", "arrTime": "16:00", "stub": false },
+        { "id": "t4", "type": "train", "fromCity": "Colonia", "toCity": "Praga", "fromTerminal": "Köln Hauptbahnhof", "toTerminal": "Praha Hlavní nádraží", "depDate": "2026-06-08", "depTime": "09:30", "arrDate": "2026-06-08", "arrTime": "14:30", "stub": false },
+        { "id": "t5", "type": "train", "fromCity": "Praga", "toCity": "Budapest", "fromTerminal": "Praha Hlavní nádraží", "toTerminal": "Budapest Keleti", "depDate": "2026-06-11", "depTime": "09:30", "arrDate": "2026-06-11", "arrTime": "16:30", "stub": false },
+        { "id": "t6", "type": "train", "fromCity": "Budapest", "toCity": "Viena", "fromTerminal": "Budapest Keleti", "toTerminal": "Wien Hauptbahnhof", "depDate": "2026-06-14", "depTime": "09:30", "arrDate": "2026-06-14", "arrTime": "12:00", "stub": false },
+        { "id": "t7", "type": "flight", "company": "Ryanair", "fromCity": "Viena", "toCity": "Dubrovnik", "fromTerminal": "VIE", "toTerminal": "DBV", "depDate": "2026-06-17", "depTime": "11:00", "arrDate": "2026-06-17", "arrTime": "12:15", "stub": false }
+      ]
+    }
+  ]
+}
