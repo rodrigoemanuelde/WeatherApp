@@ -789,6 +789,7 @@
 .time-btn.has-value { border-color: var(--accent2); }
 
 /* ── TIME PICKER MODAL ── */
+#modal-time-picker { z-index: 300; }
 .time-picker-modal { padding: 24px 20px 20px; }
 .time-picker-body { display: flex; justify-content: center; margin-bottom: 20px; }
 .time-picker-wheel-wrap {
