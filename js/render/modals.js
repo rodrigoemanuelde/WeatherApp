@@ -630,10 +630,33 @@
     });
     updateTicketFields(ticket.type);
     
-    // Fill fields
-    Object.keys(ticket).forEach(key => {
-      const el = document.getElementById('ticket-' + key);
-      if (el) el.value = ticket[key] || '';
+    // Fill fields - usando mapeo explícito porque los nombres de propiedades no coinciden con los IDs del HTML
+    const fieldMap = {
+      type: 'ticket-type',
+      fromCity: 'ticket-from-city',
+      toCity: 'ticket-to-city',
+      fromTerminal: 'ticket-dep-terminal',
+      toTerminal: 'ticket-arr-terminal',
+      fromTerminalLat: 'ticket-dep-terminal-lat',
+      fromTerminalLon: 'ticket-dep-terminal-lon',
+      fromTerminalFull: 'ticket-dep-terminal-full',
+      toTerminalLat: 'ticket-arr-terminal-lat',
+      toTerminalLon: 'ticket-arr-terminal-lon',
+      toTerminalFull: 'ticket-arr-terminal-full',
+      depDate: 'ticket-dep-date',
+      arrDate: 'ticket-arr-date',
+      depTime: 'ticket-dep-time',
+      arrTime: 'ticket-arr-time',
+      depGate: 'ticket-dep-gate',
+      arrGate: 'ticket-arr-gate',
+      company: 'ticket-company'
+    };
+    
+    Object.keys(fieldMap).forEach(key => {
+      const el = document.getElementById(fieldMap[key]);
+      if (el && ticket[key] !== undefined) {
+        el.value = ticket[key] || '';
+      }
     });
     
     appStore.beginEditTicket(ticketId);

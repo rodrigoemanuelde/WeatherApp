@@ -917,6 +917,7 @@ function getTransitions(trip) {
 }
 
 function ensureTransitionTickets(trip) {
+  if (_skipEnsureTransitionTickets) return;
   if (!trip.tickets) trip.tickets = [];
   const transitions = getTransitions(trip);
   let changed = false;
@@ -1458,15 +1459,19 @@ function deleteTicket(ticketId) {
   openModal('modal-confirm-delete-ticket');
 }
 
+let _skipEnsureTransitionTickets = false;
+
 function confirmDeleteTicket() {
   const trip = trips.find(t => t.id === currentTripId);
   if (!trip || !_pendingDeleteTicketId) return;
+  _skipEnsureTransitionTickets = true;
   trip.tickets = (trip.tickets || []).filter(t => t.id !== _pendingDeleteTicketId);
   appStore.clearPendingDeleteTicket();
   save();
   closeModal('modal-confirm-delete-ticket');
   renderTickets();
   renderDetail();
+  _skipEnsureTransitionTickets = false;
   showToast('🗑️ Pasaje eliminado');
 }
 
